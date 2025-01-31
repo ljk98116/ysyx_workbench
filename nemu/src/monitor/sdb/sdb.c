@@ -18,6 +18,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
+#include <memory/paddr.h>
 
 static int is_batch_mode = false;
 
@@ -49,10 +50,95 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+  nemu_state.state = NEMU_QUIT;
   return -1;
 }
 
 static int cmd_help(char *args);
+
+static int cmd_si(char *args){
+  word_t N = 1;
+  if(args) N = atoll(args);
+  cpu_exec(N);
+  return 0;
+}
+
+static int cmd_info(char *args){
+  if(strlen(args) > 1 || strlen(args) == 0){
+    printf("info cmd illegal\n");
+    return 0;
+  }
+  /* 打印寄存器 */
+  if(args[0] == 'r'){
+    isa_reg_display();
+  }
+  /* 打印监视点 */
+  if(args[0] == 'w'){
+    print_watchpoints();
+  }
+  return 0;
+}
+
+static int cmd_x(char *args){
+  int expr_start_idx = 0;
+  char *expr_str = NULL;
+  char *N_str = args;
+  int good = 0;
+  for(int i=0;i<strlen(args);++i){
+    if(args[i] == ' ') {
+      expr_start_idx = i + 1;
+      good = 1;
+      expr_str = &args[expr_start_idx];
+      break;
+    }
+  }
+  if(!good || !expr_str){
+    printf("illegal input for x command\n");
+    return 0;
+  }
+
+  /* 假设表达式为16进制 */
+  bool success = true;
+  word_t paddr = expr(expr_str, &success);
+  args[expr_start_idx] = '\0';
+  word_t N = atoll(N_str);
+  for(int i=0;i<N;++i){
+    word_t rval = paddr_read(paddr + (i << 2), 4);
+    printf("0x%08x ", rval);
+  }
+  printf("\n");
+  return success == true ? 0 : -1;
+}
+
+static int cmd_p(char *args){
+  /* 假设表达式为16进制 */
+  bool success = true;
+  word_t res = expr(args, &success);
+  printf("%u\n", res);
+  return success == true ? 0 : -1; 
+}
+
+static int cmd_w(char *args){
+  WP *wp = new_WP();
+  if(!wp){
+    Log("Hardware watchpoint allocate failed");
+    return -1;
+  }
+  wp->expr = strdup(args);
+  AddWP(wp);
+  Log("Hardware watchpoint %d : %s", wp->NO, args);
+  return 0;
+}
+
+static int cmd_d(char *args){
+  bool success = true;
+  word_t idx = expr(args, &success);
+  if(success) {
+    success = DeleteWP(idx);
+    if(success) Log("watchpoint %d deleted successfully", idx);
+  }
+  return success == true ? 0 : -1;
+}
 
 static struct {
   const char *name;
@@ -64,7 +150,12 @@ static struct {
   { "q", "Exit NEMU", cmd_q },
 
   /* TODO: Add more commands */
-
+  { "si", "Step N insts, default is 1", cmd_si},
+  { "info", "get info for register[r] or watchpoints[w]", cmd_info},
+  { "x", "output the expr value within N *4 bytes in format hex", cmd_x},
+  { "p", "get expr value", cmd_p},
+  { "w", "set watchpoint", cmd_w},
+  { "d", "del watchpoint id N", cmd_d}
 };
 
 #define NR_CMD ARRLEN(cmd_table)
