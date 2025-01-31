@@ -14,6 +14,7 @@
 ***************************************************************************************/
 
 #include <common.h>
+
 void init_monitor(int, char *[]);
 void am_init_monitor();
 void engine_start();
@@ -26,6 +27,7 @@ int main(int argc, char *argv[]) {
 #else
   init_monitor(argc, argv);
 #endif
+
   /* Start engine. */
   engine_start();
 
