@@ -32,15 +32,16 @@ static void welcome() {
   Log("Build time: %s, %s", __TIME__, __DATE__);
   printf("Welcome to %s-NEMU!\n", ANSI_FMT(str(__GUEST_ISA__), ANSI_FG_YELLOW ANSI_BG_RED));
   printf("For help, type \"help\"\n");
-  Log("Exercise: Please remove me in the source code and compile NEMU again.");
-  assert(0);
+  //Log("Exercise: Please remove me in the source code and compile NEMU again.");
+  //assert(0);
 }
 
 #ifndef CONFIG_TARGET_AM
 #include <getopt.h>
 
 void sdb_set_batch_mode();
-
+word_t expr(char *e, bool *success);
+//static void expr_test();
 static char *log_file = NULL;
 static char *diff_so_file = NULL;
 static char *img_file = NULL;
@@ -98,6 +99,29 @@ static int parse_args(int argc, char *argv[]) {
   return 0;
 }
 
+#if 0
+static void expr_test(){
+  /* test exprs */
+  FILE* fp = fopen("/home/ljk/Arch/ics2024/nemu/tools/gen-expr/input.txt", "r");
+  char res_str[34] = {0};
+  char input_str[65535 + 34] = {0};
+  char expr_str[65535] = {0};
+  bool success = true;
+  int cnt = 0;
+  while(fp && fgets(input_str, sizeof(input_str), fp)){
+    sscanf(input_str, "%s %s", res_str, expr_str);
+    word_t res = expr(expr_str, &success);
+    if(res != (uint32_t)atol(res_str) || !success){
+      panic("%d th expr cal error, expected: 0x%x, actual: 0x%x\n", cnt, (uint32_t)atol(res_str), res);
+      success = false;
+    }
+    ++cnt;
+  }
+  if(success) printf("EXPR TESTS ALL PASSED !!!\n");
+  fclose(fp);
+}
+#endif
+
 void init_monitor(int argc, char *argv[]) {
   /* Perform some global initialization. */
 
@@ -132,7 +156,12 @@ void init_monitor(int argc, char *argv[]) {
 
   /* Display welcome message. */
   welcome();
+
+  /* test exprs, for PA1 */
+  // expr_test();
+
 }
+
 #else // CONFIG_TARGET_AM
 static long load_img() {
   extern char bin_start, bin_end;

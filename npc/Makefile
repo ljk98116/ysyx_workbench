@@ -1,20 +1,37 @@
-CSRC=$(wildcard csrc/*.cpp)
-VSRC=$(wildcard vsrc/*.v)
-VC=verilator
-VCFLAG=--cc --exe -Wall --trace
-TARGET=double_switch
-all:
-	@echo "Write this Makefile by your self."
-	$(VC) $(VCFLAG) $(CSRC) $(VSRC)
-	cd obj_dir && make -f V$(TARGET).mk
-sim: all
-	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	@echo "Write this Makefile by your self."
-	./obj_dir/V$(TARGET)
-	gtkwave wave.vcd
+BUILD_DIR = ./build
 
-.PHONY: clean
+PRJ = playground
+
+test:
+	mill -i $(PRJ).test
+
+verilog:
+	$(call git_commit, "generate verilog")
+	mkdir -p $(BUILD_DIR)
+	mill -i $(PRJ).runMain Elaborate --target-dir $(BUILD_DIR)
+
+help:
+	mill -i $(PRJ).runMain Elaborate --help
+
+reformat:
+	mill -i __.reformat
+
+checkformat:
+	mill -i __.checkFormat
+
+bsp:
+	mill -i mill.bsp.BSP/install
+
+idea:
+	mill -i mill.idea.GenIdea/idea
+
 clean:
-	rm -rf obj_dir/ wave.vcd
+	-rm -rf $(BUILD_DIR)
 
-include ../Makefile
+.PHONY: test verilog help reformat checkformat clean
+
+sim:
+	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
+	@echo "Write this Makefile by yourself."
+
+-include ../Makefile
