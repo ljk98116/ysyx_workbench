@@ -18,6 +18,8 @@
 
 // Located at src/isa/$(GUEST_ISA)/include/isa-def.h
 #include <isa-def.h>
+#include <memory/iringbuf.h>
+#include <elf.h>
 
 // The macro `__GUEST_ISA__` is defined in $(CFLAGS).
 // It will be expanded as "x86" or "mips32" ...
@@ -54,5 +56,27 @@ word_t isa_query_intr();
 // difftest
 bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc);
 void isa_difftest_attach();
+
+//trace buf
+extern iringbuf_t *itrace_buf;
+extern iringbuf_t *mtrace_buf;
+extern iringbuf_t *ftrace_buf;
+
+#define MTRACE_INFO_SIZE 128
+#define MTRACE_NUM 60
+
+#define FTRACE_INFO_SIZE 128
+#define FTRACE_NUM 20
+
+//for ftrace
+typedef struct{
+    char *name;
+    paddr_t start;
+    size_t size;
+} elf_func_t;
+
+extern Elf32_Sym *elf_symtab;
+extern char *elf_strtab;
+extern elf_func_t func_table[];
 
 #endif

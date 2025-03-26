@@ -18,6 +18,8 @@
 #define NR_WP 32
 
 static WP wp_pool[NR_WP] = {};
+//head即当前的活动的watchpoint链表
+//free是空闲watchpoint链表的表头
 static WP *head = NULL, *free_ = NULL;
 
 void init_wp_pool() {

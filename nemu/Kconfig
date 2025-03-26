@@ -125,7 +125,9 @@ config CC_ASAN
 endmenu
 
 menu "Testing and Debugging"
-
+config WATCH_POINT
+  bool "Enable Watchpoint"
+  default n
 
 config TRACE
   bool "Enable tracer"
@@ -146,11 +148,19 @@ config ITRACE
   bool "Enable instruction tracer"
   default y
 
+config FTRACE
+  bool "Enable function tracer"
+  default y  
+
 config ITRACE_COND
   depends on ITRACE
   string "Only trace instructions when the condition is true"
   default "true"
 
+config MTRACE
+  depends on TRACE
+  bool "Enable memory tracer"
+  default "false"
 
 config DIFFTEST
   depends on TARGET_NATIVE_ELF
@@ -213,9 +223,5 @@ endchoice
 config RT_CHECK
   bool "Enable runtime checking"
   default y
-
-config WATCH_POINT
-  bool "Enable Watchpoint"
-  default n
 
 endmenu

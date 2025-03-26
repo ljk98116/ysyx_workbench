@@ -85,6 +85,7 @@ static int cmd_x(char *args){
   char *N_str = args;
   int good = 0;
   for(int i=0;i<strlen(args);++i){
+    //截取表达式，空格后的字符串
     if(args[i] == ' ') {
       expr_start_idx = i + 1;
       good = 1;
@@ -98,8 +99,10 @@ static int cmd_x(char *args){
   }
 
   /* 假设表达式为16进制 */
+  /* 求表达式值 */
   bool success = true;
   word_t paddr = expr(expr_str, &success);
+  //求出输出的4字节的个数
   args[expr_start_idx] = '\0';
   word_t N = atoll(N_str);
   for(int i=0;i<N;++i){

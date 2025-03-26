@@ -15,6 +15,7 @@
 
 #include <isa.h>
 #include <memory/paddr.h>
+#include <memory/iringbuf.h>
 
 // this is not consistent with uint8_t
 // but it is ok since we do not access the array directly
@@ -25,6 +26,9 @@ static const uint32_t img [] = {
   0x00100073,  // ebreak (used as nemu_trap)
   0xdeadbeef,  // some data
 };
+
+iringbuf_t *itrace_buf;
+iringbuf_t *ftrace_buf;
 
 static void restart() {
   /* Set the initial program counter. */
@@ -40,4 +44,13 @@ void init_isa() {
 
   /* Initialize this virtual computer system. */
   restart();
+
+  /* Initialize itrace buffer */
+  itrace_buf = iringbuf_create(ITRACE_BUFFER_SIZE);
+
+  /* Initialize ftrace buffer */
+#ifdef CONFIG_FTRACE
+  #define FTRACE_BUFFER_SIZE 100000
+  ftrace_buf = iringbuf_create(FTRACE_BUFFER_SIZE);
+#endif
 }

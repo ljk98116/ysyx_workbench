@@ -34,7 +34,7 @@ static int buf_end = 0;
 static uint32_t choose(uint32_t n){
   return rand() % n;
 }
-
+//buf_end后面置0
 static void abort_expr(int pos){
   memset(&buf[pos], 0, sizeof(buf) - buf_end - 1);
 }
@@ -43,6 +43,7 @@ static int gen_num(){
   int pos = buf_end;
   uint32_t num = rand() % UINT32_MAX;
   int choise = choose(2);
+  //选择生成十进制或者十六进制
   uint32_t target = 10;
   if(choise == 1) target = 16;
 
@@ -50,13 +51,16 @@ static int gen_num(){
 
   //strcpy(&buf[buf_end], "(unsigned int)");
   //buf_end += strlen("(unsigned int)");
+  //十六进制添加前置0x
   if(target == 16){
     if(buf_end + 2 >= sizeof(buf)) goto bad;
     buf[buf_end++] = '0', buf[buf_end++] = 'x';
   }
   int start = buf_end;
+  //数字转字符串
   while(num){
     int now = num % target;
+    //检查缓冲区越界
     if(buf_end >= sizeof(buf)) goto bad;
     if(now >= 10 && target == 16) buf[buf_end++] = now - 10 + 'A';
     else buf[buf_end++] = now + '0';
@@ -97,6 +101,7 @@ static int gen(char c){
   return 0;
 }
 
+//depth为当前递归深度
 static int gen_rand_expr(int depth) {
   int pos = buf_end;
   /* 防止爆栈 */
@@ -122,6 +127,7 @@ static int gen_rand_expr(int depth) {
       return 0;
     }
     default: {
+      //生成expr1 op expr2
       if(gen_rand_expr(depth+1) == -1){
         abort_expr(pos);
         return -1;
@@ -152,6 +158,7 @@ int main(int argc, char *argv[]) {
   for (i = 0; i < loop; i ++) {
     buf_end = 0;
     memset(buf, 0, sizeof(buf));
+    //失败，重新生成
     if(gen_rand_expr(0) == -1) {
       //printf("%d th gen expr failed\n", i);
       --i;
@@ -175,11 +182,12 @@ int main(int argc, char *argv[]) {
     int result;
     ret = fscanf(fp, "%d", &result);
     pclose(fp);
-
+    //后处理，忽略u，防止将无符号数标识引入表达式
     int p = 0;
     for(int i=0;i<buf_end;++i){
       if(buf[i] != 'u') buf[p++] = buf[i];
     }
+    //表达式剩余长度位全部置0
     memset(&buf[p], 0, sizeof(buf) - p - 1);
     printf("%u %s\n", result, buf);
   }

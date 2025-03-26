@@ -181,7 +181,7 @@ static bool check_parentheses(int start, int end){
     if(tokens[i].type == TK_LEFTPAR) ++is_pair;
     if(tokens[i].type == TK_RIGHTPAR) --is_pair;
   }
-  return true;
+  return is_pair == 0;
 }
 
 static int find_patition_op(int start, int end){
@@ -340,13 +340,15 @@ word_t expr(char *e, bool *success) {
   }
   /* check deref */
   for(int i=0;i<nr_token;++i){
+    //这个地方添加了对括号的筛选
     if(tokens[i].type == TK_MULT && (i == 0 || 
-        (i > 0 && tokens[i-1].type != TK_NUMBER && tokens[i-1].type != TK_HEX)
+        (i > 0 && tokens[i-1].type != TK_NUMBER && tokens[i-1].type != TK_HEX
+        && tokens[i-1].type != TK_LEFTPAR && tokens[i-1].type != TK_RIGHTPAR)
       )){
       tokens[i].type = TK_DEREF;
     }
     if(tokens[i].type == TK_MINUS && 
-      (i == 0 || (i > 0 && tokens[i-1].type != TK_NUMBER && tokens[i-1].type != TK_HEX)
+      (i == 0 || (i > 0 && tokens[i-1].type != TK_NUMBER && tokens[i-1].type != TK_HEX && tokens[i-1].type != TK_LEFTPAR && tokens[i-1].type != TK_RIGHTPAR)
     )){
       tokens[i].type = TK_SIGN;
     }

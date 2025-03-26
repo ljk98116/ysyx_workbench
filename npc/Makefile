@@ -1,21 +1,29 @@
 BUILDDIR = ./vsrc
-PACKAGE = chapter7
+PACKAGE =eaglecore
 
 PRJ = playground
-TOPNAME=ps2_keyboard
+TOPNAME=EagleCore
 NXDC_FILES = constr/$(TOPNAME).nxdc
 
-INC_PATH ?=
-
+INC_PATH ?= $(NEMU_HOME)/include
 VERILATOR = verilator
-VERILATOR_CFLAGS += -MMD --build -cc  \
-				-O3 --x-assign fast --x-initial fast --noassert --trace
+VERILATOR_FLAGS += --cc --exe --build -O3 --trace
+VERILATOR_FLAGS += -Wno-lint
 
 BUILD_DIR = ./build
 OBJ_DIR = $(BUILD_DIR)/obj_dir
 BIN = $(BUILD_DIR)/$(TOPNAME)
-
+WORK_DIR = $(pwd)
+ 
 $(shell mkdir -p $(BUILD_DIR))
+ifneq ($(wildcard riscv32-nemu-interpreter-so), )
+# 文件存在时执行的命令
+	mv $(NEMU_HOME)/build/riscv32-nemu-interpreter-so $(NEMU_HOME)/build/libriscv32-nemu-interpreter-so.so
+endif
+
+# add nemu so
+LDFLAGS += -lreadline
+LDFLAGS += -Wl,-rpath="$(NEMU_HOME)/build/"
 
 # constraint file
 SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
@@ -25,13 +33,13 @@ $(SRC_AUTO_BIND): $(NXDC_FILES)
 # project source
 VSRCS = $(shell find $(abspath ./vsrc) -name "*.v" -or -name "*.sv")
 CSRCS = $(shell find $(abspath ./csrc/$(PACKAGE)) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
-CSRCS += $(SRC_AUTO_BIND)
+# CSRCS += $(SRC_AUTO_BIND)
 
 # rules for NVBoard
-include $(NVBOARD_HOME)/scripts/nvboard.mk
+# include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # rules for verilator
-INCFLAGS = $(addprefix -I, $(INC_PATH))
+INCFLAGS = $(addprefix -I , $(INC_PATH))
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
 
 .PHONY: test verilog help reformat checkformat clean all sim
@@ -62,12 +70,21 @@ idea:
 clean:
 	-rm -rf $(BUILD_DIR) $(BUILDDIR)
 
-$(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) 
+
+# $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) 
+# 	@rm -rf $(OBJ_DIR)
+# 	$(VERILATOR) $(VERILATOR_CFLAGS) \
+# 		--top-module $(TOPNAME) $^ \
+# 		$(addprefix -CFLAGS , $(CXXFLAGS)) $(addprefix -LDFLAGS , $(LDFLAGS)) \
+# 		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
+
+# run without nvboard
+$(BIN): $(VSRCS) $(CSRCS) 
 	@rm -rf $(OBJ_DIR)
-	$(VERILATOR) $(VERILATOR_CFLAGS) \
-		--top-module $(TOPNAME) $^ \
+	$(VERILATOR) $(VERILATOR_FLAGS) \
+		--top $(TOPNAME) $^ \
 		$(addprefix -CFLAGS , $(CXXFLAGS)) $(addprefix -LDFLAGS , $(LDFLAGS)) \
-		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN))
+		--Mdir $(OBJ_DIR) -o $(abspath $(BIN))
 
 default: $(BIN)
 
