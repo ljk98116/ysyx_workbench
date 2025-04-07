@@ -24,6 +24,8 @@ static uint8_t *pmem = NULL;
 static uint8_t pmem[CONFIG_MSIZE] PG_ALIGN = {};
 #endif
 
+iringbuf_t *mtrace_buf;
+
 uint8_t* guest_to_host(paddr_t paddr) { return pmem + paddr - CONFIG_MBASE; }
 paddr_t host_to_guest(uint8_t *haddr) { return haddr - pmem + CONFIG_MBASE; }
 
@@ -48,17 +50,66 @@ void init_mem() {
 #endif
   IFDEF(CONFIG_MEM_RANDOM, memset(pmem, rand(), CONFIG_MSIZE));
   Log("physical memory area [" FMT_PADDR ", " FMT_PADDR "]", PMEM_LEFT, PMEM_RIGHT);
+#ifdef CONFIG_MTRACE
+  mtrace_buf = iringbuf_create(MTRACE_INFO_SIZE * MTRACE_NUM);
+#endif
 }
 
 word_t paddr_read(paddr_t addr, int len) {
-  if (likely(in_pmem(addr))) return pmem_read(addr, len);
-  IFDEF(CONFIG_DEVICE, return mmio_read(addr, len));
+  if (likely(in_pmem(addr))) {
+    word_t data = pmem_read(addr, len);
+#ifdef CONFIG_MTRACE
+    char label = 'R';
+    char *type = "MEM";
+    char buf[MTRACE_INFO_SIZE];
+    memset(buf, '\0', MTRACE_INFO_SIZE);
+    sprintf(buf, "addr: 0x%08x\tlen: %d\tlabel: %c\ttype:%s\tdata:0x%08x\n", addr, len, label, type, data);
+    iringbuf_write(mtrace_buf, buf, MTRACE_INFO_SIZE);
+#endif
+    return data;
+  }
+#ifdef CONFIG_DEVICE
+  word_t data = mmio_read(addr, len);
+#ifdef CONFIG_MTRACE
+  char label = 'R';
+  char *type = "IO";
+  char buf[MTRACE_INFO_SIZE];
+  memset(buf, '\0', MTRACE_INFO_SIZE);
+  sprintf(buf, "addr: 0x%08x\tlen: %d\tlabel: %c\ttype:%s\tdata:0x%08x\n", addr, len, label, type, data);
+  iringbuf_write(mtrace_buf, buf, MTRACE_INFO_SIZE);
+#endif  
+  return data;
+#endif
+  // IFDEF(CONFIG_DEVICE, return mmio_read(addr, len));
   out_of_bound(addr);
   return 0;
 }
 
 void paddr_write(paddr_t addr, int len, word_t data) {
-  if (likely(in_pmem(addr))) { pmem_write(addr, len, data); return; }
-  IFDEF(CONFIG_DEVICE, mmio_write(addr, len, data); return);
+  if (likely(in_pmem(addr))) { 
+    pmem_write(addr, len, data);
+#ifdef CONFIG_MTRACE
+    char label = 'W';
+    char *type = "MEM";
+    char buf[MTRACE_INFO_SIZE];
+    memset(buf, '\0', MTRACE_INFO_SIZE);
+    sprintf(buf, "addr: 0x%08x\tlen: %d\tlabel: %c\ttype:%s\tdata:0x%08x\n", addr, len, label, type, data);
+    iringbuf_write(mtrace_buf, buf, MTRACE_INFO_SIZE);
+#endif
+    return;
+  }
+#ifdef CONFIG_DEVICE
+  mmio_write(addr, len, data);
+#ifdef CONFIG_MTRACE
+  char label = 'W';
+  char *type = "IO";
+  char buf[MTRACE_INFO_SIZE];
+  memset(buf, '\0', MTRACE_INFO_SIZE);
+  sprintf(buf, "addr: 0x%08x\tlen: %d\tlabel: %c\ttype:%s\tdata:0x%08x\n", addr, len, label, type, data);
+  iringbuf_write(mtrace_buf, buf, MTRACE_INFO_SIZE);
+#endif
+  return;
+#endif
+  // IFDEF(CONFIG_DEVICE, mmio_write(addr, len, data); return);
   out_of_bound(addr);
 }

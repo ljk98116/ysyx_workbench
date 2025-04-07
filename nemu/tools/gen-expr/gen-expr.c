@@ -21,8 +21,8 @@
 #include <string.h>
 
 // this should be enough
-static char buf[65536] = {};
-static char code_buf[65536 + 128] = {}; // a little larger than `buf`
+static char buf[65535] = {};
+static char code_buf[65535 + 128] = {}; // a little larger than `buf`
 static char *code_format =
 "#include <stdio.h>\n"
 "int main() { "
@@ -30,9 +30,121 @@ static char *code_format =
 "  printf(\"%%u\", result); "
 "  return 0; "
 "}";
+static int buf_end = 0;
+static uint32_t choose(uint32_t n){
+  return rand() % n;
+}
+//buf_end后面置0
+static void abort_expr(int pos){
+  memset(&buf[pos], 0, sizeof(buf) - buf_end - 1);
+}
 
-static void gen_rand_expr() {
-  buf[0] = '\0';
+static int gen_num(){
+  int pos = buf_end;
+  uint32_t num = rand() % UINT32_MAX;
+  int choise = choose(2);
+  //选择生成十进制或者十六进制
+  uint32_t target = 10;
+  if(choise == 1) target = 16;
+
+  //if(buf_end + strlen("(unsigned int)") >= sizeof(buf)) goto bad;
+
+  //strcpy(&buf[buf_end], "(unsigned int)");
+  //buf_end += strlen("(unsigned int)");
+  //十六进制添加前置0x
+  if(target == 16){
+    if(buf_end + 2 >= sizeof(buf)) goto bad;
+    buf[buf_end++] = '0', buf[buf_end++] = 'x';
+  }
+  int start = buf_end;
+  //数字转字符串
+  while(num){
+    int now = num % target;
+    //检查缓冲区越界
+    if(buf_end >= sizeof(buf)) goto bad;
+    if(now >= 10 && target == 16) buf[buf_end++] = now - 10 + 'A';
+    else buf[buf_end++] = now + '0';
+    num /= target;
+  }
+  int end = buf_end - 1;
+  while(start < end){
+    char tmp = buf[start];
+    buf[start] = buf[end];
+    buf[end] = tmp;
+    ++start;
+    --end;
+  }
+  if(buf_end + 1 >= sizeof(buf)) goto bad;
+  buf[buf_end++] = 'u';
+  return 0;
+bad:
+  abort_expr(pos);
+  return -1;
+}
+
+/* +, -, *, / */
+static int gen_rand_op(){
+  int id = choose(4);
+  if(buf_end + 1 == sizeof(buf)) {abort_expr(buf_end); return -1;}
+  switch(id){
+    case 0: {buf[buf_end++] = '+'; break;}
+    case 1: {buf[buf_end++] = '-'; break;}
+    case 2: {buf[buf_end++] = '*'; break;}
+    case 3: {buf[buf_end++] = '/'; break;}
+  }
+  return 0;
+}
+
+static int gen(char c){
+  if(buf_end + 1 >= sizeof(buf)) return -1;
+  buf[buf_end++] = c;
+  return 0;
+}
+
+//depth为当前递归深度
+static int gen_rand_expr(int depth) {
+  int pos = buf_end;
+  /* 防止爆栈 */
+  if(depth >= 20) return -1;
+  switch (choose(3)) {
+    case 0: {
+      if(gen_num() == -1){
+        abort_expr(pos);
+        return -1;
+      }
+      return 0;
+    }
+    case 1: {
+      if(gen('(') == -1) return -1;
+      if(gen_rand_expr(depth+1) == -1) {
+        abort_expr(pos);
+        return -1;
+      } 
+      if(gen(')') == -1){
+        abort_expr(pos);
+        return -1;
+      }
+      return 0;
+    }
+    default: {
+      //生成expr1 op expr2
+      if(gen_rand_expr(depth+1) == -1){
+        abort_expr(pos);
+        return -1;
+      } 
+      if(gen_rand_op() == -1){
+        abort_expr(pos);
+        return -1;
+      }
+      if(gen_rand_expr(depth+1) == -1){
+        abort_expr(pos);
+        return -1;
+      }
+
+      return 0;
+    }
+  }
+  return -1;
 }
 
 int main(int argc, char *argv[]) {
@@ -44,8 +156,16 @@ int main(int argc, char *argv[]) {
   }
   int i;
   for (i = 0; i < loop; i ++) {
-    gen_rand_expr();
-
+    buf_end = 0;
+    memset(buf, 0, sizeof(buf));
+    //失败，重新生成
+    if(gen_rand_expr(0) == -1) {
+      //printf("%d th gen expr failed\n", i);
+      --i;
+      continue;
+    }
+    
+    //buf_end += strlen("*1u");
     sprintf(code_buf, code_format, buf);
 
     FILE *fp = fopen("/tmp/.code.c", "w");
@@ -53,8 +173,8 @@ int main(int argc, char *argv[]) {
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
-    if (ret != 0) continue;
+    int ret = system("gcc /tmp/.code.c -o /tmp/.expr -O2 -Wall -Werror");
+    if (ret != 0) { --i; continue;}
 
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
@@ -62,7 +182,13 @@ int main(int argc, char *argv[]) {
     int result;
     ret = fscanf(fp, "%d", &result);
     pclose(fp);
-
+    //后处理，忽略u，防止将无符号数标识引入表达式
+    int p = 0;
+    for(int i=0;i<buf_end;++i){
+      if(buf[i] != 'u') buf[p++] = buf[i];
+    }
+    //表达式剩余长度位全部置0
+    memset(&buf[p], 0, sizeof(buf) - p - 1);
     printf("%u %s\n", result, buf);
   }
   return 0;

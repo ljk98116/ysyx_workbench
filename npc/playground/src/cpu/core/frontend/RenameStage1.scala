@@ -1,0 +1,144 @@
+package cpu.core.frontend
+
+import chisel3._
+import chisel3.util._
+
+import cpu.config._
+
+/* 制造读使能，准备读取RAT */
+/* 分析相关性，准备下一周期修改RAT */
+class RenameStage1 extends Module
+{
+    val io = IO(new Bundle {
+        val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+        val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
+        val DecodeRes_i = Input(Vec(base.FETCH_WIDTH, new DecodeRes))
+        val freereg_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
+
+        val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+        val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
+        val DecodeRes_o = Output(Vec(base.FETCH_WIDTH, new DecodeRes))
+
+        /* RAW相关性信息 */
+        val rs1_match = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
+        val rs2_match = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
+        
+        /* RAT读写使能 */
+        val rat_wen_o = Output(UInt(base.FETCH_WIDTH.W))
+        val rat_waddr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.AREG_WIDTH.W)))
+        val rat_wdata_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
+
+        val rat_ren_o = Output(UInt((base.FETCH_WIDTH * 2).W))
+        val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 2, UInt(base.AREG_WIDTH.W)))
+    })
+
+    /* pipeline */
+    var pc_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
+    ))
+
+    var inst_valid_mask_reg = RegInit(
+        (0.U)(base.FETCH_WIDTH.W)
+    )
+
+    var DecodeRes_reg = RegInit(
+        VecInit(Seq.fill(base.FETCH_WIDTH)(new DecodeRes))
+    )
+
+    pc_vec_reg := io.pc_vec_i
+    inst_valid_mask_reg := io.inst_valid_mask_i
+    DecodeRes_reg := io.DecodeRes_i
+
+    /* rs1/rs2 是否哪一个最近的前置rd相等，给出掩码 */
+    var rs1_match = WireInit(
+        VecInit(
+            Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+        )
+    )
+
+    var rs2_match = WireInit(
+        VecInit(
+            Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+        )
+    )    
+    /* RAW相关性 */
+    for(i <- 0 until base.FETCH_WIDTH){
+        for(j <- i+1 until base.FETCH_WIDTH){
+            when(DecodeRes_reg(i).HasRd)
+            {
+                when(DecodeRes_reg(j).HasRs1)
+                {
+                    rs1_match(i)(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rs1
+                }
+                when(DecodeRes_reg(j).HasRs2)
+                {
+                    rs2_match(i)(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rs2
+                }
+            }
+        }
+    }
+
+    /* WAW相关性 */
+    var rat_wen = WireInit((0.U)(base.FETCH_WIDTH.W))
+    var rat_waw_mask = WireInit(
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W)))
+    )
+    var rat_waddr = WireInit(
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.AREG_WIDTH.W)))
+    )
+    var rat_wdata = WireInit(
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W)))
+    )
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        for(j <- i + 1 until base.FETCH_WIDTH){
+            when(DecodeRes_reg(i).HasRd & DecodeRes_reg(j).HasRd)
+            {
+                rat_waw_mask(i)(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rd
+            }
+        }
+    }
+
+    /* 存在WAW冲突，不写RAT */
+    rat_wen := Cat(
+        ~rat_waw_mask(3).orR,
+        ~rat_waw_mask(2).orR, 
+        ~rat_waw_mask(1).orR, 
+        ~rat_waw_mask(0).orR
+    )
+
+    for(i <- 0 until base.FETCH_WIDTH)
+    {
+        rat_waddr(i) := DecodeRes_reg(i).rd
+        rat_wdata(i) := io.freereg_vec_i(i)
+    }
+
+    /* 读使能 */
+    var rat_ren = WireInit((0.U)((base.FETCH_WIDTH * 2).W))
+    var rat_raddr = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH * 2)((0.U)(base.AREG_WIDTH.W))
+    ))
+
+    for(i <- 0 until base.FETCH_WIDTH)
+    {
+        when(DecodeRes_reg(i).HasRs1){
+            rat_ren(2 * i) := true.B
+            rat_raddr(2 * i) := DecodeRes_reg(i).rs1
+        }
+        when(DecodeRes_reg(i).HasRs2){
+            rat_ren(2 * i + 1) := true.B
+            rat_raddr(2 * i + 1) := DecodeRes_reg(i).rs2
+        }
+    }
+
+    /* connect */
+    io.pc_vec_o := pc_vec_reg
+    io.inst_valid_mask_o := inst_valid_mask_reg
+    io.DecodeRes_o := DecodeRes_reg
+    io.rs1_match := rs1_match
+    io.rs2_match := rs2_match
+    io.rat_waddr_o := rat_waddr
+    io.rat_wdata_o := rat_wdata
+    io.rat_ren_o := rat_ren
+    io.rat_raddr_o := rat_raddr
+}

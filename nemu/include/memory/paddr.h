@@ -17,6 +17,7 @@
 #define __MEMORY_PADDR_H__
 
 #include <common.h>
+#include <memory/iringbuf.h>
 
 #define PMEM_LEFT  ((paddr_t)CONFIG_MBASE)
 #define PMEM_RIGHT ((paddr_t)CONFIG_MBASE + CONFIG_MSIZE - 1)
@@ -33,5 +34,7 @@ static inline bool in_pmem(paddr_t addr) {
 
 word_t paddr_read(paddr_t addr, int len);
 void paddr_write(paddr_t addr, int len, word_t data);
+//used for npc
+long isa_load_img(char *filename);
 
 #endif
