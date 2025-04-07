@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "VEagleCore.h"
+#include "VCPUCore.h"
 // #include <verilated.h>
 #include <fstream>
 #include <iostream>
@@ -99,7 +99,7 @@ static void load_so()
     char fullpath[128];
     memset(fullpath, 0, sizeof(fullpath));
     strcpy(fullpath, nemu_home);
-    strcat(fullpath, "/build/libriscv32-nemu-interpreter-so.so");
+    strcat(fullpath, "/build/riscv32-nemu-interpreter-so");
     handle = dlopen(fullpath, RTLD_LAZY);
     assert(handle);
   
@@ -141,15 +141,19 @@ int main(int argc, char **argv){
     //仿真CPU
     //初始化ref CPU状态
     memset(&cpu, 0, sizeof(CPU_state));
+    memset(&nemu_cpu, 0, sizeof(CPU_state));
     cpu.pc = RESET_VECTOR;
+
     //复制dut的寄存器状态到ref,以方便nemu执行程序
     ref_difftest_regcpy(&cpu, 1);
-    printf("reg copy done\n");
     //拷贝当前内存到nemu
     ref_difftest_memcpy(RESET_VECTOR, pmem, size, 1);
-    int t = 3;
+    int t = size / 4;
+    uint32_t npc, pc;
+    pc = 0;
+    npc = RESET_VECTOR;
 #if 1
-    while(t--) {
+    while(npc != pc) {
         printf("%d cycle going\n", cycle_count);
         //CPU运行一个周期
         single_cycle();
@@ -163,13 +167,20 @@ int main(int argc, char **argv){
         //根据提交指令组的内容构建ftrace
         //访存暂时没有思路
 
+        // 记录上一个PC值
+        pc = npc;
         //nemu执行指令，需要根据提交指令数量进行调整
         ref_difftest_exec(1);
         //nemu寄存器结果拷贝到dut方
         ref_difftest_regcpy(&nemu_cpu, 0);
+        printf("pc: 0x%x\n", pc);
+        for(int i=0;i<32;++i){
+            printf("\treg %d: 0x%x\n", i, nemu_cpu.gpr[i]);
+        }
         //比较cpu和内存状态是否一致，如果CPU状态不一致或执行完毕，退出仿真
-
         ++cycle_count;
+        //获取下一个pc值
+        npc = nemu_cpu.pc;
     }
     tfp->close();
 #endif

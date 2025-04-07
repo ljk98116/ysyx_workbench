@@ -1,13 +1,13 @@
 BUILDDIR = ./vsrc
-PACKAGE =eaglecore
+PACKAGE =cpu
 
 PRJ = playground
-TOPNAME=EagleCore
+TOPNAME=CPUCore
 NXDC_FILES = constr/$(TOPNAME).nxdc
 
 INC_PATH ?= $(NEMU_HOME)/include
 VERILATOR = verilator
-VERILATOR_FLAGS += --cc --exe --build -O3 --trace
+VERILATOR_FLAGS += --cc --exe --build -O3 -Wall --trace
 VERILATOR_FLAGS += -Wno-lint
 
 BUILD_DIR = ./build
@@ -16,10 +16,6 @@ BIN = $(BUILD_DIR)/$(TOPNAME)
 WORK_DIR = $(pwd)
  
 $(shell mkdir -p $(BUILD_DIR))
-ifneq ($(wildcard riscv32-nemu-interpreter-so), )
-# 文件存在时执行的命令
-	mv $(NEMU_HOME)/build/riscv32-nemu-interpreter-so $(NEMU_HOME)/build/libriscv32-nemu-interpreter-so.so
-endif
 
 # add nemu so
 LDFLAGS += -lreadline
@@ -50,8 +46,9 @@ test:
 verilog:
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILDDIR)
-	mill -i $(PRJ).runMain Elaborate --target-dir $(BUILDDIR)
-
+# mill -i $(PRJ).runMain Elaborate --target-dir $(BUILDDIR)
+	mill -i $(PRJ).runMain Elaborate
+	rm -rf $(TOPNAME).sv
 help:
 	mill -i $(PRJ).runMain Elaborate --help
 

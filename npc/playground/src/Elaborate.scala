@@ -6,7 +6,10 @@ object Elaborate extends App {
       "disallowLocalVariables",
       "disallowPackedArrays",
       "locationInfoStyle=wrapInAtSquareBracket"
-    ).reduce(_ + "," + _)
+    ).reduce(_ + "," + _),
+    "--split-verilog",
+    "-o",
+    "./vsrc"
   )
   // circt.stage.ChiselStage.emitSystemVerilogFile(new gcd.GCD(), args, firtoolOptions)
   /* chapter1 */
@@ -24,5 +27,5 @@ object Elaborate extends App {
   /* chapter7 */
   // circt.stage.ChiselStage.emitSystemVerilogFile(new chapter7.ps2_keyboard, args, firtoolOptions)
   /* eaglecore */
-  circt.stage.ChiselStage.emitSystemVerilogFile(new eaglecore.core.EagleCore, args, firtoolOptions)
+  circt.stage.ChiselStage.emitSystemVerilogFile(new cpu.core.CPUCore, args, firtoolOptions)
 }
