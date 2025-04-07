@@ -19,6 +19,9 @@
 #include <common.h>
 #include <difftest-def.h>
 
+#ifdef __cplusplus
+extern "C"{
+#endif
 #ifdef CONFIG_DIFFTEST
 void difftest_skip_ref();
 void difftest_skip_dut(int nr_ref, int nr_dut);
@@ -49,5 +52,7 @@ static inline bool difftest_check_reg(const char *name, vaddr_t pc, word_t ref, 
   }
   return true;
 }
-
+#ifdef __cplusplus
+}
+#endif
 #endif

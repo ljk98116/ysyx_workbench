@@ -18,13 +18,24 @@
 #include <difftest-def.h>
 #include <memory/paddr.h>
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+// buf指向npc的pmem
 __EXPORT void difftest_memcpy(paddr_t addr, void *buf, size_t n, bool direction) {
   // assert(0);
   if(direction == DIFFTEST_TO_DUT){
-    
+    for(size_t i=0;i<n;++i){
+      char rdata = paddr_read(addr + i, 4);
+      *((char*)buf + i) = rdata;
+    }
   }
   else{
-    memcpy((char*)(uintptr_t)addr, buf, n);
+    printf("memcpy to ref start\n");
+    for(size_t i=0;i<n;++i){
+      paddr_write(addr + i, 1, *((char*)buf + i));
+    }
+    printf("memcpy to ref done\n");    
   }
 }
 
@@ -47,6 +58,7 @@ __EXPORT void difftest_regcpy(void *dut, bool direction) {
 
 __EXPORT void difftest_exec(uint64_t n) {
   cpu_exec(n);
+  printf("exec done\n");
 }
 
 __EXPORT void difftest_raise_intr(word_t NO) {
@@ -59,3 +71,6 @@ __EXPORT void difftest_init(int port) {
   /* Perform ISA dependent initialization. */
   init_isa();
 }
+#ifdef __cplusplus
+}
+#endif
