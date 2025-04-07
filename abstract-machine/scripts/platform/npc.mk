@@ -26,8 +26,8 @@ image: image-dep
 	@$(OBJCOPY) -S --set-section-flags .bss=alloc,contents -O binary $(IMAGE).elf $(IMAGE).bin
 
 run: insert-arg
-	../../../npc/build/EagleCore $(IMAGE).bin
+	../../../npc/build/CPUCore $(IMAGE).bin
 
 gdb: insert-arg
-	gdb ../../../npc/build/EagleCore
+	gdb ../../../npc/build/CPUCore
 .PHONY: insert-arg
