@@ -31,7 +31,7 @@ class Decode extends Module
 
     /* Decode */
     var decoderes = WireInit(VecInit(
-        Seq.fill(4)(new DecodeRes())
+        Seq.fill(base.FETCH_WIDTH)(0.U.asTypeOf(new DecodeRes))
     ))
 
     /* 根据opcode译码 */

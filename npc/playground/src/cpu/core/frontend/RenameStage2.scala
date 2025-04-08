@@ -7,5 +7,7 @@ import cpu.config._
 
 class RenameStage2 extends Module
 {
-    
+    val io = IO(new Bundle{
+        
+    })
 }

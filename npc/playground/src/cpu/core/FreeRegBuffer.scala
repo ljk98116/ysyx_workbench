@@ -25,7 +25,7 @@ class FreeRegBuffer(id : Int) extends Module
     val RegIdSram = SyncReadMem((1 << base.PREG_WIDTH) / 4, UInt(base.PREG_WIDTH.W))
     
     var head = RegInit((0.U)(width.W))
-    var tail = RegInit((0.U)(width.W))
+    var tail = RegInit(((regnum - 1).U)(width.W))
 
     var freeregs_o = WireInit((0.U)(base.PREG_WIDTH.W))
 
@@ -36,7 +36,7 @@ class FreeRegBuffer(id : Int) extends Module
     wvalid := io.inst_valid_retire & ~io.freeregbuf_full
 
     io.freeregbuf_empty := head === tail
-    io.freeregbuf_full := head + 1.U === tail
+    io.freeregbuf_full := tail + 1.U === head
 
     when(rvalid & (head =/= (regnum - 1).U)){
         head := head + 1.U
