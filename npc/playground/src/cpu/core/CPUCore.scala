@@ -30,13 +30,17 @@ class CPUCore extends Module
     val rename1 = Module(new RenameStage1)
 
     /* rename stage2 */
+    val rename2 = Module(new RenameStage2)
 
     /* rename RAT */
     val ReNameRAT = Module(new RenameRAT)
     
     /* regread stage */
 
-    /* ROB Buffer */
+    /* ROB ID Buffers */
+    val robidbuf_seq = Seq.tabulate(base.FETCH_WIDTH)(
+        (i) => Module(new ROBIDBuffer(i))
+    )
 
     /* dispatch stage */
 
@@ -61,7 +65,12 @@ class CPUCore extends Module
 
     /* decode -> freeregbuffer */
     for(i <- 0 until base.FETCH_WIDTH){
-        freeregbuf_seq(i).io.inst_valid_decode := decode.io.inst_valid_mask_o
+        freeregbuf_seq(i).io.inst_valid_decode := decode.io.inst_valid_mask_o(i)
+    }
+
+    /* rename1 -> robidbuffer */
+    for(i <- 0 until base.FETCH_WIDTH){
+        robidbuf_seq(i).io.inst_valid_rename1 := rename1.io.inst_valid_mask_o(i)
     }
 
     /* freeregbuffer -> renamestage1 */

@@ -1,4 +1,4 @@
-package cpu.frontend
+package cpu.core.frontend
 
 import chisel3._
 import chisel3.util._
