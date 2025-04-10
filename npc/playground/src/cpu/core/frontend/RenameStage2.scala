@@ -98,6 +98,7 @@ class RenameStage2 extends Module
             Seq.fill(base.FETCH_WIDTH)((0.U)(log2Ceil(base.FETCH_WIDTH).W))
         )
     )
+
     for(i <- 0 until base.FETCH_WIDTH)
     {
         rob_item_o(i).pc := pc_vec_reg(i)
@@ -112,13 +113,32 @@ class RenameStage2 extends Module
         rob_item_o(i).funct7 := DecodeRes_reg(i).funct7
         rob_item_o(i).shamt := DecodeRes_reg(i).shamt
         rob_item_o(i).id := io.rob_freeid_vec_i(i)
-
-        for(j <- i+1 until base.FETCH_WIDTH)
-        {
-            /* i位置的rd与j位置的rs1一致 */
-            when(rs1_match_reg(i)(j)){
-                
-            }
+        rob_item_o(i).pd := rat_wdata_reg(i)
+        when(DecodeRes_reg(i).HasRs1){
+            rob_item_o(i).ps1 := Mux(rs1_match_reg(i)(2), 
+                rat_wdata_reg(2),
+                Mux(
+                    rs1_match_reg(i)(1),
+                    rat_wdata_reg(1),
+                    Mux(rs1_match_reg(i)(0),
+                        rat_wdata_reg(0),
+                        io.rat_rdata_i(2 * i)
+                    )
+                )
+            )
+        }
+        when(DecodeRes_reg(i).HasRs2){
+            rob_item_o(i).ps2 := Mux(rs2_match_reg(i)(2), 
+                rat_wdata_reg(2),
+                Mux(
+                    rs2_match_reg(i)(1),
+                    rat_wdata_reg(1),
+                    Mux(rs2_match_reg(i)(0),
+                        rat_wdata_reg(0),
+                        io.rat_rdata_i(2 * i + 1)
+                    )
+                )
+            )
         }
     }
     /* connect */
@@ -127,5 +147,5 @@ class RenameStage2 extends Module
     io.rat_wen_o := rat_wen_reg
     io.rat_waddr_o := rat_waddr_reg
     io.rat_wdata_o := rat_wdata_reg
-
+    io.rob_item_o := rob_item_o
 }

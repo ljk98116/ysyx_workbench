@@ -34,8 +34,6 @@ class CPUCore extends Module
 
     /* rename RAT */
     val ReNameRAT = Module(new RenameRAT)
-    
-    /* regread stage */
 
     /* ROB ID Buffers */
     val robidbuf_seq = Seq.tabulate(base.FETCH_WIDTH)(
@@ -46,6 +44,8 @@ class CPUCore extends Module
 
     /* issue stage */
 
+    /* regread stage */
+    
     /* exec stage */
 
     /* load/store stage */
@@ -82,6 +82,5 @@ class CPUCore extends Module
     rename1.io.pc_vec_i             := decode.io.pc_vec_o
     rename1.io.inst_valid_mask_i    := decode.io.inst_valid_mask_o
     rename1.io.DecodeRes_i          := decode.io.DecodeRes_o
-
-
+    
 }

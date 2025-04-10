@@ -63,16 +63,16 @@ class RenameStage1 extends Module
     )    
     /* RAW相关性 */
     for(i <- 0 until base.FETCH_WIDTH){
-        for(j <- i+1 until base.FETCH_WIDTH){
-            when(DecodeRes_reg(i).HasRd)
+        for(j <- 0 until i){
+            when(DecodeRes_reg(j).HasRd)
             {
-                when(DecodeRes_reg(j).HasRs1)
+                when(DecodeRes_reg(i).HasRs1)
                 {
-                    rs1_match(i)(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rs1
+                    rs1_match(i)(j) := DecodeRes_reg(j).rd === DecodeRes_reg(i).rs1
                 }
-                when(DecodeRes_reg(j).HasRs2)
+                when(DecodeRes_reg(i).HasRs2)
                 {
-                    rs2_match(i)(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rs2
+                    rs2_match(i)(j) := DecodeRes_reg(j).rd === DecodeRes_reg(i).rs2
                 }
             }
         }

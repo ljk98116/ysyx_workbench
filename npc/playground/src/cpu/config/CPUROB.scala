@@ -25,5 +25,6 @@ class ROBItem extends Bundle
     var ps1 = UInt(base.PREG_WIDTH.W)
     var ps2 = UInt(base.PREG_WIDTH.W)
     var pd = UInt(base.PREG_WIDTH.W)
-    
+    var rdy1 = Bool()
+    var rdy2 = Bool()
 }

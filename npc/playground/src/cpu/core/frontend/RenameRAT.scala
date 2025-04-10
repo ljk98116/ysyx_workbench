@@ -35,11 +35,12 @@ class RenameRAT extends Module
                 rat_mapping(i) := io.rat_wdata(j)
             }
         }
-        for(j <- 0 until base.FETCH_WIDTH * 2)
-        {
-            when(io.rat_ren(j) & io.rat_raddr(j) === i.U){
-                rat_rdata(j) := rat_mapping(i)
-            }
+    }
+
+    for(j <- 0 until base.FETCH_WIDTH * 2)
+    {
+        when(io.rat_ren(j)){
+            rat_rdata(j) := rat_mapping(io.rat_raddr(j))
         }
     }
     /* connect */
