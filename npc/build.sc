@@ -33,7 +33,8 @@ object playground extends ScalaModule with ScalafmtModule { m =>
     Seq(
       coursier.MavenRepository("https://repo.scala-sbt.org/scalasbt/maven-releases"),
       coursier.MavenRepository("https://oss.sonatype.org/content/repositories/releases"),
-      coursier.MavenRepository("https://oss.sonatype.org/content/repositories/snapshots")
+      coursier.MavenRepository("https://oss.sonatype.org/content/repositories/snapshots"),
+      coursier.MavenRepository("https://repo1.maven.org/maven2")
     ) ++ super.repositoriesTask()
   }
 }

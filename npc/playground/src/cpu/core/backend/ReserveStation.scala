@@ -9,6 +9,7 @@ import cpu.config._
 /* 需要根据ROBID找到对应的指令位置, 使用额外的Mem */
 class ReserveStation(stepsize : Int, size: Int) extends Module {
     val width = log2Ceil(size)
+    val stepwidth = log2Ceil(stepsize)
     val io = IO(new Bundle {
         val rob_item_i = Input(Vec(stepsize, new ROBItem))
         val valid_cnt_i = Input(UInt((log2Ceil(stepsize) + 1).W))
@@ -40,7 +41,35 @@ class ReserveStation(stepsize : Int, size: Int) extends Module {
         rob_valid_vec(i) := io.rob_item_i(i).valid
     }
 
+    /* 根据valid标志位维护查找表 */
+    /* 计算有效、无效项对应的尾部插入的偏移量 */
+    var valid_idx_mapping = VecInit(
+        Seq.tabulate(1 << stepsize)((i) => {
+            var init = Array.fill(stepsize)((1 << stepsize))
+            var cnt = 0
+            var idx = 0
+            var n = i
+            while(n > 0){
+                if((n & 1) != 0) {
+                    init(cnt) = idx
+                    idx += 1
+                }
+                cnt += 1
+                n = n >>> 1
+            }
+            var ret = VecInit(Seq.tabulate(stepsize)((i) => {
+                init(i).U
+            }))
+            ret
+        })
+    )
+    /* 通过查找表得到当前进入保留站的所有指令对应的尾部插入的偏移 */
+    var insert_off_vec = WireInit(VecInit(
+        Seq.fill(stepsize)(stepsize.U(stepwidth.W))
+    ))
+    insert_off_vec := valid_idx_mapping(rob_valid_vec.asUInt)
+
     for(i <- 0 until stepsize){
-        when()
+
     }
 }

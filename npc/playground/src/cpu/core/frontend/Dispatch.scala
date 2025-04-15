@@ -54,7 +54,7 @@ class Dispatch extends Module
                 rob_item_reg(i).Opcode === Opcode.SW
             ){
                 agu_valid_mask(i) := true.B
-                agu_items_vec_o(i / 2)(i % 2) := rob_item_reg(i)
+                agu_items_vec_o(i / agu_step)(i % agu_step) := rob_item_reg(i)
             }.otherwise{
                 alu_items_vec_o(i) := rob_item_reg(i)
             }
