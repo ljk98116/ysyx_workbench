@@ -12,6 +12,7 @@ class RenameStage2 extends Module
     val io = IO(new Bundle{
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
+        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
         val DecodeRes_i = Input(Vec(base.FETCH_WIDTH, new DecodeRes))
 
         /* RAT读写使能 */
@@ -38,6 +39,7 @@ class RenameStage2 extends Module
         /* ROB free buffer */
         val rob_freeid_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
     })
 
     /* pipeline */
@@ -71,6 +73,8 @@ class RenameStage2 extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
     ))
 
+    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+
     pc_vec_reg := io.pc_vec_i
     inst_valid_mask_reg := io.inst_valid_mask_i
     DecodeRes_reg := io.DecodeRes_i
@@ -81,6 +85,7 @@ class RenameStage2 extends Module
     rat_raddr_reg := io.rat_raddr_i
     rs1_match_reg := io.rs1_match
     rs2_match_reg := io.rs2_match
+    inst_valid_cnt_reg := io.inst_valid_cnt_i
 
     /* wires */
     var rob_item_o = WireInit(
@@ -148,4 +153,5 @@ class RenameStage2 extends Module
     io.rat_waddr_o := rat_waddr_reg
     io.rat_wdata_o := rat_wdata_reg
     io.rob_item_o := rob_item_o
+    io.inst_valid_cnt_o := inst_valid_cnt_reg
 }

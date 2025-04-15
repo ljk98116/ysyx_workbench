@@ -9,5 +9,7 @@ object base
     val ROBID_WIDTH = 8
     val RESET_VECTOR = "h80000000"
     val FETCH_WIDTH = 4
+    val ALU_NUM = 4
+    val AGU_NUM = 2
 }
 

@@ -21,10 +21,11 @@ class ROBItem extends Bundle
     var HasRs2 = Bool()
     var HasRd = Bool()
     /* rob id */
-    var id = UInt(log2Ceil((1 << base.ROBID_WIDTH) / 4).W)
+    var id = UInt(base.ROBID_WIDTH.W)
     var ps1 = UInt(base.PREG_WIDTH.W)
     var ps2 = UInt(base.PREG_WIDTH.W)
     var pd = UInt(base.PREG_WIDTH.W)
     var rdy1 = Bool()
     var rdy2 = Bool()
+    var rdy  = Bool()
 }

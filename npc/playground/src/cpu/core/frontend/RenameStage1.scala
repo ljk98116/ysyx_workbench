@@ -14,10 +14,12 @@ class RenameStage1 extends Module
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val DecodeRes_i = Input(Vec(base.FETCH_WIDTH, new DecodeRes))
         val freereg_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
+        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
 
         val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
         val DecodeRes_o = Output(Vec(base.FETCH_WIDTH, new DecodeRes))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
 
         /* RAW相关性信息 */
         val rs1_match = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
@@ -45,9 +47,12 @@ class RenameStage1 extends Module
         VecInit(Seq.fill(base.FETCH_WIDTH)(new DecodeRes))
     )
 
+    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+
     pc_vec_reg := io.pc_vec_i
     inst_valid_mask_reg := io.inst_valid_mask_i
     DecodeRes_reg := io.DecodeRes_i
+    inst_valid_cnt_reg := io.inst_valid_cnt_i
 
     /* rs1/rs2 是否哪一个最近的前置rd相等，给出掩码 */
     var rs1_match = WireInit(
@@ -141,4 +146,5 @@ class RenameStage1 extends Module
     io.rat_wdata_o := rat_wdata
     io.rat_ren_o := rat_ren
     io.rat_raddr_o := rat_raddr
+    io.inst_valid_cnt_o := inst_valid_cnt_reg
 }

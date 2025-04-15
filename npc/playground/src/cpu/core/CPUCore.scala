@@ -5,6 +5,10 @@ import chisel3.util._
 
 import cpu.config._
 import cpu.core.frontend._
+import cpu.core.backend._
+
+/* PC -> Fetch -> Decode -> Rename1 -> Rename2 -> Dispatch -> */
+/* Issue -> RegRead -> Ex -> Mem -> Retire */
 
 class CPUCore extends Module
 {
@@ -40,9 +44,17 @@ class CPUCore extends Module
         (i) => Module(new ROBIDBuffer(i))
     )
 
+    /* ROB Buffer */
+    var rob_buffer = Module(new ROB)
+
     /* dispatch stage */
+    var dispatch = Module(new Dispatch)
+
+    /* CDB */
+    var cdb = Wire(new CDB)
 
     /* issue stage */
+    var issue = Module(new IssueStage)
 
     /* regread stage */
     
@@ -57,11 +69,13 @@ class CPUCore extends Module
     /* pc -> fetch */
     fetch.io.pc_i                   := pc_reg.io.pc_o
     fetch.io.inst_valid_mask_i      := pc_reg.io.inst_valid_mask_o
+    fetch.io.inst_valid_cnt_i       := pc_reg.io.inst_valid_cnt_o
 
     /* fetch -> decode */
     decode.io.pc_vec_i              := fetch.io.pc_vec_o
     decode.io.inst_valid_mask_i     := fetch.io.inst_valid_mask_o
     decode.io.inst_vec_i            := fetch.io.inst_vec_o
+    decode.io.inst_valid_cnt_i      := fetch.io.inst_valid_cnt_o
 
     /* decode -> freeregbuffer */
     for(i <- 0 until base.FETCH_WIDTH){
@@ -82,5 +96,40 @@ class CPUCore extends Module
     rename1.io.pc_vec_i             := decode.io.pc_vec_o
     rename1.io.inst_valid_mask_i    := decode.io.inst_valid_mask_o
     rename1.io.DecodeRes_i          := decode.io.DecodeRes_o
+    rename1.io.inst_valid_cnt_i     := decode.io.inst_valid_cnt_o
+
+    /* robidbuffer -> rename2 */
+    for(i <- 0 until base.FETCH_WIDTH){
+        rename2.io.rob_freeid_vec_i(i)  := robidbuf_seq(i).io.freeid_o
+    }
     
+    /* rename1 -> rename2 */
+    rename2.io.pc_vec_i             := rename1.io.pc_vec_o
+    rename2.io.inst_valid_mask_i    := rename1.io.inst_valid_mask_o
+    rename2.io.DecodeRes_i          := rename1.io.DecodeRes_o
+    rename2.io.inst_valid_cnt_i     := rename1.io.inst_valid_cnt_o
+
+    rename2.io.rat_ren_i            := rename1.io.rat_ren_o
+    rename2.io.rat_raddr_i          := rename1.io.rat_raddr_o
+    rename2.io.rat_wen_i            := rename1.io.rat_wen_o
+    rename2.io.rat_waddr_i          := rename1.io.rat_waddr_o
+    rename2.io.rat_wdata_i          := rename1.io.rat_wdata_o
+
+    /* rename2 -> RenameRAT */
+    ReNameRAT.io.rat_ren            := rename2.io.rat_ren_o
+    ReNameRAT.io.rat_raddr          := rename2.io.rat_raddr_o
+    ReNameRAT.io.rat_wen            := rename2.io.rat_wen_o
+    ReNameRAT.io.rat_waddr          := rename2.io.rat_waddr_o
+    ReNameRAT.io.rat_wdata          := rename2.io.rat_wdata_o
+    
+    /* ReNameRAT -> rename2 */
+    rename2.io.rat_rdata_i          := ReNameRAT.io.rat_rdata
+
+    /* rename2 -> ROB */
+    rob_buffer.io.rob_item_i        := rename2.io.rob_item_o
+    rob_buffer.io.inst_valid_cnt_i  := rename2.io.inst_valid_cnt_o
+
+    /* rename2 -> dispatch */
+    dispatch.io.rob_item_i          := rename2.io.rob_item_o
+
 }
