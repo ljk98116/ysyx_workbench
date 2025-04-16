@@ -27,5 +27,6 @@ object Elaborate extends App {
   /* chapter7 */
   // circt.stage.ChiselStage.emitSystemVerilogFile(new chapter7.ps2_keyboard, args, firtoolOptions)
   /* eaglecore */
-  circt.stage.ChiselStage.emitSystemVerilogFile(new cpu.core.CPUCore, args, firtoolOptions)
+  // circt.stage.ChiselStage.emitSystemVerilogFile(new cpu.core.CPUCore, args, firtoolOptions)
+  circt.stage.ChiselStage.emitSystemVerilogFile(new cpu.core.backend.ReserveStation(1, 4), args, firtoolOptions)
 }
