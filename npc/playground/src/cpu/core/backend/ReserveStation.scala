@@ -6,8 +6,26 @@ import chisel3.util._
 import cpu.config._
 import cpu.core.utils._
 
+class ReserveFreeIdBuffer(size : Int) extends Module
+{
+    var width = log2Ceil(size)
+    val io = IO(new Bundle{
+        /* issue stage */
+        val issued_i = Input(Bool())
+        val issued_id_i = Input(UInt(width.W))
+        /* 请求的free id个数 */
+        val issue_req_cnt = Input(UInt(width.W))
+
+        /* output */
+        val free_id_o = Output(Vec(size, UInt(width.W)))        
+    })
+    
+}
+
 /* 指定step长度和队列大小 */
-/* 需要根据ROBID找到对应的指令位置, 使用额外的Mem */
+/* 维护一个Reservestation空闲位置的队列 + 每一个位置对应的年龄矩阵 */
+/* 时序逻辑接收发射队列内rdy状态的更新，时序逻辑 */
+/* 组合逻辑判断每一项是否是最老的能发射的 */
 class ReserveStation(stepsize : Int, size: Int) extends Module {
     val width = log2Ceil(size)
     val stepwidth = log2Ceil(stepsize)

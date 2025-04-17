@@ -5,7 +5,7 @@ import chisel3.util._
 
 import cpu.config._
 
-class IssueStage extends Module
+class IssueStage1 extends Module
 {
     val agu_step = base.FETCH_WIDTH / base.AGU_NUM
 
@@ -35,6 +35,6 @@ class IssueStage extends Module
     agu_items_cnt_vec_reg := io.agu_items_cnt_vec_i
 
     /* ReserveStations接收总线信号 */
-
+    
 
 }
