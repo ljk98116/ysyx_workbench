@@ -32,7 +32,10 @@ class Dispatch extends Module
         )        
     )
 
-    var agu_valid_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
+    var agu_valid_mask = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
     var agu_items_cnt_vec_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)((log2Ceil(agu_step) + 1).W))
     ))
@@ -50,9 +53,7 @@ class Dispatch extends Module
     /* 根据指令类型确定FU */
     for(i <- 0 until base.FETCH_WIDTH){
         when(rob_item_reg(i).valid){
-            when(
-                rob_item_reg(i).Opcode === Opcode.SW
-            ){
+            when(rob_item_reg(i).Opcode === Opcode.SW){
                 agu_valid_mask(i) := true.B
                 agu_items_vec_o(i / agu_step)(i % agu_step) := rob_item_reg(i)
             }.otherwise{
@@ -62,7 +63,7 @@ class Dispatch extends Module
     }
 
     for(i <- 0 until base.AGU_NUM){
-        agu_items_cnt_vec_o(i) := agu_cnt_lut(agu_valid_mask(agu_step * i + 1, agu_step * i))
+        agu_items_cnt_vec_o(i) := agu_cnt_lut(agu_valid_mask.asUInt(agu_step * i + 1, agu_step * i))
     }
 
     /* connect */

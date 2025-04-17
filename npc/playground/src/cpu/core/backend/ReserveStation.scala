@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 
 import cpu.config._
+import cpu.core.utils._
 
 /* 指定step长度和队列大小 */
 /* 需要根据ROBID找到对应的指令位置, 使用额外的Mem */
@@ -74,19 +75,25 @@ class ReserveStation(stepsize : Int, size: Int) extends Module {
     var insert_off_vec = WireInit(VecInit(
         Seq.fill(stepsize)(stepsize.U((stepwidth + 1).W))
     ))
+
     insert_off_vec := valid_idx_mapping(rob_valid_vec.asUInt)
     
     /* 加入保留站队列 */
     for(i <- 0 until stepsize){
-        when(io.rob_item_i(i).valid){
-            ROBItemMem(tail + insert_off_vec(i)) := io.rob_item_i(i) //时序逻辑
-            ROBID2LocMem(io.rob_item_i(i).id) := tail + insert_off_vec(i)
+        for(j <- 0 until size){
+            when(io.rob_item_i(i).valid & (tail + insert_off_vec(i) === j.U)){
+                ROBItemMem(j) := io.rob_item_i(i) //时序逻辑
+            }
+        }
+        for(j <- 0 until (1 << base.ROBID_WIDTH)){
+            when(io.rob_item_i(i).valid & io.rob_item_i(i).id === j.U){
+                ROBID2LocMem(j) := tail + insert_off_vec(i)
+            }
         }
     }
 
     /* 检查可以发射的指令 */
     var rob_item_o = WireInit((0.U).asTypeOf(new ROBItem))
-
 
     /* 逐个指令检查，获取是否可发射, 并更新状态 */
     /* 1. 找到该发射项对应的有效的channel */
@@ -109,37 +116,25 @@ class ReserveStation(stepsize : Int, size: Int) extends Module {
         /* 1st logic */
         rob_item_valid_vec(i) := Mux(head < tail, i.U >= head & i.U <= tail, i.U >= head | i.U <= tail)
         rob_items(i) := ROBItemMem(i)
-        /* 1st, 2nd logic */
+        /* 1st logic */
         for(j <- 0 until base.ALU_NUM){
             target_channel_mask_rs1(j) := 
-                io.cdb_i.alu_channel(j).valid &
-                (io.cdb_i.alu_channel(j).arch_reg_id === ROBItemMem(i).rs1) &
-                (io.cdb_i.alu_channel(j).phy_reg_id === ROBItemMem(i).ps1) &
-                (io.cdb_i.alu_channel(j).rob_id === ROBItemMem(i).id) & ROBItemMem(i).HasRs1
+                (io.cdb_i.alu_channel(j).phy_reg_id === ROBItemMem(i).ps1)
             target_channel_mask_rs2(j) := 
-                io.cdb_i.alu_channel(j).valid &
-                (io.cdb_i.alu_channel(j).arch_reg_id === ROBItemMem(i).rs2) &
-                (io.cdb_i.alu_channel(j).phy_reg_id === ROBItemMem(i).ps2) &
-                (io.cdb_i.alu_channel(j).rob_id === ROBItemMem(i).id) & ROBItemMem(i).HasRs2
+                (io.cdb_i.alu_channel(j).phy_reg_id === ROBItemMem(i).ps2)
         }
 
         for(j <- 0 until base.AGU_NUM){
             target_channel_mask_rs1(j + base.ALU_NUM) := 
-                io.cdb_i.agu_channel(j).valid &
-                (io.cdb_i.agu_channel(j).arch_reg_id === ROBItemMem(i).rs1) &
-                (io.cdb_i.agu_channel(j).phy_reg_id === ROBItemMem(i).ps1) &
-                (io.cdb_i.agu_channel(j).rob_id === ROBItemMem(i).id) & ROBItemMem(i).HasRs1
+                (io.cdb_i.agu_channel(j).phy_reg_id === ROBItemMem(i).ps1)
             target_channel_mask_rs2(j + base.ALU_NUM) := 
-                io.cdb_i.agu_channel(j).valid &
-                (io.cdb_i.agu_channel(j).arch_reg_id === ROBItemMem(i).rs2) &
-                (io.cdb_i.agu_channel(j).phy_reg_id === ROBItemMem(i).ps2) &
-                (io.cdb_i.agu_channel(j).rob_id === ROBItemMem(i).id) & ROBItemMem(i).HasRs2
+                (io.cdb_i.agu_channel(j).phy_reg_id === ROBItemMem(i).ps2)
         }
-        /* 3rd logic */
+        /* 2rd logic */
         rob_items(i).rdy1 := target_channel_mask_rs1.asUInt.orR
         rob_items(i).rdy2 := target_channel_mask_rs2.asUInt.orR
 
-        /* 4, 5th logic */
+        /* 3, 4th logic */
         /* 是否可以发射该项 */
         issue_able_vec(i) := ~((ROBItemMem(i).HasRs1 & ~rob_items(i).rdy1) | (ROBItemMem(i).HasRs2 & ~rob_items(i).rdy2))
     }
@@ -147,7 +142,10 @@ class ReserveStation(stepsize : Int, size: Int) extends Module {
     var target_issue_idx = WireInit((0.U)(width.W))
     /* chisel PriorityEncoder效率极低，需要自行实现 */
     // target_issue_idx := PriorityEncoder(issue_able_vec)
-
+    val encoder = Module(new cpu.core.utils.PriorityEncoder(size))
+    encoder.io.val_i := issue_able_vec.asUInt
+    target_issue_idx := encoder.io.idx_o
+    
     io.rob_item_o := rob_items(target_issue_idx)
     rob_items(target_issue_idx).valid := false.B
 

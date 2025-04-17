@@ -2,7 +2,7 @@ BUILDDIR = ./vsrc
 PACKAGE =cpu
 
 PRJ = playground
-TOPNAME=ReserveStation
+TOPNAME=Dispatch
 NXDC_FILES = constr/$(TOPNAME).nxdc
 
 INC_PATH ?= $(NEMU_HOME)/include
@@ -48,7 +48,7 @@ verilog:
 	mkdir -p $(BUILDDIR)
 # mill -i $(PRJ).runMain Elaborate --target-dir $(BUILDDIR)
 	mill -i $(PRJ).runMain Elaborate
-# rm -rf $(TOPNAME).sv
+	rm -rf $(TOPNAME).sv
 help:
 	mill -i $(PRJ).runMain Elaborate --help
 
