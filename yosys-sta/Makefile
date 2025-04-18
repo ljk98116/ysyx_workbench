@@ -1,10 +1,10 @@
 PROJ_PATH = $(shell pwd)
 SHELL := /bin/bash
 
-DESIGN ?= ReserveStation
+DESIGN ?= ALUReserveStation
 SDC_FILE ?= $(PROJ_PATH)/example/Dispatch.sdc
 RTL_FILES ?= $(shell find $(PROJ_PATH)/example -name "*.sv")
-export CLK_FREQ_MHZ ?= 1300
+export CLK_FREQ_MHZ ?= 1600
 PDK=nangate45
 
 RESULT_DIR = $(PROJ_PATH)/result/$(DESIGN)-$(CLK_FREQ_MHZ)MHz

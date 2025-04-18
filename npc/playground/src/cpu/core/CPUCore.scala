@@ -54,7 +54,7 @@ class CPUCore extends Module
     var cdb = Wire(new CDB)
 
     /* issue stage */
-    var issue = Module(new IssueStage)
+    var issue = Module(new IssueStage1)
 
     /* regread stage */
     

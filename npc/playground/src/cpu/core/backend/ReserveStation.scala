@@ -5,7 +5,10 @@ import chisel3.util._
 
 import cpu.config._
 import cpu.core.utils._
+import chisel3.util.SparseVec.Lookup.OneHot
+import cpu.config.base.ALU_NUM
 
+/* 每周期分配固定数量的ID */
 class ReserveFreeIdBuffer(size : Int) extends Module
 {
     var width = log2Ceil(size)
@@ -13,165 +16,179 @@ class ReserveFreeIdBuffer(size : Int) extends Module
         /* issue stage */
         val issued_i = Input(Bool())
         val issued_id_i = Input(UInt(width.W))
-        /* 请求的free id个数 */
-        val issue_req_cnt = Input(UInt(width.W))
 
         /* output */
-        val free_id_o = Output(Vec(size, UInt(width.W)))        
+        val free_id_o = Output(UInt(width.W)) 
+        val rd_able = Output(Bool())
+        val wr_able = Output(Bool())       
     })
-    
+
+    var IDRegFile = RegInit(VecInit(
+        Seq.tabulate(size)((i) => {i.U})
+    ))
+
+    var head = RegInit((0.U)(width.W))
+    var tail = RegInit((0.U)(width.W))
+
+    io.rd_able := Mux(head + 1.U < tail, true.B, false.B)
+    io.wr_able := Mux(tail + io.issued_i.asUInt < head, true.B, false.B)
+
+    for(i <- 0 until size){
+        IDRegFile(i) := Mux(io.issued_i & i.U === tail, io.issued_id_i, IDRegFile(i))
+    }
+
+    var free_id_o = WireInit((0.U)(width.W))
+    free_id_o := IDRegFile(head)
+
+    head := Mux(io.rd_able, head + 1.U, head)
+    tail := Mux(io.wr_able, tail + io.issued_i.asUInt, tail)
+
+    /* connect */
+    io.free_id_o := free_id_o
+}
+
+/* 年龄矩阵IO模块 */
+/* age[i][j]表示i位置比j位置年龄老 */
+class AgeMatrix extends Module
+{
+    val io = IO(new Bundle {
+        
+    })
 }
 
 /* 指定step长度和队列大小 */
 /* 维护一个Reservestation空闲位置的队列 + 每一个位置对应的年龄矩阵 */
 /* 时序逻辑接收发射队列内rdy状态的更新，时序逻辑 */
-/* 组合逻辑判断每一项是否是最老的能发射的 */
-class ReserveStation(stepsize : Int, size: Int) extends Module {
-    val width = log2Ceil(size)
-    val stepwidth = log2Ceil(stepsize)
+/* 组合逻辑判断当前每一项是否是最老的能发射的 */
+class ALUReserveStation(size: Int) extends Module {
     val io = IO(new Bundle {
-        var rob_item_i = Input(Vec(stepsize, new ROBItem))
-        var valid_cnt_i = Input(UInt((log2Ceil(stepsize) + 1).W))
+        var rob_item_i = Input(new ROBItem)
+        /* 总线状态 */
         var cdb_i = Input(new CDB)
         var rob_item_o = Output(new ROBItem)
         var write_able = Bool()
         var read_able = Bool()
     })
 
-    /* 记录保留站每个位置的指令能否发射 */
+    /* free id阵列 */
+    val freeIdBuffer = Module(new ReserveFreeIdBuffer(size))
+
+    /* connect */
+    /* 写入发射队列的指令数目 */
+    /* 读写使能与空闲队列保持一致 */
+    io.read_able := freeIdBuffer.io.rd_able
+    io.write_able := freeIdBuffer.io.wr_able
+
+    /* age matrix */
+    var age_mat = RegInit(VecInit(
+        Seq.fill(size)(
+            VecInit(Seq.fill(size)(false.B))
+        )
+    ))
+    /* issue rob item reg */
+    var rob_item_reg = RegInit(VecInit(
+        Seq.fill(size)((0.U).asTypeOf(new ROBItem))
+    ))
+
+    /* search issue able insts */
+    /* 需要rs1且rs1 ready，需要rs2且rs2 ready */
     var issue_able_vec = WireInit(VecInit(
         Seq.fill(size)(false.B)
     ))
-
-    var ROBItemMem = RegInit(VecInit(
-        Seq.fill(size)((0.U).asTypeOf(new ROBItem))
-    ))
-    var ROBID2LocMem = RegInit(VecInit(
-        Seq.fill(1 << base.ROBID_WIDTH)((0.U)(width.W))
-    ))
-
-    var head = RegInit((0.U)(width.W))
-    var tail = RegInit((0.U)(width.W))
-
-    io.read_able := head + 1.U <= tail
-    io.write_able := tail + (stepsize + 1).U < head
-
-    head := Mux(io.read_able & issue_able_vec.asUInt.orR, head + 1.U, head)
-    tail := Mux(io.write_able, tail + io.valid_cnt_i, tail)
-
-    var rob_valid_vec = WireInit(VecInit(
-        Seq.fill(stepsize)(false.B)
-    ))
-
-    for(i <- 0 until stepsize){
-        rob_valid_vec(i) := io.rob_item_i(i).valid
+    for(i <- 0 until size){
+        issue_able_vec(i) := ~(
+            (rob_item_reg(i).HasRs1 & ~rob_item_reg(i).rdy1) | 
+            (rob_item_reg(i).HasRs2 & ~rob_item_reg(i).rdy2))
     }
-
-    /* 根据valid标志位维护查找表 */
-    /* 计算有效、无效项对应的尾部插入的偏移量 */
-    var valid_idx_mapping = VecInit(
-        Seq.tabulate(1 << stepsize)((i) => {
-            var init = Array.fill(stepsize)(stepsize)
-            var cnt = 0
-            var idx = 0
-            var n = i
-            while(n > 0){
-                if((n & 1) != 0) {
-                    init(cnt) = idx
-                    idx += 1
-                }
-                cnt += 1
-                n = n >>> 1
-            }
-            var ret = VecInit(Seq.tabulate(stepsize)((j) => {
-                (init(j).U)((stepwidth + 1).W)
-            }))
-            ret
-        })
-    )
-    /* 通过查找表得到当前进入保留站的所有指令对应的尾部插入的偏移 */
-    var insert_off_vec = WireInit(VecInit(
-        Seq.fill(stepsize)(stepsize.U((stepwidth + 1).W))
-    ))
-
-    insert_off_vec := valid_idx_mapping(rob_valid_vec.asUInt)
-    
-    /* 加入保留站队列 */
-    for(i <- 0 until stepsize){
-        for(j <- 0 until size){
-            when(io.rob_item_i(i).valid & (tail + insert_off_vec(i) === j.U)){
-                ROBItemMem(j) := io.rob_item_i(i) //时序逻辑
-            }
-        }
-        for(j <- 0 until (1 << base.ROBID_WIDTH)){
-            when(io.rob_item_i(i).valid & io.rob_item_i(i).id === j.U){
-                ROBID2LocMem(j) := tail + insert_off_vec(i)
-            }
-        }
-    }
-
-    /* 检查可以发射的指令 */
-    var rob_item_o = WireInit((0.U).asTypeOf(new ROBItem))
-
-    /* 逐个指令检查，获取是否可发射, 并更新状态 */
-    /* 1. 找到该发射项对应的有效的channel */
-    /* 2. 更新该发射项的值，更新发射项 */
-    /* 如何取出发射项? 目前优先考虑无效化该位置ROB项 */
-    var rob_items = WireInit(VecInit(
-        Seq.fill(size)((0.U).asTypeOf(new ROBItem))
-    ))
-    var rob_item_valid_vec = WireInit(VecInit(
+    /* 能发射且比其他能发射的矩阵年长 */
+    var issue_oh_vec = WireInit(VecInit(
         Seq.fill(size)(false.B)
     ))
-    /* 每一项4级逻辑 */
     for(i <- 0 until size){
-        var target_channel_mask_rs1 = WireInit(VecInit(
-            Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
+        var issue_loc_mask = WireInit(VecInit(
+            Seq.fill(size)(false.B)
         ))
-        var target_channel_mask_rs2 = WireInit(VecInit(
-            Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
-        ))
-        /* 1st logic */
-        rob_item_valid_vec(i) := Mux(head < tail, i.U >= head & i.U <= tail, i.U >= head | i.U <= tail)
-        rob_items(i) := ROBItemMem(i)
-        /* 1st logic */
-        for(j <- 0 until base.ALU_NUM){
-            target_channel_mask_rs1(j) := 
-                (io.cdb_i.alu_channel(j).phy_reg_id === ROBItemMem(i).ps1)
-            target_channel_mask_rs2(j) := 
-                (io.cdb_i.alu_channel(j).phy_reg_id === ROBItemMem(i).ps2)
+        /* 对于每个能发射的位置i必须比j年长，要么不能发射 */
+        for(j <- 0 until size){
+            issue_loc_mask(j) := ~issue_able_vec(j) | (issue_able_vec(j) & age_mat(i)(j))
         }
-
-        for(j <- 0 until base.AGU_NUM){
-            target_channel_mask_rs1(j + base.ALU_NUM) := 
-                (io.cdb_i.agu_channel(j).phy_reg_id === ROBItemMem(i).ps1)
-            target_channel_mask_rs2(j + base.ALU_NUM) := 
-                (io.cdb_i.agu_channel(j).phy_reg_id === ROBItemMem(i).ps2)
-        }
-        /* 2rd logic */
-        rob_items(i).rdy1 := target_channel_mask_rs1.asUInt.orR
-        rob_items(i).rdy2 := target_channel_mask_rs2.asUInt.orR
-
-        /* 3, 4th logic */
-        /* 是否可以发射该项 */
-        issue_able_vec(i) := ~((ROBItemMem(i).HasRs1 & ~rob_items(i).rdy1) | (ROBItemMem(i).HasRs2 & ~rob_items(i).rdy2))
+        issue_oh_vec(i) := issue_able_vec(i) & issue_loc_mask.asUInt.andR
     }
-    /* 根据head，tail大小关系决定如何发射 */
-    var target_issue_idx = WireInit((0.U)(width.W))
-    /* chisel PriorityEncoder效率极低，需要自行实现 */
-    // target_issue_idx := PriorityEncoder(issue_able_vec)
-    val encoder = Module(new cpu.core.utils.PriorityEncoder(size))
-    encoder.io.val_i := issue_able_vec.asUInt
-    target_issue_idx := encoder.io.idx_o
+
+    var issue_idx = WireInit((size.U)((log2Ceil(size) + 1).W))
+    issue_idx := OHToUInt(issue_oh_vec.asUInt)
+    io.rob_item_o := Mux(issue_oh_vec.asUInt =/= 0.U, rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)), (0.U).asTypeOf(new ROBItem))
+    /* 回收issue_idx */
+    freeIdBuffer.io.issued_i := issue_oh_vec.asUInt.orR
+    freeIdBuffer.io.issued_id_i := issue_idx(log2Ceil(size) - 1, 0)
+    /* 更新对应的年龄矩阵 */
+    when(freeIdBuffer.io.issued_i){
+        for(i <- 0 until size){
+            /* 此时发射后的位置比所有项都年轻 */
+            when(i.U === issue_idx){
+                for(j <- 0 until size){
+                    age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
+                }
+            }
+        }
+    }
+
+    /* 使用总线消息更新发射队列进入项 */
+    var rob_item_i_update = WireInit((0.U).asTypeOf(new ROBItem))
+    /* 2 stage logic */
+    rob_item_i_update := io.rob_item_i
+
+    var rdy1_vec = WireInit(VecInit(
+        Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
+    ))
+    var rdy2_vec = WireInit(VecInit(
+        Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
+    ))
+    for(i <- 0 until base.ALU_NUM){
+        rdy1_vec(i) := io.cdb_i.alu_channel(i).phy_reg_id === io.rob_item_i.ps1
+        rdy2_vec(i) := io.cdb_i.alu_channel(i).phy_reg_id === io.rob_item_i.ps2
+    }
+
+    for(i <- 0 until base.AGU_NUM){
+        rdy1_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps1
+        rdy2_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps2
+    }    
+    rob_item_i_update.rdy1 := rdy1_vec.asUInt.orR
+    rob_item_i_update.rdy2 := rdy2_vec.asUInt.orR
+    /* update issue rob regs */
+    /* update age matrix, age[i]为0表示当前ID比其他位置都年轻*/
+    /* 新分配的reg更新年龄矩阵 */
+    for(i <- 0 until size){
+        when(i.U === freeIdBuffer.io.free_id_o){
+            rob_item_reg(i) := rob_item_i_update
+            /* 有效的项比新写入的项要老 */
+            for(j <- 0 until size){
+                if(i != j){
+                    age_mat(j)(i) := rob_item_reg(j).valid
+                }
+                else{
+                    age_mat(i)(j) := false.B
+                }
+            }
+        }.otherwise{
+            var rob_item = WireInit((0.U).asTypeOf(new ROBItem))
+            var rdy1_vec = WireInit(VecInit(
+                Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
+            ))
+            var rdy2_vec = WireInit(VecInit(
+                Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
+            ))
+            for(i <- 0 until base.ALU_NUM){
+                rdy1_vec(i) := io.cdb_i.alu_channel(i).phy_reg_id === rob_item_reg(i).ps1
+                rdy2_vec(i) := io.cdb_i.alu_channel(i).phy_reg_id === rob_item_reg(i).ps2
+            }
+            for(i <- 0 until base.AGU_NUM){
+                rdy1_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === rob_item_reg(i).ps1
+                rdy2_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === rob_item_reg(i).ps2
+            }
+            rob_item_reg(i).rdy1 := rdy1_vec.asUInt.orR
+            rob_item_reg(i).rdy2 := rdy2_vec.asUInt.orR
+        }
+    }
     
-    io.rob_item_o := rob_items(target_issue_idx)
-    rob_items(target_issue_idx).valid := false.B
-
-    /* 更新所有ROBItem状态 */
-    for(i <- 0 until size){
-        when(rob_item_valid_vec(i)){
-            ROBItemMem(i) := rob_items(i)
-        }
-    }
-
 }
