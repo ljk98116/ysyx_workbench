@@ -5,8 +5,8 @@ import chisel3.util._
 
 import cpu.config._
 
-/* 接收ROB Item和2个操作数，计算结果 */
-class ALU extends Module
+/* 接收ROB Item和2个操作数，计算目标存储器地址 */
+class AGU extends Module
 {
     val io = IO(new Bundle{
         val rob_item_i = Input(new ROBItem)
@@ -14,10 +14,10 @@ class ALU extends Module
         val rs2_data_i = Input(UInt(base.DATA_WIDTH.W))
         val result = Output(UInt(base.DATA_WIDTH.W))
         /* 结果是否跳转 */
-        val branch_en = Bool()
-        val branch_target_addr = Output(UInt(base.ADDR_WIDTH.W))
         val areg_wr_addr = Output(UInt(base.AREG_WIDTH.W))
         val preg_wr_addr = Output(UInt(base.PREG_WIDTH.W))
+        val mem_wr_data = Output(UInt(base.DATA_WIDTH.W))
+        val mem_rw_mask = Output(UInt(4.W))
     })
 
     /* pipeline */
@@ -30,35 +30,19 @@ class ALU extends Module
     rs2_data_reg := io.rs2_data_i
 
     var result = WireInit((0.U)(base.DATA_WIDTH.W))
-    var branch_en = WireInit(false.B)
     var areg_wr_addr = WireInit((0.U)(base.AREG_WIDTH.W))
     var preg_wr_addr = WireInit((0.U)(base.PREG_WIDTH.W))
-    var branch_target_addr = WireInit((0.U)(base.ADDR_WIDTH.W))
+    var mem_wr_data = WireInit((0.U)(base.DATA_WIDTH.W))
+    var mem_rw_mask = WireInit((0.U)(4.W))
 
     areg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.rd, 0.U)
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
 
     switch(rob_item_reg.Opcode){
-        is(Opcode.ADDI){
+        is(Opcode.SW){
             result := rs1_data_reg + rob_item_reg.Imm
-        }
-        is(Opcode.AUIPC){
-            result := rob_item_reg.pc + rob_item_reg.Imm
-        }
-        is(Opcode.JAL){
-            result := rob_item_reg.pc + 4.U
-            branch_en := true.B
-            branch_target_addr := rob_item_reg.pc + rob_item_reg.Imm
-            // to do: 异常检查
-        }
-        is(Opcode.JALR){
-            result := rob_item_reg.pc + 4.U
-            branch_en := true.B
-            branch_target_addr := rs1_data_reg + rob_item_reg.Imm
-            // to do: 异常检查         
-        }
-        is(Opcode.LUI){
-            result := rob_item_reg.Imm
+            mem_wr_data := rs2_data_reg
+            mem_rw_mask := "b1111".U
         }
         // to do
     }
@@ -67,6 +51,6 @@ class ALU extends Module
     io.result := result
     io.areg_wr_addr := areg_wr_addr
     io.preg_wr_addr := preg_wr_addr
-    io.branch_en := branch_en
-    io.branch_target_addr := branch_target_addr
+    io.mem_wr_data := mem_wr_data
+    io.mem_rw_mask := mem_rw_mask
 }

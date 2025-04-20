@@ -28,7 +28,7 @@ class ReserveFreeIdBuffer(size : Int) extends Module
     ))
 
     var head = RegInit((0.U)(width.W))
-    var tail = RegInit((0.U)(width.W))
+    var tail = RegInit(((size - 1).U)(width.W))
 
     io.rd_able := Mux(head + 1.U < tail, true.B, false.B)
     io.wr_able := Mux(tail + io.issued_i.asUInt < head, true.B, false.B)
@@ -45,15 +45,6 @@ class ReserveFreeIdBuffer(size : Int) extends Module
 
     /* connect */
     io.free_id_o := free_id_o
-}
-
-/* 年龄矩阵IO模块 */
-/* age[i][j]表示i位置比j位置年龄老 */
-class AgeMatrix extends Module
-{
-    val io = IO(new Bundle {
-        
-    })
 }
 
 /* 指定step长度和队列大小 */
@@ -190,5 +181,4 @@ class ALUReserveStation(size: Int) extends Module {
             rob_item_reg(i).rdy2 := rdy2_vec.asUInt.orR
         }
     }
-    
 }
