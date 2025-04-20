@@ -77,6 +77,7 @@ class LSQ(size : Int) extends Module
         lsq_item_reg(tail + valid_idx(i)).rw_addr := io.agu_result_i(i)
         lsq_item_reg(tail + valid_idx(i)).rw_mask := io.agu_rw_mask_i(i)
         lsq_item_reg(tail + valid_idx(i)).rw_data := io.agu_mem_wdata(i)
+        lsq_item_reg(tail + valid_idx(i)).rob_id  := io.rob_item_i(i).id
     }
 
     /* connect */

@@ -18,6 +18,8 @@ class ALU extends Module
         val branch_target_addr = Output(UInt(base.ADDR_WIDTH.W))
         val areg_wr_addr = Output(UInt(base.AREG_WIDTH.W))
         val preg_wr_addr = Output(UInt(base.PREG_WIDTH.W))
+        val valid_o = Output(Bool())
+        val rob_id_o = Output(UInt(base.ROBID_WIDTH.W))
     })
 
     /* pipeline */
@@ -34,9 +36,13 @@ class ALU extends Module
     var areg_wr_addr = WireInit((0.U)(base.AREG_WIDTH.W))
     var preg_wr_addr = WireInit((0.U)(base.PREG_WIDTH.W))
     var branch_target_addr = WireInit((0.U)(base.ADDR_WIDTH.W))
+    var valid_o = WireInit(false.B)
+    var rob_id_o = WireInit((0.U)(base.ROBID_WIDTH.W))
 
     areg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.rd, 0.U)
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
+    valid_o := io.rob_item_i.valid
+    rob_id_o := io.rob_item_i.id
 
     switch(rob_item_reg.Opcode){
         is(Opcode.ADDI){
@@ -69,4 +75,6 @@ class ALU extends Module
     io.preg_wr_addr := preg_wr_addr
     io.branch_en := branch_en
     io.branch_target_addr := branch_target_addr
+    io.valid_o := valid_o
+    io.rob_id_o := rob_id_o
 }
