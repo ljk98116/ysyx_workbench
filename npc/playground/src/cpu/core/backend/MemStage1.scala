@@ -1,0 +1,107 @@
+package cpu.core.backend
+
+import cpu.config._
+import chisel3._
+import chisel3.util._
+import cpu.core.utils.PriorityDecoder
+
+/* 处理load/store RAW依赖，输出storebuffer和dcache/datasram使能 */
+/* 缓存使能到下一周期访问存储器或者storebuffer */
+/* 这里访问存储器只涉及load指令 */
+/* 需要注意组内RAW相关性 */
+class MemStage1 extends Module
+{
+    val width = log2Ceil(base.STORE_BUF_SZ)
+    val io = IO(new Bundle{
+        val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
+        val agu_result_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val agu_rw_mask_i = Input(Vec(base.AGU_NUM, UInt(4.W)))
+        val agu_mem_wdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val ls_flag = Input(Vec(base.AGU_NUM, Bool()))
+        /* storebuffer Input */
+        /* 从head指针开始的地址 */
+        val rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
+        val storebuffer_addr_i = Input(Vec(base.STORE_BUF_SZ, UInt(base.ADDR_WIDTH.W)))
+        /* storebuffer read req */
+        val storebuffer_ren_o = Output(Vec(base.AGU_NUM, Bool()))
+        val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(width.W)))
+        val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(4.W)))
+        /* dcache/datasram req */
+        val mem_read_en_o = Output(Vec(base.AGU_NUM, Bool()))
+        val mem_read_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val mem_read_mask_o = Output(Vec(base.AGU_NUM, UInt(4.W)))
+    })
+
+    /* pipeline */
+    var rob_item_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))
+    ))
+    var agu_result_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
+    ))
+    var agu_rw_mask_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(4.W))
+    ))
+    var agu_mem_wdata_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
+    ))
+
+    rob_item_reg := io.rob_item_i
+    agu_result_reg := io.agu_result_i
+    agu_rw_mask_reg := io.agu_rw_mask_i
+    agu_mem_wdata_reg := io.agu_mem_wdata
+
+    var storebuffer_ren_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
+
+    var storebuffer_raddr_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(width.W))
+    ))
+
+    var storebuffer_rmask_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(4.W))
+    ))
+
+    var mem_read_en_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
+
+    var mem_read_addr_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
+    ))
+
+    var mem_read_mask_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(4.W))
+    ))
+
+    /* 找到匹配的最新的 */
+    var priority_decoder_vec = Seq.fill(base.AGU_NUM)(
+        Module(new PriorityDecoder(base.STORE_BUF_SZ))
+    )
+
+    for(i <- 0 until base.AGU_NUM){
+        var raw_mask = WireInit(VecInit(
+            Seq.fill(base.STORE_BUF_SZ)(false.B)
+        ))
+        for(j <- 0 until base.STORE_BUF_SZ){
+            raw_mask(i) := agu_result_reg(i) === io.storebuffer_addr_i(j)
+        }
+        storebuffer_ren_o(i) := io.ls_flag(i) & raw_mask.asUInt.orR
+        priority_decoder_vec(i).io.in := raw_mask.asUInt
+        storebuffer_raddr_o(i) := priority_decoder_vec(i).io.out
+        storebuffer_rmask_o(i) := agu_rw_mask_reg(i)
+        mem_read_en_o(i) := ~storebuffer_ren_o(i)
+        mem_read_addr_o(i) := agu_result_reg(i)
+        mem_read_mask_o(i) := agu_rw_mask_reg(i)
+    }
+
+    /* connect */
+    io.storebuffer_ren_o := storebuffer_ren_o
+    io.storebuffer_raddr_o := storebuffer_raddr_o
+    io.storebuffer_rmask_o := storebuffer_rmask_o
+    io.mem_read_en_o := mem_read_en_o
+    io.mem_read_addr_o := mem_read_addr_o
+    io.mem_read_mask_o := mem_read_mask_o
+    io.rob_item_o := rob_item_reg
+}

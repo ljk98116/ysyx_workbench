@@ -1,8 +1,8 @@
 PROJ_PATH = $(shell pwd)
 SHELL := /bin/bash
 
-DESIGN ?= ALUReserveStation
-SDC_FILE ?= $(PROJ_PATH)/example/Dispatch.sdc
+DESIGN ?= MultiPortSram
+SDC_FILE ?= $(PROJ_PATH)/example/top.sdc
 RTL_FILES ?= $(shell find $(PROJ_PATH)/example -name "*.sv")
 export CLK_FREQ_MHZ ?= 1600
 PDK=nangate45

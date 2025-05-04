@@ -6,14 +6,18 @@ import chisel3.util._
 import cpu.config._
 import cpu.core.frontend._
 import cpu.core.backend._
+import cpu.memory.MultiPortSram
 
 /* PC -> Fetch -> Decode -> Rename1 -> Rename2 -> Dispatch -> */
 /* Issue -> RegRead -> Ex -> Mem -> Retire */
 
-class CPUCore extends Module
+class CPUCore(memfile: String) extends Module
 {
     val io = IO(new Bundle{
     })
+
+    /* memory */
+    val memory = Module(new MultiPortSram(base.FETCH_WIDTH + base.AGU_NUM, memfile, true))
 
     /* PC Reg */
     val pc_reg = Module(new PCReg)
@@ -64,18 +68,27 @@ class CPUCore extends Module
 
     /* retire stage */
     
-
     /* connection */
     /* pc -> fetch */
     fetch.io.pc_i                   := pc_reg.io.pc_o
     fetch.io.inst_valid_mask_i      := pc_reg.io.inst_valid_mask_o
     fetch.io.inst_valid_cnt_i       := pc_reg.io.inst_valid_cnt_o
 
+    /* fetch -> memory */
+    for(i <- 0 until base.FETCH_WIDTH){
+        memory.io.ren(i) := fetch.io.inst_valid_mask_o(i)
+        memory.io.raddr(i) := fetch.io.inst_valid_mask_o(i)
+    }
+    
     /* fetch -> decode */
     decode.io.pc_vec_i              := fetch.io.pc_vec_o
     decode.io.inst_valid_mask_i     := fetch.io.inst_valid_mask_o
-    decode.io.inst_vec_i            := fetch.io.inst_vec_o
     decode.io.inst_valid_cnt_i      := fetch.io.inst_valid_cnt_o
+
+    /* memory -> decode */
+    for(i <- 0 until base.FETCH_WIDTH){
+        decode.io.inst_vec_i(i) := memory.io.rdata(i)
+    }
 
     /* decode -> freeregbuffer */
     for(i <- 0 until base.FETCH_WIDTH){
