@@ -13,11 +13,12 @@ class AGU extends Module
         val rs1_data_i = Input(UInt(base.DATA_WIDTH.W))
         val rs2_data_i = Input(UInt(base.DATA_WIDTH.W))
         val result = Output(UInt(base.DATA_WIDTH.W))
-        /* 结果是否跳转 */
+        val rob_item_o = Output(new ROBItem)
         val areg_wr_addr = Output(UInt(base.AREG_WIDTH.W))
         val preg_wr_addr = Output(UInt(base.PREG_WIDTH.W))
         val mem_wr_data = Output(UInt(base.DATA_WIDTH.W))
         val mem_rw_mask = Output(UInt(4.W))
+        val ls_flag = Output(Bool())
     })
 
     /* pipeline */
@@ -34,15 +35,19 @@ class AGU extends Module
     var preg_wr_addr = WireInit((0.U)(base.PREG_WIDTH.W))
     var mem_wr_data = WireInit((0.U)(base.DATA_WIDTH.W))
     var mem_rw_mask = WireInit((0.U)(4.W))
+    var rob_item_o = WireInit((0.U).asTypeOf(new ROBItem))
+    var ls_flag = WireInit(false.B)
 
     areg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.rd, 0.U)
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
+    rob_item_o   := rob_item_reg
 
     switch(rob_item_reg.Opcode){
         is(Opcode.SW){
             result := rs1_data_reg + rob_item_reg.Imm
             mem_wr_data := rs2_data_reg
             mem_rw_mask := "b1111".U
+            ls_flag     := true.B
         }
         // to do
     }
@@ -53,4 +58,6 @@ class AGU extends Module
     io.preg_wr_addr := preg_wr_addr
     io.mem_wr_data := mem_wr_data
     io.mem_rw_mask := mem_rw_mask
+    io.rob_item_o  := rob_item_o
+    io.ls_flag     := ls_flag
 }

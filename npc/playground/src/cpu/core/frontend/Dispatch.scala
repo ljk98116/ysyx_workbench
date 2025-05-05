@@ -6,7 +6,7 @@ import chisel3.util._
 import cpu.config._
 import upickle.default
 
-/* 发送ROB到ROB队列以及各个种类的发射保留站 */
+/* 发送ROB项到ROB队列以及各个种类的发射保留站 */
 /* 使用lut统计各种指令的数目, ALU固定4通道无需计算数量, 其他类型FU需要计算步长 */
 /* 发射写入时需要判断写入哪个位置的结果 */
 /* 更新新指令的ps1, ps2的ready情况，使用物理寄存器状态(历史)，总线状态(防止发射级需要读物理寄存器状态) */
@@ -15,6 +15,7 @@ class Dispatch extends Module
     val agu_step = base.FETCH_WIDTH / base.AGU_NUM
     var io = IO(new Bundle {
         val rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
+        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
         val alu_items_vec_o = Output(Vec(base.ALU_NUM, new ROBItem))
         val agu_items_vec_o = Output(
             Vec(base.AGU_NUM, Vec(agu_step, new ROBItem)))
@@ -28,6 +29,8 @@ class Dispatch extends Module
         val prf_valid_rs2_raddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
         val prf_valid_rs1_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
         val prf_valid_rs2_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
     })
 
     /* pipeline */
@@ -35,6 +38,9 @@ class Dispatch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
     rob_item_reg := io.rob_item_i
+
+    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    inst_valid_cnt_reg := io.inst_valid_cnt_i
 
     /* 物理寄存器有效状态使能 */
     var prf_valid_rs1_ren = WireInit(VecInit(
@@ -60,8 +66,15 @@ class Dispatch extends Module
     var rob_items = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-
+    var rob_items_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
+    ))
     rob_items := rob_item_reg
+    rob_items_o := rob_item_reg
+
+    var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    inst_valid_cnt_o := inst_valid_cnt_reg
+
     for(i <- 0 until base.FETCH_WIDTH){
         var rdy1_vec = WireInit(VecInit(
             Seq.fill(base.ALU_NUM + base.AGU_NUM + 1)(false.B)
@@ -136,4 +149,6 @@ class Dispatch extends Module
     io.prf_valid_rs1_raddr := prf_valid_rs1_raddr
     io.prf_valid_rs2_ren := prf_valid_rs2_ren
     io.prf_valid_rs2_raddr := prf_valid_rs2_raddr
+    io.rob_item_o := rob_items_o
+    io.inst_valid_cnt_o := inst_valid_cnt_o
 }

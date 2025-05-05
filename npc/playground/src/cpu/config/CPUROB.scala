@@ -20,6 +20,7 @@ class ROBItem extends Bundle
     var HasRs1 = Bool()
     var HasRs2 = Bool()
     var HasRd = Bool()
+    var agu_result = UInt(base.ADDR_WIDTH.W)
     /* rob id */
     var id = UInt(base.ROBID_WIDTH.W)
     var ps1 = UInt(base.PREG_WIDTH.W)

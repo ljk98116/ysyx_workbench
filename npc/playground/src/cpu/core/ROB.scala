@@ -37,7 +37,7 @@ class ROB extends Module
     io.robr_able := head + io.commit_num_i < tail
 
     head := Mux(io.robr_able, head, head + io.commit_num_i)
-    tail := Mux(io.robw_able, tail, tail + io.commit_num_i)
+    tail := Mux(io.robw_able, tail, tail + io.inst_valid_cnt_i)
 
     /* ROB wr logic */
     for(i <- 0 until base.FETCH_WIDTH){

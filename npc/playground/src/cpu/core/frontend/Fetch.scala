@@ -22,17 +22,26 @@ class Fetch extends Module
     /* pipeline */
     var inst_valid_mask = RegInit((0.U)(base.FETCH_WIDTH.W))
     inst_valid_mask := io.inst_valid_mask_i
-    io.inst_valid_mask_o := inst_valid_mask
 
     var pc = RegInit((0.U)(base.ADDR_WIDTH.W))
     pc := io.pc_i
-    
-    io.pc_vec_o(0) := pc
-    io.pc_vec_o(1) := pc + 4.U
-    io.pc_vec_o(2) := pc + 8.U
-    io.pc_vec_o(3) := pc + 12.U
 
     var inst_valid_cnt = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
     inst_valid_cnt := io.inst_valid_cnt_i
-    io.inst_valid_cnt_o := inst_valid_cnt
+
+    var inst_valid_mask_o = WireInit((0.U)(base.FETCH_WIDTH.W))
+    var pc_vec_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
+    ))
+    var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    inst_valid_mask_o := inst_valid_mask
+    pc_vec_o(0) := pc
+    pc_vec_o(1) := pc + 4.U
+    pc_vec_o(2) := pc + 8.U
+    pc_vec_o(3) := pc + 12.U
+    inst_valid_cnt_o := inst_valid_cnt
+    /* connect */
+    io.inst_valid_mask_o := inst_valid_mask_o
+    io.pc_vec_o := pc_vec_o
+    io.inst_valid_cnt_o := inst_valid_cnt_o
 }

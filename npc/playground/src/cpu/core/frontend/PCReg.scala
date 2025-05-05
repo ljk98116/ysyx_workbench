@@ -7,6 +7,7 @@ import cpu.config._
 class PCReg extends Module
 {
     val io = IO(new Bundle{
+        /* retire stage */
         val pc_o = Output(UInt(base.ADDR_WIDTH.W))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))

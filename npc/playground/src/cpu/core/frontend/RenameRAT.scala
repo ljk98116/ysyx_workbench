@@ -19,7 +19,7 @@ class RenameRAT extends Module
     })
 
     var rat_mapping = RegInit(VecInit(
-        Seq.fill(1 << base.PREG_WIDTH)((0.U)(base.PREG_WIDTH.W))
+        Seq.tabulate(1 << base.AREG_WIDTH)((i) => (i.U)(base.PREG_WIDTH.W))
     ))
 
     var rat_rdata = WireInit(
@@ -28,7 +28,7 @@ class RenameRAT extends Module
         )
     )
 
-    for(i <- 0 until (1 << base.PREG_WIDTH))
+    for(i <- 0 until (1 << base.AREG_WIDTH))
     {
         for(j <- 0 until base.FETCH_WIDTH){
             when(io.rat_wen(j) & io.rat_waddr(j) === i.U){

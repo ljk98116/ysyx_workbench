@@ -21,7 +21,7 @@ class RenameStage1 extends Module
         val DecodeRes_o = Output(Vec(base.FETCH_WIDTH, new DecodeRes))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
 
-        /* RAW相关性信息 */
+        /* RAW相关性信息 */ 
         val rs1_match = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
         val rs2_match = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
         

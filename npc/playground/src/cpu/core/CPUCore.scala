@@ -9,8 +9,7 @@ import cpu.core.backend._
 import cpu.memory.MultiPortSram
 
 /* PC -> Fetch -> Decode -> Rename1 -> Rename2 -> Dispatch -> */
-/* Issue -> RegRead -> Ex -> Mem -> Retire */
-
+/* Issue -> RegRead -> Ex -> Mem1 -> Mem2 -> Retire */
 class CPUCore(memfile: String) extends Module
 {
     val io = IO(new Bundle{
@@ -61,13 +60,31 @@ class CPUCore(memfile: String) extends Module
     var issue = Module(new IssueStage)
 
     /* regread stage */
-    
-    /* exec stage */
+    var regread = Module(new RegReadStage)
 
-    /* load/store stage */
+    /* exec stage */
+    var alu_vec = Seq.fill(base.ALU_NUM)(
+        Module(new ALU)
+    )
+    var agu_vec = Seq.fill(base.AGU_NUM)(
+        Module(new AGU)
+    )
+
+    /* Memstage1 */
+    var memstage1 = Module(new MemStage1)
+
+    /* MemStage2 */
+    var memstage2 = Module(new MemStage2)
+
+    /* storebuffer */
+    var storebuffer = Module(new StoreBuffer(8))
 
     /* retire stage */
-    
+    var retire = Module(new RetireStage)
+
+    /* PRF */
+    var prf = Module(new PRF)
+
     /* connection */
     /* pc -> fetch */
     fetch.io.pc_i                   := pc_reg.io.pc_o
@@ -76,8 +93,8 @@ class CPUCore(memfile: String) extends Module
 
     /* fetch -> memory */
     for(i <- 0 until base.FETCH_WIDTH){
-        memory.io.ren(i) := fetch.io.inst_valid_mask_o(i)
-        memory.io.raddr(i) := fetch.io.inst_valid_mask_o(i)
+        memory.io.ren(i)            := fetch.io.inst_valid_mask_o(i)
+        memory.io.raddr(i)          := fetch.io.inst_valid_mask_o(i)
     }
     
     /* fetch -> decode */
@@ -87,7 +104,7 @@ class CPUCore(memfile: String) extends Module
 
     /* memory -> decode */
     for(i <- 0 until base.FETCH_WIDTH){
-        decode.io.inst_vec_i(i) := memory.io.rdata(i)
+        decode.io.inst_vec_i(i)     := memory.io.rdata(i)
     }
 
     /* decode -> freeregbuffer */
@@ -138,11 +155,95 @@ class CPUCore(memfile: String) extends Module
     /* ReNameRAT -> rename2 */
     rename2.io.rat_rdata_i          := ReNameRAT.io.rat_rdata
 
-    /* rename2 -> ROB */
-    rob_buffer.io.rob_item_i        := rename2.io.rob_item_o
-    rob_buffer.io.inst_valid_cnt_i  := rename2.io.inst_valid_cnt_o
-
     /* rename2 -> dispatch */
     dispatch.io.rob_item_i          := rename2.io.rob_item_o
+    dispatch.io.inst_valid_cnt_i    := rename2.io.inst_valid_cnt_o
+    dispatch.io.cdb_i               := cdb
+    dispatch.io.prf_valid_rs1_rdata := prf.io.prf_valid_rs1_rdata
+    dispatch.io.prf_valid_rs2_rdata := prf.io.prf_valid_rs2_rdata
+
+    /* dispatch -> ROB */
+    rob_buffer.io.rob_item_i        := dispatch.io.rob_item_o
+    rob_buffer.io.inst_valid_cnt_i  := dispatch.io.inst_valid_cnt_o
+
+    /* dispatch -> prf */
+    prf.io.prf_valid_rs1_ren        := dispatch.io.prf_valid_rs1_ren
+    prf.io.prf_valid_rs1_raddr      := dispatch.io.prf_valid_rs1_raddr
+    prf.io.prf_valid_rs2_ren        := dispatch.io.prf_valid_rs2_ren
+    prf.io.prf_valid_rs2_raddr      := dispatch.io.prf_valid_rs2_raddr
+
+    /* dispatch -> IssueStage */
+    issue.io.alu_items_vec_i        := dispatch.io.alu_items_vec_o
+    issue.io.agu_items_vec_i        := dispatch.io.agu_items_vec_o
+    issue.io.agu_items_cnt_vec_i    := dispatch.io.agu_items_cnt_vec_o
+
+    issue.io.cdb_i                  := cdb
+
+    /* IssueStage -> RegReadStage */
+    regread.io.alu_fu_items_i       := issue.io.alu_fu_items_o
+    regread.io.agu_fu_items_i       := issue.io.agu_fu_items_o
+
+    /* RegReadStage -> PRF */
+    prf.io.prf_rs1_data_ren         := regread.io.prf_rs1_data_ren
+    prf.io.prf_rs1_data_raddr       := regread.io.prf_rs1_data_raddr
+    prf.io.prf_rs2_data_ren         := regread.io.prf_rs2_data_ren
+    prf.io.prf_rs2_data_raddr       := regread.io.prf_rs2_data_raddr
+
+    /* PRF -> RegReadStage */
+    regread.io.prf_rs1_data_rdata   := prf.io.prf_rs1_data_rdata
+    regread.io.prf_rs2_data_rdata   := prf.io.prf_rs2_data_rdata
+
+    /* RegRead -> FU */
+    for(i <- 0 until base.ALU_NUM){
+        alu_vec(i).io.rob_item_i    := regread.io.alu_fu_items_o(i)
+        alu_vec(i).io.rs1_data_i    := regread.io.alu_channel_rs1_rdata(i)
+        alu_vec(i).io.rs2_data_i    := regread.io.alu_channel_rs2_rdata(i)
+    }
+
+    for(i <- 0 until base.AGU_NUM){
+        agu_vec(i).io.rob_item_i    := regread.io.agu_fu_items_o(i)
+        agu_vec(i).io.rs1_data_i    := regread.io.agu_channel_rs1_rdata(i)
+        agu_vec(i).io.rs2_data_i    := regread.io.agu_channel_rs2_rdata(i)
+    }
+
+    /* FU -> CDB */
+    for(i <- 0 until base.ALU_NUM){
+        cdb.alu_channel(i).rob_id       := alu_vec(i).io.rob_id_o
+        cdb.alu_channel(i).valid        := alu_vec(i).io.valid_o
+        cdb.alu_channel(i).arch_reg_id  := alu_vec(i).io.areg_wr_addr
+        cdb.alu_channel(i).phy_reg_id   := alu_vec(i).io.preg_wr_addr
+        cdb.alu_channel(i).reg_wr_data  := alu_vec(i).io.result
+    }
+    /* CDB -> PRF */
+    prf.io.cdb_i                        := cdb
+
+    /* AGU -> MemStage1 */
+    for(i <- 0 until base.AGU_NUM){
+        memstage1.io.rob_item_i(i)      := agu_vec(i).io.rob_item_o
+        memstage1.io.agu_result_i(i)    := agu_vec(i).io.result
+        memstage1.io.agu_rw_mask_i(i)   := agu_vec(i).io.mem_rw_mask
+        memstage1.io.agu_mem_wdata(i)   := agu_vec(i).io.mem_wr_data
+        memstage1.io.ls_flag(i)         := agu_vec(i).io.ls_flag
+    }
+    
+    /* MemStage1 -> MemStage2 */
+    memstage2.io.mem_read_en_i          := memstage1.io.mem_read_en_o
+    memstage2.io.mem_read_addr_i        := memstage1.io.mem_read_addr_o
+    
+    /* MemStage2 -> Sram */
+    memory.io.wen                       := memstage2.io.mem_write_en_o
+    memory.io.waddr                     := memstage2.io.mem_write_addr_o
+    memory.io.wmask                     := memstage2.io.mem_write_mask_o
+    memory.io.wdata                     := memstage2.io.mem_write_data_o
+    for(i <- 0 until base.AGU_NUM){
+        memory.io.ren(base.FETCH_WIDTH + i)     := memstage2.io.mem_read_en_o(i)
+        memory.io.raddr(base.FETCH_WIDTH + i)   := memstage2.io.mem_read_addr_o(i)
+    }
+
+    /* load指令结果，Sram -> CDB */
+    for(i <- 0 until base.AGU_NUM){
+        cdb.agu_channel(i).reg_wr_data := memory.io.rdata(base.FETCH_WIDTH + i)
+    }
+
 
 }
