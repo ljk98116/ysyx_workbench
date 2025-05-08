@@ -177,6 +177,11 @@ class CPUCore(memfile: String) extends Module
     issue.io.agu_items_vec_i        := dispatch.io.agu_items_vec_o
     issue.io.agu_items_cnt_vec_i    := dispatch.io.agu_items_cnt_vec_o
 
+    /* dispatch -> StoreBuffer */
+    storebuffer.io.store_buffer_write_en := dispatch.io.store_buffer_write_en
+    storebuffer.io.store_buffer_item_i   := dispatch.io.store_buffer_item_o
+    storebuffer.io.store_buffer_item_cnt := dispatch.io.store_buffer_item_cnt
+    
     issue.io.cdb_i                  := cdb
 
     /* IssueStage -> RegReadStage */
@@ -214,6 +219,7 @@ class CPUCore(memfile: String) extends Module
         cdb.alu_channel(i).phy_reg_id   := alu_vec(i).io.preg_wr_addr
         cdb.alu_channel(i).reg_wr_data  := alu_vec(i).io.result
     }
+
     /* CDB -> PRF */
     prf.io.cdb_i                        := cdb
 
@@ -225,6 +231,18 @@ class CPUCore(memfile: String) extends Module
         memstage1.io.agu_mem_wdata(i)   := agu_vec(i).io.mem_wr_data
         memstage1.io.ls_flag(i)         := agu_vec(i).io.ls_flag
     }
+    
+    /* AGU -> StoreBuffer */
+    for(i <- 0 until base.AGU_NUM){
+        storebuffer.io.agu_lsflag_i(i) := agu_vec(i).io.ls_flag
+        storebuffer.io.agu_robid_i(i)  := agu_vec(i).io.rob_item_o.id
+        storebuffer.io.agu_result_i(i) := agu_vec(i).io.result
+        storebuffer.io.agu_wmask_i(i)  := agu_vec(i).io.mem_rw_mask
+        storebuffer.io.agu_wdata_i(i)  := agu_vec(i).io.mem_wr_data
+    }
+    
+    /* StoreBuffer -> MemStage1 */
+    memstage1.io.storebuffer_addr_i    := storebuffer.io.store_buffer_target_addrs
     
     /* MemStage1 -> MemStage2 */
     memstage2.io.mem_read_en_i          := memstage1.io.mem_read_en_o

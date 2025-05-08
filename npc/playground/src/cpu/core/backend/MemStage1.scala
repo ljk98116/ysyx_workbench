@@ -15,21 +15,21 @@ class MemStage1 extends Module
     val io = IO(new Bundle{
         val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
         val agu_result_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
-        val agu_rw_mask_i = Input(Vec(base.AGU_NUM, UInt(4.W)))
+        val agu_rw_mask_i = Input(Vec(base.AGU_NUM, UInt(8.W)))
         val agu_mem_wdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val ls_flag = Input(Vec(base.AGU_NUM, Bool()))
+        val rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
         /* storebuffer Input */
         /* 从head指针开始的地址 */
-        val rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
         val storebuffer_addr_i = Input(Vec(base.STORE_BUF_SZ, UInt(base.ADDR_WIDTH.W)))
         /* storebuffer read req */
         val storebuffer_ren_o = Output(Vec(base.AGU_NUM, Bool()))
         val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(width.W)))
-        val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(4.W)))
+        val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
         /* dcache/datasram req */
         val mem_read_en_o = Output(Vec(base.AGU_NUM, Bool()))
         val mem_read_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
-        val mem_read_mask_o = Output(Vec(base.AGU_NUM, UInt(4.W)))
+        val mem_read_mask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
     })
 
     /* pipeline */
@@ -40,7 +40,7 @@ class MemStage1 extends Module
         Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
     ))
     var agu_rw_mask_reg = RegInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(4.W))
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
     var agu_mem_wdata_reg = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
@@ -60,7 +60,7 @@ class MemStage1 extends Module
     ))
 
     var storebuffer_rmask_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(4.W))
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
 
     var mem_read_en_o = WireInit(VecInit(
@@ -72,7 +72,7 @@ class MemStage1 extends Module
     ))
 
     var mem_read_mask_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(4.W))
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
 
     /* 找到匹配的最新的 */

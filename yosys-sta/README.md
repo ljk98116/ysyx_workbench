@@ -29,10 +29,21 @@
 
 安装其他依赖并下载组件:
 ```shell
-apt install libunwind-dev libgomp1 libgflags-dev libgoogle-glog-dev # iEDA的依赖库
+apt install libunwind-dev liblzma-dev # iEDA的依赖库
 # or
-yum install libunwind libgomp libgflags libgoogle-glog
-make init
+yum install libunwind liblzma
+make init # 下载预编译的iEDA和nangate45工艺库
+```
+完成后, 测试iEDA能否运行:
+```
+echo exit | ./bin/iEDA -v  # 若运行成功, 终端将输出iEDA的版本号
+```
+
+若依赖库版本不一致, 或使用其他架构(如ARM), 建议自行构建iEDA:
+```
+git submodule update --init --recursive
+cd iEDA
+vim README.md  # 请参考iEDA项目的README中的操作进行构建
 ```
 
 ## 评估样例设计
@@ -69,7 +80,10 @@ make sta
 有两种操作方式：
 1. 命令行传参方式, 在命令行中指定其他设计的信息
    ```shell
-   make sta DESIGN=mydesign SDC_FILE=/path/to/my.sdc RTL_FILES="/path/to/mydesign.v /path/to/xxx.v ..." CLK_FREQ_MHZ=100
+   make -C /path/to/this_repo sta \
+       DESIGN=mydesign SDC_FILE=/path/to/my.sdc \
+       CLK_FREQ_MHZ=100 CLK_PORT_NAME=clk O=/path/to/pwd \
+       RTL_FILES="/path/to/mydesign.v /path/to/xxx.v ..."
    ```
 1. 修改变量方式, 在`Makefile`中修改上述变量, 然后运行`make sta`
 
@@ -83,4 +97,4 @@ make sta
 1. 相应的RTL设计
 1. sdc文件
 1. yosys生成的网表文件
-1. iEDA的版本号, 可通过命令`echo exit | ./bin/iEDA -v`获取
+1. iEDA的版本号

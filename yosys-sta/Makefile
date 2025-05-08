@@ -1,13 +1,15 @@
 PROJ_PATH = $(shell pwd)
 SHELL := /bin/bash
 
-DESIGN ?= MultiPortSram
-SDC_FILE ?= $(PROJ_PATH)/example/top.sdc
+O ?= $(PROJ_PATH)/result
+DESIGN ?= IssueStage
+SDC_FILE ?= $(PROJ_PATH)/scripts/default.sdc
 RTL_FILES ?= $(shell find $(PROJ_PATH)/example -name "*.sv")
-export CLK_FREQ_MHZ ?= 1600
-PDK=nangate45
+export CLK_FREQ_MHZ ?= 1400
+export CLK_PORT_NAME ?= clock
+PDK = nangate45
 
-RESULT_DIR = $(PROJ_PATH)/result/$(DESIGN)-$(CLK_FREQ_MHZ)MHz
+RESULT_DIR = $(O)/$(DESIGN)-$(CLK_FREQ_MHZ)MHz
 SCRIPT_DIR = $(PROJ_PATH)/scripts
 NETLIST_SYN_V   = $(RESULT_DIR)/$(DESIGN).netlist.syn.v
 NETLIST_FIXED_V = $(RESULT_DIR)/$(DESIGN).netlist.fixed.v
