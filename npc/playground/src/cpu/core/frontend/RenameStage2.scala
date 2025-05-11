@@ -22,7 +22,7 @@ class RenameStage2 extends Module
 
         val rat_ren_i = Input(UInt((base.FETCH_WIDTH * 3).W))
         val rat_raddr_i = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
-        val rat_rdata_i = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
+        val rat_rdata_i = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.PREG_WIDTH.W)))
 
         /* RAT读写使能 */
         val rat_wen_o = Output(UInt(base.FETCH_WIDTH.W))

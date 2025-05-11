@@ -16,9 +16,7 @@ class IssueStage extends Module
         val agu_items_cnt_vec_i = Input(Vec(base.AGU_NUM, UInt(agu_step.W)))
         val cdb_i = Input(new CDB)
         val alu_fu_items_o = Output(Vec(base.ALU_NUM, new ROBItem))
-        val agu_fu_items_o = Output(Vec(base.AGU_NUM, Vec(
-            agu_step, new ROBItem
-        )))
+        val agu_fu_items_o = Output(Vec(base.AGU_NUM, new ROBItem))
         val alu_issue_read_able = Output(Vec(base.ALU_NUM, Bool()))
         val alu_issue_write_able = Output(Vec(base.ALU_NUM, Bool()))
         val agu_issue_read_able = Output(Vec(base.AGU_NUM, Bool()))
@@ -72,7 +70,7 @@ class IssueStage extends Module
     var agu_reserve_stations = Seq.fill(base.AGU_NUM){
         Module(new AGUReservestation(agu_step, 8))
     }
-    for(i <- 0 until base.ALU_NUM){
+    for(i <- 0 until base.AGU_NUM){
         agu_reserve_stations(i).io.cdb_i := io.cdb_i
         agu_reserve_stations(i).io.rob_item_i := io.agu_items_vec_i(i)
         agu_reserve_stations(i).io.valid_cnt_i := io.agu_items_cnt_vec_i(i)

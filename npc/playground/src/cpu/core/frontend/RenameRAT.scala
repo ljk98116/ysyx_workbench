@@ -15,7 +15,7 @@ class RenameRAT extends Module
         /* 读取rs1, rs2以及以前的rd */
         val rat_ren = Input(UInt((base.FETCH_WIDTH * 3).W))
         val rat_raddr = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
-        val rat_rdata = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
+        val rat_rdata = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.PREG_WIDTH.W)))
 
         /* retire stage */
         val rat_flush_en = Input(Bool())

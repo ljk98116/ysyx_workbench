@@ -36,10 +36,10 @@ class MemStage1 extends Module
         val mem_read_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val mem_read_mask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
 
-        val mem_write_en_o = Output(Vec(base.AGU_NUM, Bool()))
-        val mem_write_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
-        val mem_write_wmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
-        val mem_write_data_o = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val mem_write_en_o = Output(Bool())
+        val mem_write_addr_o = Output(UInt(base.ADDR_WIDTH.W))
+        val mem_write_wmask_o = Output(UInt(8.W))
+        val mem_write_data_o = Output(UInt(base.DATA_WIDTH.W))
     })
 
     /* pipeline */
@@ -85,20 +85,13 @@ class MemStage1 extends Module
         Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
 
-    var mem_write_en_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)(false.B)
-    ))
+    var mem_write_en_o = WireInit(false.B)
 
-    var mem_write_addr_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
-    ))
+    var mem_write_addr_o = WireInit((0.U)(base.ADDR_WIDTH.W))
 
-    var mem_write_wmask_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(8.W))
-    ))
-    var mem_write_data_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
-    ))
+    var mem_write_wmask_o = WireInit((0.U)(8.W))
+
+    var mem_write_data_o = WireInit((0.U)(base.DATA_WIDTH.W))
 
     /* 找到匹配的最新的 */
     var priority_decoder_vec = Seq.fill(base.AGU_NUM)(

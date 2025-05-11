@@ -21,8 +21,8 @@ class ROB extends Module
         /* 核内总线消息 */
         val cdb_i = Input(new CDB)
         /* rob容量信息 */
-        val robw_able = Bool()
-        val robr_able = Bool()
+        val robw_able = Output(Bool())
+        val robr_able = Output(Bool())
     })
 
     /* ROBID对应的队列中的位置序号 */
@@ -71,4 +71,7 @@ class ROB extends Module
         ROBItemMem(ROBID2LocMem(io.cdb_i.agu_channel(i).rob_id)).rdy := io.cdb_i.agu_channel(i).valid
     }    
     
+    /* connect */
+    io.rob_item_o := rob_item_o
+
 }

@@ -9,7 +9,7 @@ import cpu.core.backend._
 import cpu.memory.MultiPortSram
 
 /* PC -> Fetch -> Decode -> Rename1 -> Rename2 -> Dispatch -> */
-/* Issue -> RegRead -> Ex -> Mem1 -> Mem2 -> Retire */
+/* Issue -> RegRead -> Ex -> Mem1 -> Mem2 -> Mem3 -> Retire */
 class CPUCore(memfile: String) extends Module
 {
     val io = IO(new Bundle{
@@ -150,6 +150,8 @@ class CPUCore(memfile: String) extends Module
     rename2.io.rat_wen_i            := rename1.io.rat_wen_o
     rename2.io.rat_waddr_i          := rename1.io.rat_waddr_o
     rename2.io.rat_wdata_i          := rename1.io.rat_wdata_o
+    rename2.io.rs1_match            := rename1.io.rs1_match
+    rename2.io.rs2_match            := rename1.io.rs2_match
 
     /* rename2 -> RenameRAT */
     ReNameRAT.io.rat_ren            := rename2.io.rat_ren_o
@@ -274,7 +276,9 @@ class CPUCore(memfile: String) extends Module
     memstage3.io.mem_read_en_i          := memstage2.io.mem_read_en_o
 
     /* memory -> memstage3 */
-    memstage3.io.mem_read_data_i        := memory.io.rdata
+    for(i <- 0 until base.AGU_NUM){
+        memstage3.io.mem_read_data_i(i)        := memory.io.rdata(base.FETCH_WIDTH + i)
+    }
 
     /* storebuffer -> memstage3 */
     memstage3.io.storebuffer_rdata      := storebuffer.io.store_buffer_rdata
@@ -298,7 +302,7 @@ class CPUCore(memfile: String) extends Module
     rob_buffer.io.commit_num_i          := retire.io.rob_item_commit_cnt
 
     /* retire -> retireRAT */
-    retireRAT.io.rat_wen                := retire.io.rat_write_en
+    retireRAT.io.rat_wen                := retire.io.rat_write_en.asUInt
     retireRAT.io.rat_waddr              := retire.io.rat_write_addr
     retireRAT.io.rat_wdata              := retire.io.rat_write_data
     
@@ -307,8 +311,8 @@ class CPUCore(memfile: String) extends Module
     ReNameRAT.io.rat_flush_data         := retireRAT.io.rat_all_data
 
     /* retire -> PCReg */
-    pc_reg.io.rat_flush_en              := retire.rat_flush_en
-    pc_reg.io.rat_flush_pc              := retire.rat_flush_pc
+    pc_reg.io.rat_flush_en              := retire.io.rat_flush_en
+    pc_reg.io.rat_flush_pc              := retire.io.rat_flush_pc
 
     /* retire <-> free reg id buffer */
     for(i <- 0 until base.FETCH_WIDTH){
@@ -316,5 +320,7 @@ class CPUCore(memfile: String) extends Module
         freeregbuf_seq(i).io.inst_valid_retire := retire.io.free_reg_id_valid(i)
         freeregbuf_seq(i).io.freereg_i         := retire.io.free_reg_id_wdata(i)
     }
+    
+    /* retire <-> free rob id buffer */
     
 }

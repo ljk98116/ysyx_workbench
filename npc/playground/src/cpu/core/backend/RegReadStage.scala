@@ -21,8 +21,8 @@ class RegReadStage extends Module
         /* 输出对应channel的操作数 */
         val alu_channel_rs1_rdata = Output(Vec(base.ALU_NUM, UInt(base.DATA_WIDTH.W)))
         val alu_channel_rs2_rdata = Output(Vec(base.ALU_NUM, UInt(base.DATA_WIDTH.W)))
-        val agu_channel_rs1_rdata = Output(Vec(base.ALU_NUM, UInt(base.DATA_WIDTH.W)))
-        val agu_channel_rs2_rdata = Output(Vec(base.ALU_NUM, UInt(base.DATA_WIDTH.W))) 
+        val agu_channel_rs1_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val agu_channel_rs2_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W))) 
         /* 输出对应ROB项 */
         val alu_fu_items_o = Output(Vec(base.ALU_NUM, new ROBItem))
         val agu_fu_items_o = Output(Vec(base.AGU_NUM, new ROBItem))        

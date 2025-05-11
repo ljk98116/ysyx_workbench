@@ -25,6 +25,11 @@ class RetireStage extends Module
         val free_reg_id_valid = Output(Vec(base.FETCH_WIDTH, Bool()))
         val free_reg_id_wdata = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
 
+        /* free rob id buffer */
+        val free_rob_id_buf_full = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val free_rob_id_valid = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val free_rob_id_wdata = Output(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
+
         /* target branch addr */
         val rat_flush_pc = Output(UInt(base.ADDR_WIDTH.W))
 
@@ -237,8 +242,21 @@ class RetireStage extends Module
         free_reg_id_wdata(i) := io.rob_items_i(i).oldpd
     }
 
+    /* Free rob id buffer */
+    var free_rob_id_valid = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var free_rob_id_wdata = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ROBID_WIDTH.W))
+    ))
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        free_rob_id_valid(i) := ~io.free_rob_id_buf_full(i) & rob_item_rdy_mask(i) 
+        free_rob_id_wdata(i) := io.rob_items_i(i).id
+    }    
+
     /* connect */
-    io.rob_item_rdy_mask := rob_item_rdy_mask
+    io.rob_item_rdy_mask := rob_item_rdy_mask.asUInt
     io.rob_item_commit_cnt := rob_item_commit_cnt
     io.rat_write_en := rat_write_en
     io.rat_write_addr := rat_write_addr
@@ -246,6 +264,10 @@ class RetireStage extends Module
 
     io.rat_flush_en := rat_flush_en
     io.rat_flush_pc := rat_flush_pc
+
     io.free_reg_id_valid := free_reg_id_valid
     io.free_reg_id_wdata := free_reg_id_wdata
+
+    io.free_rob_id_valid := free_rob_id_valid
+    io.free_rob_id_wdata := free_rob_id_wdata
 }

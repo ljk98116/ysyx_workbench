@@ -160,6 +160,7 @@ class RenameStage1 extends Module
     io.pc_vec_o := pc_vec_reg
     io.inst_valid_mask_o := inst_valid_mask_reg
     io.DecodeRes_o := DecodeRes_reg
+    io.rat_wen_o := rat_wen
     io.rat_waddr_o := rat_waddr
     io.rat_wdata_o := rat_wdata
     io.rat_ren_o := rat_ren.asUInt
