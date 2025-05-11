@@ -24,11 +24,13 @@ class StoreBuffer(size : Int) extends Module{
         val agu_robid_i = Input(Vec(base.AGU_NUM, UInt(base.ROBID_WIDTH.W)))
         /* MemStage1检查store buffer */
         val store_buffer_target_addrs = Output(Vec(size, UInt(base.ADDR_WIDTH.W)))
-        /* MemStage1 load forwarding */
+        /* MemStage2 load forwarding */
         val store_buffer_ren = Input(Vec(base.AGU_NUM, Bool()))
         val store_buffer_raddr = Input(Vec(base.AGU_NUM, UInt(width.W)))
         val store_buffer_rmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
         val store_buffer_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        /* retire段，ROB头部项 */
+        val rob_items_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         /* 输出队列头部Item */
         val store_buffer_item_o = Output(new StoreBufferItem)
         val wr_able = Bool()
@@ -91,6 +93,14 @@ class StoreBuffer(size : Int) extends Module{
     for(i <- 0 until base.AGU_NUM){
         when(io.store_buffer_ren(i)){
             store_buffer_rdata(i) := store_buffer_vec(io.store_buffer_raddr(i)).wdata
+        }
+    }
+
+    /* 更新ROB顶部指令状态 */
+    for(i <- 0 until base.FETCH_WIDTH){
+        when(io.rob_items_i(i).valid & (io.rob_items_i(i).Opcode === Opcode.SW)){
+            store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).rob_rdy := 
+                store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).valid
         }
     }
 

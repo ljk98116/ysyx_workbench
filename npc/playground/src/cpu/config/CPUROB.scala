@@ -2,6 +2,7 @@ package cpu.config
 
 import chisel3._
 import chisel3.util._
+import cpu.config.base.PREG_WIDTH
 
 class ROBItem extends Bundle
 {
@@ -20,13 +21,18 @@ class ROBItem extends Bundle
     var HasRs1 = Bool()
     var HasRs2 = Bool()
     var HasRd = Bool()
-    var agu_result = UInt(base.ADDR_WIDTH.W)
     /* rob id */
     var id = UInt(base.ROBID_WIDTH.W)
     var ps1 = UInt(base.PREG_WIDTH.W)
     var ps2 = UInt(base.PREG_WIDTH.W)
     var pd = UInt(base.PREG_WIDTH.W)
+    var oldpd = UInt(base.PREG_WIDTH.W)
     var rdy1 = Bool()
     var rdy2 = Bool()
     var rdy  = Bool()
+    var isBranch = Bool()
+    var isStore = Bool()
+    var isLoad = Bool()
+    var misBrPred = Bool()
+    var targetBrAddr = UInt(base.ADDR_WIDTH.W)
 }

@@ -14,7 +14,6 @@ class ALU extends Module
         val rs2_data_i = Input(UInt(base.DATA_WIDTH.W))
         val result = Output(UInt(base.DATA_WIDTH.W))
         /* 结果是否跳转 */
-        val branch_en = Bool()
         val branch_target_addr = Output(UInt(base.ADDR_WIDTH.W))
         val areg_wr_addr = Output(UInt(base.AREG_WIDTH.W))
         val preg_wr_addr = Output(UInt(base.PREG_WIDTH.W))
@@ -32,7 +31,6 @@ class ALU extends Module
     rs2_data_reg := io.rs2_data_i
 
     var result = WireInit((0.U)(base.DATA_WIDTH.W))
-    var branch_en = WireInit(false.B)
     var areg_wr_addr = WireInit((0.U)(base.AREG_WIDTH.W))
     var preg_wr_addr = WireInit((0.U)(base.PREG_WIDTH.W))
     var branch_target_addr = WireInit((0.U)(base.ADDR_WIDTH.W))
@@ -53,13 +51,11 @@ class ALU extends Module
         }
         is(Opcode.JAL){
             result := rob_item_reg.pc + 4.U
-            branch_en := true.B
             branch_target_addr := rob_item_reg.pc + rob_item_reg.Imm
             // to do: 异常检查
         }
         is(Opcode.JALR){
             result := rob_item_reg.pc + 4.U
-            branch_en := true.B
             branch_target_addr := rs1_data_reg + rob_item_reg.Imm
             // to do: 异常检查         
         }
@@ -73,7 +69,6 @@ class ALU extends Module
     io.result := result
     io.areg_wr_addr := areg_wr_addr
     io.preg_wr_addr := preg_wr_addr
-    io.branch_en := branch_en
     io.branch_target_addr := branch_target_addr
     io.valid_o := valid_o
     io.rob_id_o := rob_id_o

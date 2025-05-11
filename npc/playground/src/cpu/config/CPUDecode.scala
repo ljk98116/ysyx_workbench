@@ -73,4 +73,7 @@ class DecodeRes extends Bundle
     var HasRs1 = Bool()
     var HasRs2 = Bool()
     var HasRd = Bool()
+    var IsBranch = Bool()
+    var IsStore = Bool()
+    var IsLoad = Bool()
 }

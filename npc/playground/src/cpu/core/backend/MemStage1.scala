@@ -22,14 +22,24 @@ class MemStage1 extends Module
         /* storebuffer Input */
         /* 从head指针开始的地址 */
         val storebuffer_addr_i = Input(Vec(base.STORE_BUF_SZ, UInt(base.ADDR_WIDTH.W)))
+        
         /* storebuffer read req */
         val storebuffer_ren_o = Output(Vec(base.AGU_NUM, Bool()))
         val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(width.W)))
         val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
+
+        /* storebuffer Item */
+        val storebuffer_head_item_i = Input(new StoreBufferItem)
+
         /* dcache/datasram req */
         val mem_read_en_o = Output(Vec(base.AGU_NUM, Bool()))
         val mem_read_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val mem_read_mask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
+
+        val mem_write_en_o = Output(Vec(base.AGU_NUM, Bool()))
+        val mem_write_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val mem_write_wmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
+        val mem_write_data_o = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
     })
 
     /* pipeline */
@@ -75,6 +85,21 @@ class MemStage1 extends Module
         Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
 
+    var mem_write_en_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
+
+    var mem_write_addr_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
+    ))
+
+    var mem_write_wmask_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
+    ))
+    var mem_write_data_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
+    ))
+
     /* 找到匹配的最新的 */
     var priority_decoder_vec = Seq.fill(base.AGU_NUM)(
         Module(new PriorityDecoder(base.STORE_BUF_SZ))
@@ -96,6 +121,11 @@ class MemStage1 extends Module
         mem_read_mask_o(i) := agu_rw_mask_reg(i)
     }
 
+    mem_write_en_o := io.storebuffer_head_item_i.valid & io.storebuffer_head_item_i.rdy & io.storebuffer_head_item_i.rob_rdy
+    mem_write_addr_o := io.storebuffer_head_item_i.agu_result
+    mem_write_data_o := io.storebuffer_head_item_i.wdata
+    mem_write_wmask_o := io.storebuffer_head_item_i.wmask
+
     /* connect */
     io.storebuffer_ren_o := storebuffer_ren_o
     io.storebuffer_raddr_o := storebuffer_raddr_o
@@ -104,4 +134,8 @@ class MemStage1 extends Module
     io.mem_read_addr_o := mem_read_addr_o
     io.mem_read_mask_o := mem_read_mask_o
     io.rob_item_o := rob_item_reg
+    io.mem_write_en_o := mem_write_en_o
+    io.mem_write_addr_o := mem_write_addr_o
+    io.mem_write_wmask_o := mem_write_wmask_o
+    io.mem_write_data_o := mem_write_data_o
 }

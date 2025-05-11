@@ -20,17 +20,17 @@ class RenameStage2 extends Module
         val rat_waddr_i = Input(Vec(base.FETCH_WIDTH, UInt(base.AREG_WIDTH.W)))
         val rat_wdata_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
 
-        val rat_ren_i = Input(UInt((base.FETCH_WIDTH * 2).W))
-        val rat_raddr_i = Input(Vec(base.FETCH_WIDTH * 2, UInt(base.AREG_WIDTH.W)))
-        val rat_rdata_i = Output(Vec(base.FETCH_WIDTH * 2, UInt(base.AREG_WIDTH.W)))
+        val rat_ren_i = Input(UInt((base.FETCH_WIDTH * 3).W))
+        val rat_raddr_i = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
+        val rat_rdata_i = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
 
         /* RAT读写使能 */
         val rat_wen_o = Output(UInt(base.FETCH_WIDTH.W))
         val rat_waddr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.AREG_WIDTH.W)))
         val rat_wdata_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
 
-        val rat_ren_o = Output(UInt((base.FETCH_WIDTH * 2).W))
-        val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 2, UInt(base.AREG_WIDTH.W)))
+        val rat_ren_o = Output(UInt((base.FETCH_WIDTH * 3).W))
+        val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
 
         /* RAW相关性信息 */
         val rs1_match = Input(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
@@ -52,7 +52,7 @@ class RenameStage2 extends Module
     )
 
     var DecodeRes_reg = RegInit(
-        VecInit(Seq.fill(base.FETCH_WIDTH)(new DecodeRes))
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new DecodeRes)))
     )
 
     var rat_wen_reg = RegInit((0.U)(base.FETCH_WIDTH.W))
@@ -62,9 +62,9 @@ class RenameStage2 extends Module
     var rat_wdata_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
     ))
-    var rat_ren_reg = RegInit((0.U)((base.FETCH_WIDTH * 2).W))
+    var rat_ren_reg = RegInit((0.U)((base.FETCH_WIDTH * 3).W))
     var rat_raddr_reg = RegInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH * 2)((0.U)(base.AREG_WIDTH.W))
+        Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.AREG_WIDTH.W))
     ))
     var rs1_match_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
@@ -119,6 +119,12 @@ class RenameStage2 extends Module
         rob_item_o(i).shamt := DecodeRes_reg(i).shamt
         rob_item_o(i).id := io.rob_freeid_vec_i(i)
         rob_item_o(i).pd := rat_wdata_reg(i)
+        rob_item_o(i).isBranch := DecodeRes_reg(i).IsBranch
+        rob_item_o(i).isLoad   := DecodeRes_reg(i).IsLoad
+        rob_item_o(i).isStore  := DecodeRes_reg(i).IsStore
+        /* 暂时所有分支指令均冲刷流水线 */
+        rob_item_o(i).misBrPred := DecodeRes_reg(i).IsBranch
+        rob_item_o(i).oldpd := io.rat_rdata_i(3 * i + 2)
         when(DecodeRes_reg(i).HasRs1){
             rob_item_o(i).ps1 := Mux(rs1_match_reg(i)(2), 
                 rat_wdata_reg(2),
@@ -127,7 +133,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs1_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(2 * i)
+                        io.rat_rdata_i(3 * i)
                     )
                 )
             )
@@ -140,7 +146,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs2_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(2 * i + 1)
+                        io.rat_rdata_i(3 * i + 1)
                     )
                 )
             )

@@ -76,6 +76,9 @@ class CPUCore(memfile: String) extends Module
     /* MemStage2 */
     var memstage2 = Module(new MemStage2)
 
+    /* MemStage3 */
+    var memstage3 = Module(new MemStage3)
+
     /* storebuffer */
     var storebuffer = Module(new StoreBuffer(8))
 
@@ -84,6 +87,9 @@ class CPUCore(memfile: String) extends Module
 
     /* PRF */
     var prf = Module(new PRF)
+
+    /* retire RAT */
+    var retireRAT = Module(new RetireRAT)
 
     /* connection */
     /* pc -> fetch */
@@ -218,6 +224,7 @@ class CPUCore(memfile: String) extends Module
         cdb.alu_channel(i).arch_reg_id  := alu_vec(i).io.areg_wr_addr
         cdb.alu_channel(i).phy_reg_id   := alu_vec(i).io.preg_wr_addr
         cdb.alu_channel(i).reg_wr_data  := alu_vec(i).io.result
+        cdb.alu_channel(i).branch_target_addr := alu_vec(i).io.branch_target_addr
     }
 
     /* CDB -> PRF */
@@ -247,7 +254,11 @@ class CPUCore(memfile: String) extends Module
     /* MemStage1 -> MemStage2 */
     memstage2.io.mem_read_en_i          := memstage1.io.mem_read_en_o
     memstage2.io.mem_read_addr_i        := memstage1.io.mem_read_addr_o
-    
+    memstage2.io.mem_write_en_i         := memstage1.io.mem_write_en_o
+    memstage2.io.mem_write_addr_i       := memstage1.io.mem_write_addr_o
+    memstage2.io.mem_write_mask_i       := memstage1.io.mem_write_wmask_o
+    memstage2.io.mem_write_data_i       := memstage1.io.mem_write_data_o
+
     /* MemStage2 -> Sram */
     memory.io.wen                       := memstage2.io.mem_write_en_o
     memory.io.waddr                     := memstage2.io.mem_write_addr_o
@@ -258,10 +269,52 @@ class CPUCore(memfile: String) extends Module
         memory.io.raddr(base.FETCH_WIDTH + i)   := memstage2.io.mem_read_addr_o(i)
     }
 
-    /* load指令结果，Sram -> CDB */
+    /* MemStage2 -> MemStage3 */
+    memstage3.io.rob_item_i             := memstage2.io.rob_item_o
+    memstage3.io.mem_read_en_i          := memstage2.io.mem_read_en_o
+
+    /* memory -> memstage3 */
+    memstage3.io.mem_read_data_i        := memory.io.rdata
+
+    /* storebuffer -> memstage3 */
+    memstage3.io.storebuffer_rdata      := storebuffer.io.store_buffer_rdata
+
+    /* MemStage3 -> CDB */
     for(i <- 0 until base.AGU_NUM){
-        cdb.agu_channel(i).reg_wr_data := memory.io.rdata(base.FETCH_WIDTH + i)
+        cdb.agu_channel(i).arch_reg_id  := memstage3.io.rob_item_o(i).rd
+        cdb.agu_channel(i).phy_reg_id   := memstage3.io.rob_item_o(i).pd
+        cdb.agu_channel(i).valid        := memstage3.io.rob_item_o(i).valid
+        cdb.agu_channel(i).rob_id       := memstage3.io.rob_item_o(i).id
+        cdb.agu_channel(i).reg_wr_data  := memstage3.io.mem_read_data_o(i)
     }
 
+    /* CDB -> ROB */
+    rob_buffer.io.cdb_i                 := cdb
 
+    /* ROB -> retire */
+    retire.io.rob_items_i               := rob_buffer.io.rob_item_o
+
+    /* retire -> ROB */
+    rob_buffer.io.commit_num_i          := retire.io.rob_item_commit_cnt
+
+    /* retire -> retireRAT */
+    retireRAT.io.rat_wen                := retire.io.rat_write_en
+    retireRAT.io.rat_waddr              := retire.io.rat_write_addr
+    retireRAT.io.rat_wdata              := retire.io.rat_write_data
+    
+    /* retireRAT/retire -> renameRAT */
+    ReNameRAT.io.rat_flush_en           := retire.io.rat_flush_en
+    ReNameRAT.io.rat_flush_data         := retireRAT.io.rat_all_data
+
+    /* retire -> PCReg */
+    pc_reg.io.rat_flush_en              := retire.rat_flush_en
+    pc_reg.io.rat_flush_pc              := retire.rat_flush_pc
+
+    /* retire <-> free reg id buffer */
+    for(i <- 0 until base.FETCH_WIDTH){
+        retire.io.free_reg_id_buf_full(i)      := freeregbuf_seq(i).io.freeregbuf_full
+        freeregbuf_seq(i).io.inst_valid_retire := retire.io.free_reg_id_valid(i)
+        freeregbuf_seq(i).io.freereg_i         := retire.io.free_reg_id_wdata(i)
+    }
+    
 }

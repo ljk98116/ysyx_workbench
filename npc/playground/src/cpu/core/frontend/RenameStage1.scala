@@ -30,8 +30,8 @@ class RenameStage1 extends Module
         val rat_waddr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.AREG_WIDTH.W)))
         val rat_wdata_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
 
-        val rat_ren_o = Output(UInt((base.FETCH_WIDTH * 2).W))
-        val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 2, UInt(base.AREG_WIDTH.W)))
+        val rat_ren_o = Output(UInt((base.FETCH_WIDTH * 3).W))
+        val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
     })
 
     /* pipeline */
@@ -44,7 +44,7 @@ class RenameStage1 extends Module
     )
 
     var DecodeRes_reg = RegInit(
-        VecInit(Seq.fill(base.FETCH_WIDTH)(new DecodeRes))
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new DecodeRes)))
     )
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
@@ -57,13 +57,21 @@ class RenameStage1 extends Module
     /* rs1/rs2 是否哪一个最近的前置rd相等，给出掩码 */
     var rs1_match = WireInit(
         VecInit(
-            Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+            Seq.fill(base.FETCH_WIDTH)(
+                VecInit(
+                    Seq.fill(base.FETCH_WIDTH)(false.B)
+                )
+            )
         )
     )
 
     var rs2_match = WireInit(
         VecInit(
-            Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+            Seq.fill(base.FETCH_WIDTH)(
+                VecInit(
+                    Seq.fill(base.FETCH_WIDTH)(false.B)
+                )
+            )
         )
     )    
     /* RAW相关性 */
@@ -86,7 +94,13 @@ class RenameStage1 extends Module
     /* WAW相关性 */
     var rat_wen = WireInit((0.U)(base.FETCH_WIDTH.W))
     var rat_waw_mask = WireInit(
-        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W)))
+        VecInit(
+            Seq.fill(base.FETCH_WIDTH)(
+                VecInit(
+                    Seq.fill(base.FETCH_WIDTH)(false.B)
+                )
+            )
+        )
     )
     var rat_waddr = WireInit(
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.AREG_WIDTH.W)))
@@ -106,10 +120,10 @@ class RenameStage1 extends Module
 
     /* 存在WAW冲突，不写RAT */
     rat_wen := Cat(
-        ~rat_waw_mask(3).orR,
-        ~rat_waw_mask(2).orR, 
-        ~rat_waw_mask(1).orR, 
-        ~rat_waw_mask(0).orR
+        ~rat_waw_mask(3).asUInt.orR,
+        ~rat_waw_mask(2).asUInt.orR, 
+        ~rat_waw_mask(1).asUInt.orR, 
+        ~rat_waw_mask(0).asUInt.orR
     )
 
     for(i <- 0 until base.FETCH_WIDTH)
@@ -119,32 +133,36 @@ class RenameStage1 extends Module
     }
 
     /* 读使能 */
-    var rat_ren = WireInit((0.U)((base.FETCH_WIDTH * 2).W))
+    var rat_ren = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH * 3)(false.B)
+    ))
     var rat_raddr = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH * 2)((0.U)(base.AREG_WIDTH.W))
+        Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.AREG_WIDTH.W))
     ))
 
     for(i <- 0 until base.FETCH_WIDTH)
     {
         when(DecodeRes_reg(i).HasRs1){
-            rat_ren(2 * i) := true.B
-            rat_raddr(2 * i) := DecodeRes_reg(i).rs1
+            rat_ren(3 * i) := true.B
+            rat_raddr(3 * i) := DecodeRes_reg(i).rs1
         }
         when(DecodeRes_reg(i).HasRs2){
-            rat_ren(2 * i + 1) := true.B
-            rat_raddr(2 * i + 1) := DecodeRes_reg(i).rs2
+            rat_ren(3 * i + 1) := true.B
+            rat_raddr(3 * i + 1) := DecodeRes_reg(i).rs2
         }
+        rat_ren(3 * i + 2) := true.B
+        rat_raddr(3 * i + 2) := DecodeRes_reg(i).rd
+        io.rs1_match(i) := rs1_match(i).asUInt
+        io.rs2_match(i) := rs2_match(i).asUInt
     }
 
     /* connect */
     io.pc_vec_o := pc_vec_reg
     io.inst_valid_mask_o := inst_valid_mask_reg
     io.DecodeRes_o := DecodeRes_reg
-    io.rs1_match := rs1_match
-    io.rs2_match := rs2_match
     io.rat_waddr_o := rat_waddr
     io.rat_wdata_o := rat_wdata
-    io.rat_ren_o := rat_ren
+    io.rat_ren_o := rat_ren.asUInt
     io.rat_raddr_o := rat_raddr
     io.inst_valid_cnt_o := inst_valid_cnt_reg
 }

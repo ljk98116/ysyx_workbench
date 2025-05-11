@@ -10,6 +10,7 @@ class ALU_CDB_Channel extends Bundle{
     val valid = Bool()
     val reg_wr_data = UInt(base.DATA_WIDTH.W)
     val rob_id = UInt(base.ROBID_WIDTH.W)
+    val branch_target_addr = UInt(base.ADDR_WIDTH.W)
 }
 
 class AGU_CDB_Channel extends Bundle{

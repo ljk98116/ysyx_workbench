@@ -1,25 +1,23 @@
-package cpu.core.frontend
+package cpu.core.backend
 
 import chisel3._
 import chisel3.util._
 
 import cpu.config._
 
-class RenameRAT extends Module
+class RetireRAT extends Module
 {
     val io = IO(new Bundle{
         /* RAT读写使能 */
         val rat_wen = Input(UInt(base.FETCH_WIDTH.W))
         val rat_waddr = Input(Vec(base.FETCH_WIDTH, UInt(base.AREG_WIDTH.W)))
         val rat_wdata = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
-        /* 读取rs1, rs2以及以前的rd */
-        val rat_ren = Input(UInt((base.FETCH_WIDTH * 3).W))
-        val rat_raddr = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
-        val rat_rdata = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
 
-        /* retire stage */
-        val rat_flush_en = Input(Bool())
-        val rat_flush_data = Input(Vec(1 << base.AREG_WIDTH, UInt(base.PREG_WIDTH.W)))
+        val rat_ren = Input(UInt((base.FETCH_WIDTH * 2).W))
+        val rat_raddr = Input(Vec(base.FETCH_WIDTH * 2, UInt(base.AREG_WIDTH.W)))
+        val rat_rdata = Output(Vec(base.FETCH_WIDTH * 2, UInt(base.AREG_WIDTH.W)))
+
+        val rat_all_data = Output(Vec(1 << base.AREG_WIDTH, UInt(base.PREG_WIDTH.W)))
     })
 
     var rat_mapping = RegInit(VecInit(
@@ -28,22 +26,20 @@ class RenameRAT extends Module
 
     var rat_rdata = WireInit(
         VecInit(
-            Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.PREG_WIDTH.W))
+            Seq.fill(base.FETCH_WIDTH * 2)((0.U)(base.PREG_WIDTH.W))
         )
     )
 
     for(i <- 0 until (1 << base.AREG_WIDTH))
     {
         for(j <- 0 until base.FETCH_WIDTH){
-            when(io.rat_wen(j) & io.rat_waddr(j) === i.U & ~io.rat_flush_en){
+            when(io.rat_wen(j) & io.rat_waddr(j) === i.U){
                 rat_mapping(i) := io.rat_wdata(j)
-            }.elsewhen(io.rat_flush_en){
-                rat_mapping(i) := io.rat_flush_data(i)
             }
         }
     }
 
-    for(j <- 0 until base.FETCH_WIDTH * 3)
+    for(j <- 0 until base.FETCH_WIDTH * 2)
     {
         when(io.rat_ren(j)){
             rat_rdata(j) := rat_mapping(io.rat_raddr(j))
@@ -51,4 +47,5 @@ class RenameRAT extends Module
     }
     /* connect */
     io.rat_rdata := rat_rdata
+    io.rat_all_data := rat_mapping
 }

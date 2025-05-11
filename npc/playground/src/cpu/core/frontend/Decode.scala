@@ -43,6 +43,15 @@ class Decode extends Module
                 /* type I */
                 is(
                     Opcode.ADDI,
+                ){
+                    decoderes(i).Imm    := Imm.ImmI(io.inst_vec_i(i))
+                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
+                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
+                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
+                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
+                    decoderes(i).Type   := InstType.TYPEI
+                }
+                is(
                     Opcode.JALR
                 ){
                     decoderes(i).Imm    := Imm.ImmI(io.inst_vec_i(i))
@@ -51,6 +60,7 @@ class Decode extends Module
                     decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
                     decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
                     decoderes(i).Type   := InstType.TYPEI
+                    decoderes(i).IsBranch := true.B                    
                 }
                 /* type U */
                 is(
@@ -70,6 +80,7 @@ class Decode extends Module
                     decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
                     decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
                     decoderes(i).Type   := InstType.TYPEUJ
+                    decoderes(i).IsBranch := true.B
                 }
                 /* type S */
                 is(
@@ -80,7 +91,8 @@ class Decode extends Module
                     decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
                     decoderes(i).rs2    := io.inst_vec_i(i)(24, 20)
                     decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)    
-                    decoderes(i).Type   := InstType.TYPES         
+                    decoderes(i).Type   := InstType.TYPES        
+                    decoderes(i).IsStore := true.B 
                 }
             }
             decoderes(i).HasRs1 := (io.inst_vec_i(i)(6, 0) =/= InstType.TYPEU) & 

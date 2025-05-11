@@ -11,4 +11,5 @@ class StoreBufferItem extends Bundle
     var rob_id = UInt(base.ROBID_WIDTH.W)
     var agu_result = UInt(base.ADDR_WIDTH.W)
     var rdy = Bool()
+    var rob_rdy = Bool()
 }

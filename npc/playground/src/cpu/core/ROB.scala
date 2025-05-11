@@ -26,9 +26,13 @@ class ROB extends Module
     })
 
     /* ROBID对应的队列中的位置序号 */
-    var ROBID2LocMem = Mem((1 << base.ROBID_WIDTH), UInt(base.ROBID_WIDTH.W))
+    var ROBID2LocMem = RegInit(VecInit(
+        Seq.fill((1 << base.ROBID_WIDTH))((0.U)(base.ROBID_WIDTH.W))
+    ))
     /* ROB队列MEM */
-    var ROBItemMem = Mem((1 << base.ROBID_WIDTH), new ROBItem)
+    var ROBItemMem = RegInit(VecInit(
+        Seq.fill((1 << base.ROBID_WIDTH))((0.U).asTypeOf(new ROBItem))
+    ))
 
     var head = RegInit((0.U)(base.ROBID_WIDTH.W))
     var tail = RegInit((0.U)(base.ROBID_WIDTH.W))
@@ -42,8 +46,8 @@ class ROB extends Module
     /* ROB wr logic */
     for(i <- 0 until base.FETCH_WIDTH){
         when(io.rob_item_i(i).valid & io.robw_able){
-            ROBItemMem.write(tail + i.U, io.rob_item_i(i))
-            ROBID2LocMem.write(io.rob_item_i(i).id, tail + i.U)
+            ROBItemMem(tail + i.U) := io.rob_item_i(i)
+            ROBID2LocMem(io.rob_item_i(i).id) := tail + i.U
         }
     }
     /* ROB r logic */
@@ -52,11 +56,19 @@ class ROB extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
     for(i <- 0 until base.FETCH_WIDTH){
-        rob_item_o(i) := ROBItemMem.read(head + i.U)
+        rob_item_o(i) := ROBItemMem(head + i.U)
     }
 
     /* ROB总线更新逻辑 */
     /* 求出映射到的队列项，更新对应的Item */
-    
+    for(i <- 0 until base.ALU_NUM){
+        ROBItemMem(ROBID2LocMem(io.cdb_i.alu_channel(i).rob_id)).rdy := io.cdb_i.alu_channel(i).valid
+        ROBItemMem(ROBID2LocMem(io.cdb_i.alu_channel(i).rob_id)).targetBrAddr := 
+            io.cdb_i.alu_channel(i).branch_target_addr
+    }
+
+    for(i <- 0 until base.AGU_NUM){
+        ROBItemMem(ROBID2LocMem(io.cdb_i.agu_channel(i).rob_id)).rdy := io.cdb_i.agu_channel(i).valid
+    }    
     
 }
