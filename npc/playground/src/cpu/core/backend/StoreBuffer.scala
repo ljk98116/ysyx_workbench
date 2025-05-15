@@ -14,7 +14,7 @@ class StoreBuffer(size : Int) extends Module{
     val io = IO(new Bundle{
         /* Dispatch */
         val store_buffer_write_en = Input(Bool())
-        val store_buffer_item_cnt = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val store_buffer_item_cnt = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
         val store_buffer_item_i = Input(Vec(base.FETCH_WIDTH, new StoreBufferItem))
         /* AGU更新store buffer */
         val agu_result_i = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
@@ -31,10 +31,10 @@ class StoreBuffer(size : Int) extends Module{
         val store_buffer_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         /* retire段，ROB头部项 */
         val rob_items_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
+        var rob_item_rdy_mask = Input(UInt(base.FETCH_WIDTH.W))
         /* 输出队列头部Item */
         val store_buffer_item_o = Output(new StoreBufferItem)
-        val wr_able = Bool()
-        val rd_able = Bool()
+        val wr_able = Output(Bool())
     })
 
     var store_buffer_vec = RegInit(VecInit(
@@ -93,12 +93,14 @@ class StoreBuffer(size : Int) extends Module{
     for(i <- 0 until base.AGU_NUM){
         when(io.store_buffer_ren(i)){
             store_buffer_rdata(i) := store_buffer_vec(io.store_buffer_raddr(i)).wdata
+        }.otherwise{
+            store_buffer_rdata(i) := 0.U
         }
     }
 
     /* 更新ROB顶部指令状态 */
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.rob_items_i(i).valid & (io.rob_items_i(i).Opcode === Opcode.SW)){
+        when(io.rob_item_rdy_mask(i) & (io.rob_items_i(i).Opcode === Opcode.SW)){
             store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).rob_rdy := 
                 store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).valid
         }
@@ -106,8 +108,6 @@ class StoreBuffer(size : Int) extends Module{
 
     /* connect */
     io.wr_able := wr_able
-    io.rd_able := rd_able
-
     io.store_buffer_item_o := store_buffer_vec(head)
     io.store_buffer_target_addrs := store_buffer_target_addrs
     io.store_buffer_rdata := store_buffer_rdata

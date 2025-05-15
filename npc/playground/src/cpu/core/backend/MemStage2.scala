@@ -11,9 +11,10 @@ class MemStage2 extends Module{
         val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
         val mem_read_en_i = Input(Vec(base.AGU_NUM, Bool()))
         val mem_read_addr_i = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val mem_read_mask_i = Input(Vec(base.AGU_NUM, UInt(8.W)))
         val mem_write_en_i = Input(Bool())
         val mem_write_addr_i = Input(UInt(base.ADDR_WIDTH.W))
-        val mem_write_mask_i = Input(UInt(4.W))
+        val mem_write_mask_i = Input(UInt(8.W))
         val mem_write_data_i = Input(UInt(base.DATA_WIDTH.W))
         /* store buffer req */
         val storebuffer_ren_i = Input(Vec(base.AGU_NUM, Bool()))
@@ -22,6 +23,7 @@ class MemStage2 extends Module{
 
         val mem_read_en_o = Output(Vec(base.AGU_NUM, Bool()))
         val mem_read_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val mem_read_mask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
 
         val mem_write_en_o = Output(Bool())
         val mem_write_addr_o = Output(UInt(base.ADDR_WIDTH.W))
@@ -40,9 +42,12 @@ class MemStage2 extends Module{
     var mem_read_addr_reg = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
     ))
+    var mem_read_mask_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
+    ))
     var mem_write_en_reg = RegInit(false.B)
     var mem_write_addr_reg = RegInit((0.U)(base.ADDR_WIDTH.W))
-    var mem_write_mask_reg = RegInit((0.U)(4.W))
+    var mem_write_mask_reg = RegInit((0.U)(8.W))
     var mem_write_data_reg = RegInit((0.U)(base.DATA_WIDTH.W))
     var storebuffer_ren_reg = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)(false.B)
@@ -60,6 +65,7 @@ class MemStage2 extends Module{
 
     mem_read_en_reg := io.mem_read_en_i
     mem_read_addr_reg := io.mem_read_addr_i
+    mem_read_mask_reg := io.mem_read_mask_i
     mem_write_en_reg := io.mem_write_en_i
     mem_write_addr_reg := io.mem_write_addr_i
     mem_write_mask_reg := io.mem_write_mask_i
@@ -75,7 +81,10 @@ class MemStage2 extends Module{
     ))
     var mem_read_addr_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
-    ))    
+    ))   
+    var mem_read_mask_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
+    )) 
     var storebuffer_ren_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)(false.B)
     ))
@@ -90,6 +99,7 @@ class MemStage2 extends Module{
     ))
     mem_read_en_o := mem_read_en_reg
     mem_read_addr_o := mem_read_addr_reg
+    mem_read_mask_o := mem_read_mask_reg
     mem_write_en_o := mem_write_en_reg
     mem_write_addr_o := mem_write_addr_reg
     mem_write_mask_o := mem_write_mask_reg
@@ -102,6 +112,7 @@ class MemStage2 extends Module{
     /* connect */
     io.mem_read_en_o := mem_read_en_o
     io.mem_read_addr_o := mem_read_addr_o
+    io.mem_read_mask_o := mem_read_mask_o
     io.mem_write_en_o := mem_write_en_o
     io.mem_write_addr_o := mem_write_addr_o
     io.mem_write_mask_o := mem_write_mask_o

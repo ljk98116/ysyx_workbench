@@ -13,7 +13,7 @@ class RetireStage extends Module
         val rob_items_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         /* 是否可以退出ROB */
         val rob_item_rdy_mask = Output(UInt(base.FETCH_WIDTH.W))
-        val rob_item_commit_cnt = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val rob_item_commit_cnt = Output(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
 
         /* retire RAT */
         val rat_write_en = Output(Vec(base.FETCH_WIDTH, Bool()))
@@ -226,6 +226,10 @@ class RetireStage extends Module
             rat_write_en(i) := true.B
             rat_write_addr(i) := io.rob_items_i(i).rd
             rat_write_data(i) := io.rob_items_i(i).pd
+        }.otherwise{
+            rat_write_en(i) := false.B
+            rat_write_addr(i) := 0.U
+            rat_write_data(i) := 0.U           
         }
     }
 

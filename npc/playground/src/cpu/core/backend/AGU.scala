@@ -42,6 +42,10 @@ class AGU extends Module
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
     rob_item_o   := rob_item_reg
 
+    result := 0.U
+    mem_wr_data := 0.U
+    mem_rw_mask := 0.U
+    ls_flag := false.B
     switch(rob_item_reg.Opcode){
         is(Opcode.SW){
             result := (rs1_data_reg + rob_item_reg.Imm) & "b1111_1111_1111_1111_1111_1111_1111_1100".U

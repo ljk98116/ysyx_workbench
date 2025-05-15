@@ -33,7 +33,7 @@ class Dispatch extends Module
         /* store buffer write */
         val store_buffer_write_en = Output(Bool())
         val store_buffer_item_o = Output(Vec(base.FETCH_WIDTH, new StoreBufferItem))
-        val store_buffer_item_cnt = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val store_buffer_item_cnt = Output(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
 
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
@@ -155,7 +155,7 @@ class Dispatch extends Module
     var store_buffer_item_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new StoreBufferItem))
     ))
-    var store_buffer_item_cnt = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    var store_buffer_item_cnt = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
     var store_buffer_item_cnt_mid = WireInit(VecInit(
         Seq.fill(2)((0.U)(2.W))
     ))
@@ -183,6 +183,11 @@ class Dispatch extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         store_buffer_item_o(store_item_target_idx(i)).rob_id := rob_item_reg(i).id
         store_buffer_item_o(store_item_target_idx(i)).valid  := rob_item_reg(i).valid
+        store_buffer_item_o(store_item_target_idx(i)).wmask  := 0.U
+        store_buffer_item_o(store_item_target_idx(i)).wdata  := 0.U
+        store_buffer_item_o(store_item_target_idx(i)).agu_result  := 0.U
+        store_buffer_item_o(store_item_target_idx(i)).rdy  := false.B
+        store_buffer_item_o(store_item_target_idx(i)).rob_rdy  := false.B
     }
 
     /* connect */

@@ -42,6 +42,8 @@ class ALU extends Module
     valid_o := io.rob_item_i.valid
     rob_id_o := io.rob_item_i.id
 
+    result := 0.U
+    branch_target_addr := 0.U
     switch(rob_item_reg.Opcode){
         is(Opcode.ADDI){
             result := rs1_data_reg + rob_item_reg.Imm

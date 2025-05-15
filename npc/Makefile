@@ -2,7 +2,7 @@ BUILDDIR = ./vsrc
 PACKAGE =cpu
 
 PRJ = playground
-TOPNAME=MultiPortSram
+TOPNAME=CPUCore
 NXDC_FILES = constr/$(TOPNAME).nxdc
 
 INC_PATH ?= $(NEMU_HOME)/include

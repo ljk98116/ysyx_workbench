@@ -7,11 +7,13 @@ import cpu.config._
 import cpu.core.frontend._
 import cpu.core.backend._
 import cpu.memory.MultiPortSram
+import chisel3.experimental.ChiselAnnotation
 
 /* PC -> Fetch -> Decode -> Rename1 -> Rename2 -> Dispatch -> */
 /* Issue -> RegRead -> Ex -> Mem1 -> Mem2 -> Mem3 -> Retire */
 class CPUCore(memfile: String) extends Module
 {
+
     val io = IO(new Bundle{
     })
 
@@ -80,7 +82,7 @@ class CPUCore(memfile: String) extends Module
     var memstage3 = Module(new MemStage3)
 
     /* storebuffer */
-    var storebuffer = Module(new StoreBuffer(8))
+    var storebuffer = Module(new StoreBuffer(base.STORE_BUF_SZ))
 
     /* retire stage */
     var retire = Module(new RetireStage)
@@ -252,14 +254,25 @@ class CPUCore(memfile: String) extends Module
     
     /* StoreBuffer -> MemStage1 */
     memstage1.io.storebuffer_addr_i    := storebuffer.io.store_buffer_target_addrs
-    
+    memstage1.io.storebuffer_head_item_i := storebuffer.io.store_buffer_item_o
+
     /* MemStage1 -> MemStage2 */
+    memstage2.io.rob_item_i             := memstage1.io.rob_item_o
     memstage2.io.mem_read_en_i          := memstage1.io.mem_read_en_o
     memstage2.io.mem_read_addr_i        := memstage1.io.mem_read_addr_o
+    memstage2.io.mem_read_mask_i        := memstage1.io.mem_read_mask_o
     memstage2.io.mem_write_en_i         := memstage1.io.mem_write_en_o
     memstage2.io.mem_write_addr_i       := memstage1.io.mem_write_addr_o
     memstage2.io.mem_write_mask_i       := memstage1.io.mem_write_wmask_o
     memstage2.io.mem_write_data_i       := memstage1.io.mem_write_data_o
+    memstage2.io.storebuffer_ren_i      := memstage1.io.storebuffer_ren_o
+    memstage2.io.storebuffer_raddr_i    := memstage1.io.storebuffer_raddr_o
+    memstage2.io.storebuffer_rmask_i    := memstage1.io.storebuffer_rmask_o
+
+    /* Memstage2 -> StoreBuffer, load forwarding */
+    storebuffer.io.store_buffer_ren     := memstage2.io.storebuffer_ren_o
+    storebuffer.io.store_buffer_raddr   := memstage2.io.storebuffer_raddr_o
+    storebuffer.io.store_buffer_rmask   := memstage2.io.storebuffer_rmask_o
 
     /* MemStage2 -> Sram */
     memory.io.wen                       := memstage2.io.mem_write_en_o
@@ -274,6 +287,7 @@ class CPUCore(memfile: String) extends Module
     /* MemStage2 -> MemStage3 */
     memstage3.io.rob_item_i             := memstage2.io.rob_item_o
     memstage3.io.mem_read_en_i          := memstage2.io.mem_read_en_o
+    memstage3.io.mem_read_mask_i        := memstage2.io.mem_read_mask_o
 
     /* memory -> memstage3 */
     for(i <- 0 until base.AGU_NUM){
@@ -322,5 +336,14 @@ class CPUCore(memfile: String) extends Module
     }
     
     /* retire <-> free rob id buffer */
-    
+    for(i <- 0 until base.FETCH_WIDTH){
+        retire.io.free_rob_id_buf_full(i)      := robidbuf_seq(i).io.freeidbuf_full
+        robidbuf_seq(i).io.inst_valid_retire   := retire.io.free_rob_id_valid(i)
+        robidbuf_seq(i).io.freeid_i            := retire.io.free_rob_id_wdata(i)
+    }
+
+    /* rob_buffer -> storebuffer */
+    storebuffer.io.rob_items_i                 := rob_buffer.io.rob_item_o
+    /* retire -> storebuffer */
+    storebuffer.io.rob_item_rdy_mask           := retire.io.rob_item_rdy_mask
 }
