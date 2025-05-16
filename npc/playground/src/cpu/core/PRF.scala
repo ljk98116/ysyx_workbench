@@ -32,7 +32,7 @@ class PRF extends Module
     ))
 
     var prf_valid_regs = RegInit(VecInit(
-        Seq.fill(1 << base.PREG_WIDTH)(false.B)
+        Seq.fill(1 << base.PREG_WIDTH)(true.B)
     ))
 
     var prf_rs1_data_rdata = WireInit(VecInit(
@@ -45,6 +45,7 @@ class PRF extends Module
     var prf_valid_rs1_rdata = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
+
     var prf_valid_rs2_rdata = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))

@@ -102,7 +102,7 @@ class CPUCore(memfile: String) extends Module
     /* fetch -> memory */
     for(i <- 0 until base.FETCH_WIDTH){
         memory.io.ren(i)            := fetch.io.inst_valid_mask_o(i)
-        memory.io.raddr(i)          := fetch.io.inst_valid_mask_o(i)
+        memory.io.raddr(i)          := fetch.io.pc_vec_o(i)
     }
     
     /* fetch -> decode */

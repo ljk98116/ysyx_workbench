@@ -38,20 +38,16 @@ class FreeRegBuffer(id : Int) extends Module
     io.freeregbuf_empty := head === tail
     io.freeregbuf_full := tail + 1.U === head
 
-    when(rvalid & (head =/= (regnum - 1).U)){
+    when(rvalid){
         head := head + 1.U
-    }.otherwise{
-        head := 0.U
     }
 
-    when(wvalid & (tail =/= (regnum - 1).U)){
+    when(wvalid){
         tail := tail + 1.U
-    }.otherwise{
-        tail := 0.U
     }
     
     /* 初始化 */
-    when(~reset.asBool){
+    when(reset.asBool){
         for(i <- 0 until regnum){
             RegIdSram.write(i.U, (id * 32 + i).U)
         }

@@ -38,20 +38,16 @@ class ROBIDBuffer(id : Int) extends Module
     io.freeidbuf_empty := head === tail
     io.freeidbuf_full := tail + 1.U === head
 
-    when(rvalid & (head =/= (idnum - 1).U)){
+    when(rvalid){
         head := head + 1.U
-    }.otherwise{
-        head := 0.U
     }
 
-    when(wvalid & (tail =/= (idnum - 1).U)){
+    when(wvalid){
         tail := tail + 1.U
-    }.otherwise{
-        tail := 0.U
     }
     
     /* 初始化 */
-    when(~reset.asBool){
+    when(reset.asBool){
         for(i <- 0 until idnum){
             FreeIdSram.write(i.U, (id * 32 + i).U)
         }

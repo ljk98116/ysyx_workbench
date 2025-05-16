@@ -41,6 +41,8 @@ static void paddr_write(int waddr, int wdata){
 }
 
 extern "C" int pmem_read(int raddr){
+    if((long long)(raddr & ~0x3u) - RESET_VECTOR < 0) return 0;
+    printf("read addr: 0x%x\n", raddr);
     return *(int*)&pmem[(raddr & ~0x3u) - RESET_VECTOR];
 }
 
@@ -137,7 +139,7 @@ int main(int argc, char **argv){
     Verilated::traceEverOn(true); // 启用跟踪
     VerilatedVcdC* tfp = new VerilatedVcdC; // 创建 VCD 对象
     dut.trace(tfp, 99); // 跟踪所有信号（99=递归深度）
-    tfp->open("wave.vcd"); // 输出文件名    
+    tfp->open("wave2.vcd"); // 输出文件名    
     //仿真CPU
     //初始化ref CPU状态
     memset(&cpu, 0, sizeof(CPU_state));
@@ -152,6 +154,7 @@ int main(int argc, char **argv){
     uint32_t npc, pc;
     pc = 0;
     npc = RESET_VECTOR;
+    reset(5);
 #if 1
     while(npc != pc) {
         printf("%d cycle going\n", cycle_count);
