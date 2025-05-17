@@ -13,12 +13,12 @@ class PCReg extends Module
         /* output */
         val pc_o = Output(UInt(base.ADDR_WIDTH.W))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
-        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
     })
 
     var pc_reg = RegInit((base.RESET_VECTOR.U)(base.ADDR_WIDTH.W))
     var inst_valid_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
-    var inst_valid_cnt = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    var inst_valid_cnt = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     var nextpc = WireInit((0.U)(base.ADDR_WIDTH.W))
 
     switch(pc_reg(3, 0))
@@ -48,6 +48,6 @@ class PCReg extends Module
     pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, nextpc)
 
     io.pc_o := pc_reg
-    io.inst_valid_mask_o := inst_valid_mask
-    io.inst_valid_cnt_o  := inst_valid_cnt
+    io.inst_valid_mask_o := Mux(~io.rat_flush_en, inst_valid_mask, 0.U)
+    io.inst_valid_cnt_o  := Mux(~io.rat_flush_en, inst_valid_cnt, 0.U)
 }

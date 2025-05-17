@@ -96,7 +96,8 @@ class RetireStage extends Module
             "b1110".U,
             "b1101".U,
             "b1011".U,
-            "b0111".U
+            "b0111".U,
+            "b1111".U
         ){
             store_mask(0) := true.B
             store_mask(1) := true.B
@@ -106,15 +107,21 @@ class RetireStage extends Module
     }
 
     switch(branch_mask_mid.asUInt){
-        is("b1100".U, "b1000".U, "b0100".U, "b0000".U){
+        is(
+            "b0000".U, 
+            "b0010".U, "b0100".U, "b1000".U,
+            "b0110".U, "b1100".U, "b1010".U,
+            "b1110".U
+        ){
             branch_mask(0) := true.B
             branch_mask(1) := false.B
             branch_mask(2) := false.B
             branch_mask(3) := false.B
         }
         is(
-            "b1010".U, "b0010".U,
-            "b0001".U, "b1001".U
+            "b0001".U, 
+            "b0101".U, "b1001".U,
+            "b1101".U
         ){
             branch_mask(0) := true.B
             branch_mask(1) := true.B
@@ -122,20 +129,15 @@ class RetireStage extends Module
             branch_mask(3) := false.B
         }
         is(
-            "b0110".U,
-            "b0011".U, 
-            "b0101".U
+            "b0011".U, "b1011".U
         ){
             branch_mask(0) := true.B
             branch_mask(1) := true.B
             branch_mask(2) := true.B
-            branch_mask(3) := false.B           
+            branch_mask(3) := false.B            
         }
         is(
-            "b1110".U,
-            "b1101".U,
-            "b1011".U,
-            "b0111".U
+            "b1111".U, "b0111".U
         ){
             branch_mask(0) := true.B
             branch_mask(1) := true.B
@@ -174,7 +176,8 @@ class RetireStage extends Module
             "b1110".U,
             "b1101".U,
             "b1011".U,
-            "b0111".U
+            "b0111".U,
+            "b1111".U
         ){
             load_mask(0) := true.B
             load_mask(1) := true.B
@@ -183,33 +186,44 @@ class RetireStage extends Module
         }
     }    
 
-    var rob_item_rdy_mask = WireInit(VecInit(
+    var rob_item_rdy_mask_mid = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
-
+    var rob_item_rdy_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
     for(i <- 0 until base.FETCH_WIDTH){
-        rob_item_rdy_mask(i) := 
-            store_mask(i) & load_mask(i) & branch_mask(i) & io.rob_items_i(i).rdy & ~io.free_reg_id_buf_full(i)
+        rob_item_rdy_mask_mid(i) := 
+            load_mask(i) & branch_mask(i) & store_mask(i) & io.rob_items_i(i).rdy
     }
-
-    var commit_cnt_mid = WireInit(VecInit(
-        Seq.fill(2)((0.U)(log2Ceil(base.FETCH_WIDTH).W))
-    ))
-
     var rob_item_commit_cnt = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
-    for(i <- 0 until 2){
-        commit_cnt_mid(i) := rob_item_rdy_mask(2 * i) + rob_item_rdy_mask(2 * i + 1)
+    rob_item_commit_cnt := 0.U
+    rob_item_rdy_mask := 0.U
+    switch(rob_item_rdy_mask_mid.asUInt){
+        is("b0001".U, "b0101".U, "b1001".U, "b1101".U){
+            rob_item_rdy_mask := "b0001".U
+            rob_item_commit_cnt := 1.U
+        }
+        is("b0011".U, "b1011".U){
+            rob_item_rdy_mask := "b0011".U
+            rob_item_commit_cnt := 2.U
+        }
+        is("b0111".U){
+            rob_item_rdy_mask := "b0111".U
+            rob_item_commit_cnt := 3.U            
+        }
+        is("b1111".U){
+            rob_item_rdy_mask := "b1111".U
+            rob_item_commit_cnt := 4.U
+        }
     }
-    rob_item_commit_cnt := commit_cnt_mid(0) + commit_cnt_mid(1)
 
     /* 存在分支预测错误刷新流水线 */
-    var rat_flush_en = WireInit(false.B)
-    rat_flush_en := branch_mask.asUInt.andR
-
     var rat_flush_pc = WireInit((0.U)(base.ADDR_WIDTH.W))
     var encoder = Module(new utils.PriorityEncoder(base.FETCH_WIDTH))
-    encoder.io.val_i := ~branch_mask.asUInt
+    encoder.io.val_i := ~(branch_mask_mid.asUInt)
     rat_flush_pc := io.rob_items_i(encoder.io.idx_o).targetBrAddr
+
+    var rat_flush_en = WireInit(false.B)
+    rat_flush_en := rob_item_rdy_mask(encoder.io.idx_o) & ~(branch_mask_mid.asUInt) =/= 0.U 
 
     /* retire RAT */
     var rat_write_en = WireInit(VecInit(
@@ -260,7 +274,7 @@ class RetireStage extends Module
     }    
 
     /* connect */
-    io.rob_item_rdy_mask := rob_item_rdy_mask.asUInt
+    io.rob_item_rdy_mask := rob_item_rdy_mask
     io.rob_item_commit_cnt := rob_item_commit_cnt
     io.rat_write_en := rat_write_en
     io.rat_write_addr := rat_write_addr

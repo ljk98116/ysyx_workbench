@@ -12,11 +12,11 @@ class Fetch extends Module
     val io = IO(new Bundle{
         val pc_i = Input(UInt(base.ADDR_WIDTH.W))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
-        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
         val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
-        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
     })
 
     /* pipeline */
@@ -26,14 +26,14 @@ class Fetch extends Module
     var pc = RegInit((0.U)(base.ADDR_WIDTH.W))
     pc := io.pc_i
 
-    var inst_valid_cnt = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    var inst_valid_cnt = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     inst_valid_cnt := io.inst_valid_cnt_i
 
     var inst_valid_mask_o = WireInit((0.U)(base.FETCH_WIDTH.W))
     var pc_vec_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
     ))
-    var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     inst_valid_mask_o := inst_valid_mask
     pc_vec_o(0) := pc
     pc_vec_o(1) := pc + 4.U

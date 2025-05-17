@@ -161,6 +161,11 @@ class CPUCore(memfile: String) extends Module
     ReNameRAT.io.rat_wen            := rename2.io.rat_wen_o
     ReNameRAT.io.rat_waddr          := rename2.io.rat_waddr_o
     ReNameRAT.io.rat_wdata          := rename2.io.rat_wdata_o
+
+    /* rename2 -> prf */
+    prf.io.prf_valid_rd_wen         := rename2.io.prf_valid_rd_wen
+    prf.io.prf_valid_rd_waddr       := rename2.io.prf_valid_rd_waddr
+    prf.io.prf_valid_rd_wdata       := rename2.io.prf_valid_rd_wdata
     
     /* ReNameRAT -> rename2 */
     rename2.io.rat_rdata_i          := ReNameRAT.io.rat_rdata
@@ -314,6 +319,7 @@ class CPUCore(memfile: String) extends Module
 
     /* retire -> ROB */
     rob_buffer.io.commit_num_i          := retire.io.rob_item_commit_cnt
+    rob_buffer.io.rat_flush_en          := retire.io.rat_flush_en
 
     /* retire -> retireRAT */
     retireRAT.io.rat_wen                := retire.io.rat_write_en.asUInt

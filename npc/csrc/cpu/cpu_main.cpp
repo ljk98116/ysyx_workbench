@@ -156,7 +156,7 @@ int main(int argc, char **argv){
     npc = RESET_VECTOR;
     reset(5);
 #if 1
-    while(npc != pc) {
+    while(cycle_count < 100) {
         printf("%d cycle going\n", cycle_count);
         //CPU运行一个周期
         single_cycle();
@@ -169,7 +169,6 @@ int main(int argc, char **argv){
         //提交指令组的disasm构建itrace
         //根据提交指令组的内容构建ftrace
         //访存暂时没有思路
-
         // 记录上一个PC值
         pc = npc;
         //nemu执行指令，需要根据提交指令数量进行调整

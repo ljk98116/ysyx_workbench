@@ -14,12 +14,12 @@ class RenameStage1 extends Module
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val DecodeRes_i = Input(Vec(base.FETCH_WIDTH, new DecodeRes))
         val freereg_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
-        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
         val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
         val DecodeRes_o = Output(Vec(base.FETCH_WIDTH, new DecodeRes))
-        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
         /* RAW相关性信息 */ 
         val rs1_match = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
@@ -47,7 +47,7 @@ class RenameStage1 extends Module
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new DecodeRes)))
     )
 
-    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
 
     pc_vec_reg := io.pc_vec_i
     inst_valid_mask_reg := io.inst_valid_mask_i

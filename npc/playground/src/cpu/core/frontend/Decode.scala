@@ -10,18 +10,18 @@ class Decode extends Module
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.DATA_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
-        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
         val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
         val DecodeRes_o = Output(Vec(base.FETCH_WIDTH, new DecodeRes()))
-        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
     })
 
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
     var inst_valid_mask_reg = RegInit((0.U)(base.FETCH_WIDTH.W))
-    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
 
     pc_vec_reg := io.pc_vec_i
     inst_valid_mask_reg := io.inst_valid_mask_i
@@ -95,13 +95,13 @@ class Decode extends Module
                     decoderes(i).IsStore := true.B 
                 }
             }
-            decoderes(i).HasRs1 := (io.inst_vec_i(i)(6, 0) =/= InstType.TYPEU) & 
-                    (io.inst_vec_i(i)(6, 0) =/= InstType.TYPEUJ)
-            decoderes(i).HasRs2 := (io.inst_vec_i(i)(6, 0) =/= InstType.TYPEU) & 
-                    (io.inst_vec_i(i)(6, 0) =/= InstType.TYPEUJ) &
-                    (io.inst_vec_i(i)(6, 0) =/= InstType.TYPEI)
-            decoderes(i).HasRd := (io.inst_vec_i(i)(6, 0) =/= InstType.TYPES) & 
-                (io.inst_vec_i(i)(6, 0) =/= InstType.TYPESB)
+            decoderes(i).HasRs1 := (decoderes(i).Type =/= InstType.TYPEU) & 
+                    (decoderes(i).Type =/= InstType.TYPEUJ)
+            decoderes(i).HasRs2 := (decoderes(i).Type =/= InstType.TYPEU) & 
+                    (decoderes(i).Type =/= InstType.TYPEUJ) &
+                    (decoderes(i).Type =/= InstType.TYPEI)
+            decoderes(i).HasRd := (decoderes(i).Type =/= InstType.TYPES) & 
+                (decoderes(i).Type =/= InstType.TYPESB)
         }
     }
 

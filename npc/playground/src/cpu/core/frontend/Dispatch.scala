@@ -11,12 +11,13 @@ import cpu.config.base.FETCH_WIDTH
 /* 使用lut统计各种指令的数目, ALU固定4通道无需计算数量, 其他类型FU需要计算步长 */
 /* 发射写入时需要判断写入哪个位置的结果 */
 /* 更新新指令的ps1, ps2的ready情况，使用物理寄存器状态(历史)，总线状态(防止发射级需要读物理寄存器状态) */
+/* 将对应pd的valid设置为false */
 class Dispatch extends Module
 {
     val agu_step = base.FETCH_WIDTH / base.AGU_NUM
     var io = IO(new Bundle {
         val rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
-        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
         val alu_items_vec_o = Output(Vec(base.ALU_NUM, new ROBItem))
         val agu_items_vec_o = Output(
             Vec(base.AGU_NUM, Vec(agu_step, new ROBItem)))
@@ -30,13 +31,14 @@ class Dispatch extends Module
         val prf_valid_rs2_raddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
         val prf_valid_rs1_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
         val prf_valid_rs2_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
+
         /* store buffer write */
         val store_buffer_write_en = Output(Bool())
         val store_buffer_item_o = Output(Vec(base.FETCH_WIDTH, new StoreBufferItem))
         val store_buffer_item_cnt = Output(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
 
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
-        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH).W))
+        val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
     })
 
     /* pipeline */
@@ -45,7 +47,7 @@ class Dispatch extends Module
     ))
     rob_item_reg := io.rob_item_i
 
-    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+    var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     inst_valid_cnt_reg := io.inst_valid_cnt_i
 
     /* 物理寄存器有效状态使能 */
@@ -61,6 +63,7 @@ class Dispatch extends Module
     var prf_valid_rs2_raddr = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
     ))
+
     for(i <- 0 until base.FETCH_WIDTH){
         prf_valid_rs1_ren(i) := rob_item_reg(i).HasRs1
         prf_valid_rs1_raddr(i) := rob_item_reg(i).ps1
@@ -75,10 +78,65 @@ class Dispatch extends Module
     var rob_items_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    rob_items := rob_item_reg
-    rob_items_o := rob_item_reg
+    for(i <- 0 until base.FETCH_WIDTH){
+        rob_items_o(i).pc := rob_item_reg(i).pc
+        rob_items_o(i).valid := rob_item_reg(i).valid
+        rob_items_o(i).Imm := rob_item_reg(i).Imm
+        rob_items_o(i).Opcode := rob_item_reg(i).Opcode
+        rob_items_o(i).rs1 := rob_item_reg(i).rs1
+        rob_items_o(i).rs2 := rob_item_reg(i).rs2
+        rob_items_o(i).rd := rob_item_reg(i).rd
+        rob_items_o(i).funct3 := rob_item_reg(i).funct3
+        rob_items_o(i).funct7 := rob_item_reg(i).funct7
+        rob_items_o(i).shamt := rob_item_reg(i).shamt
+        rob_items_o(i).Type := rob_item_reg(i).Type
+        rob_items_o(i).HasRs1 := rob_item_reg(i).HasRs1
+        rob_items_o(i).HasRs2 := rob_item_reg(i).HasRs2
+        rob_items_o(i).HasRd := rob_item_reg(i).HasRd
+        rob_items_o(i).id := rob_item_reg(i).id
+        rob_items_o(i).ps1 := rob_item_reg(i).ps1
+        rob_items_o(i).ps2 := rob_item_reg(i).ps2
+        rob_items_o(i).pd := rob_item_reg(i).pd
+        rob_items_o(i).oldpd := rob_item_reg(i).oldpd
+        rob_items_o(i).rdy1 := rob_item_reg(i).rdy1
+        rob_items_o(i).rdy2 := rob_item_reg(i).rdy2
+        rob_items_o(i).rdy := rob_item_reg(i).rdy
+        rob_items_o(i).isBranch := rob_item_reg(i).isBranch
+        rob_items_o(i).isStore := rob_item_reg(i).isStore
+        rob_items_o(i).isLoad := rob_item_reg(i).isLoad
+        rob_items_o(i).misBrPred := rob_item_reg(i).misBrPred
+        rob_items_o(i).targetBrAddr := rob_item_reg(i).targetBrAddr
 
-    var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH).W))
+        rob_items(i).pc := rob_item_reg(i).pc
+        rob_items(i).valid := rob_item_reg(i).valid
+        rob_items(i).Imm := rob_item_reg(i).Imm
+        rob_items(i).Opcode := rob_item_reg(i).Opcode
+        rob_items(i).rs1 := rob_item_reg(i).rs1
+        rob_items(i).rs2 := rob_item_reg(i).rs2
+        rob_items(i).rd := rob_item_reg(i).rd
+        rob_items(i).funct3 := rob_item_reg(i).funct3
+        rob_items(i).funct7 := rob_item_reg(i).funct7
+        rob_items(i).shamt := rob_item_reg(i).shamt
+        rob_items(i).Type := rob_item_reg(i).Type
+        rob_items(i).HasRs1 := rob_item_reg(i).HasRs1
+        rob_items(i).HasRs2 := rob_item_reg(i).HasRs2
+        rob_items(i).HasRd := rob_item_reg(i).HasRd
+        rob_items(i).id := rob_item_reg(i).id
+        rob_items(i).ps1 := rob_item_reg(i).ps1
+        rob_items(i).ps2 := rob_item_reg(i).ps2
+        rob_items(i).pd := rob_item_reg(i).pd
+        rob_items(i).oldpd := rob_item_reg(i).oldpd
+        rob_items(i).rdy1 := rob_item_reg(i).rdy1
+        rob_items(i).rdy2 := rob_item_reg(i).rdy2
+        rob_items(i).rdy := rob_item_reg(i).rdy
+        rob_items(i).isBranch := rob_item_reg(i).isBranch
+        rob_items(i).isStore := rob_item_reg(i).isStore
+        rob_items(i).isLoad := rob_item_reg(i).isLoad
+        rob_items(i).misBrPred := rob_item_reg(i).misBrPred
+        rob_items(i).targetBrAddr := rob_item_reg(i).targetBrAddr
+    }
+
+    var inst_valid_cnt_o = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
     inst_valid_cnt_o := inst_valid_cnt_reg
 
     for(i <- 0 until base.FETCH_WIDTH){
@@ -198,6 +256,7 @@ class Dispatch extends Module
     io.prf_valid_rs1_raddr := prf_valid_rs1_raddr
     io.prf_valid_rs2_ren := prf_valid_rs2_ren
     io.prf_valid_rs2_raddr := prf_valid_rs2_raddr
+
     io.rob_item_o := rob_items_o
     io.inst_valid_cnt_o := inst_valid_cnt_o
 

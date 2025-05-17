@@ -16,6 +16,7 @@ class ReserveFreeIdBuffer(size : Int) extends Module
         /* issue stage */
         val issued_i = Input(Bool())
         val issued_id_i = Input(UInt(width.W))
+        val free_id_ren = Input(Bool())
 
         /* output */
         val free_id_o = Output(UInt(width.W)) 
@@ -38,10 +39,10 @@ class ReserveFreeIdBuffer(size : Int) extends Module
     }
 
     var free_id_o = WireInit((0.U)(width.W))
-    free_id_o := IDRegFile(head)
+    free_id_o := Mux(io.free_id_ren, IDRegFile(head), 0.U)
 
-    head := Mux(io.rd_able, head + 1.U, head)
-    tail := Mux(io.wr_able, tail + io.issued_i.asUInt, tail)
+    head := Mux(io.rd_able & io.free_id_ren, head + 1.U, head)
+    tail := Mux(io.wr_able & io.issued_i, tail + io.issued_i.asUInt, tail)
 
     /* connect */
     io.free_id_o := free_id_o
@@ -69,6 +70,7 @@ class ALUReserveStation(size: Int) extends Module {
     /* 读写使能与空闲队列保持一致 */
     io.read_able := freeIdBuffer.io.rd_able
     io.write_able := freeIdBuffer.io.wr_able
+    freeIdBuffer.io.free_id_ren := io.rob_item_i.valid
 
     /* age matrix */
     var age_mat = RegInit(VecInit(
@@ -89,7 +91,7 @@ class ALUReserveStation(size: Int) extends Module {
     for(i <- 0 until size){
         issue_able_vec(i) := ~(
             (rob_item_reg(i).HasRs1 & ~rob_item_reg(i).rdy1) | 
-            (rob_item_reg(i).HasRs2 & ~rob_item_reg(i).rdy2))
+            (rob_item_reg(i).HasRs2 & ~rob_item_reg(i).rdy2)) & rob_item_reg(i).valid
     }
     /* 能发射且比其他能发射的矩阵年长 */
     var issue_oh_vec = WireInit(VecInit(
@@ -97,12 +99,16 @@ class ALUReserveStation(size: Int) extends Module {
     ))
     for(i <- 0 until size){
         var issue_loc_mask = WireInit(VecInit(
-            Seq.fill(size)(false.B)
+            Seq.fill(size)(true.B)
         ))
-        /* 对于每个能发射的位置i必须比j年长，要么不能发射 */
+        /* 对于每个能发射的位置i必须比j年长或者j位置无效，要么不能发射 */
+        /* 不能发射同样满足条件 */
         for(j <- 0 until size){
-            issue_loc_mask(j) := ~issue_able_vec(j) | (issue_able_vec(j) & age_mat(i)(j))
+            if(j != i){
+                issue_loc_mask(j) := ~issue_able_vec(j) | (issue_able_vec(j) & (age_mat(i)(j) | ~rob_item_reg(j).valid))
+            }
         }
+        issue_loc_mask(i) := true.B
         issue_oh_vec(i) := issue_able_vec(i) & issue_loc_mask.asUInt.andR
     }
 
@@ -150,7 +156,7 @@ class ALUReserveStation(size: Int) extends Module {
     /* update age matrix, age[i]为0表示当前ID比其他位置都年轻*/
     /* 新分配的reg更新年龄矩阵 */
     for(i <- 0 until size){
-        when(i.U === freeIdBuffer.io.free_id_o){
+        when(i.U === freeIdBuffer.io.free_id_o & io.rob_item_i.valid){
             rob_item_reg(i) := rob_item_i_update
             /* 有效的项比新写入的项要老 */
             for(j <- 0 until size){
@@ -169,13 +175,13 @@ class ALUReserveStation(size: Int) extends Module {
             var rdy2_vec = WireInit(VecInit(
                 Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
             ))
-            for(i <- 0 until base.ALU_NUM){
-                rdy1_vec(i) := io.cdb_i.alu_channel(i).phy_reg_id === rob_item_reg(i).ps1
-                rdy2_vec(i) := io.cdb_i.alu_channel(i).phy_reg_id === rob_item_reg(i).ps2
+            for(j <- 0 until base.ALU_NUM){
+                rdy1_vec(j) := io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps1
+                rdy2_vec(j) := io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps2
             }
-            for(i <- 0 until base.AGU_NUM){
-                rdy1_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === rob_item_reg(i).ps1
-                rdy2_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === rob_item_reg(i).ps2
+            for(j <- 0 until base.AGU_NUM){
+                rdy1_vec(j + base.ALU_NUM) := io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1
+                rdy2_vec(j + base.ALU_NUM) := io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2
             }
             rob_item_reg(i).rdy1 := rdy1_vec.asUInt.orR
             rob_item_reg(i).rdy2 := rdy2_vec.asUInt.orR

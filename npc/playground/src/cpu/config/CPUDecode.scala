@@ -36,7 +36,7 @@ object Imm{
         return Ext.sext(inst(31, 20), 11)
     }
     def ImmU(inst : UInt):UInt = {
-        return inst(31, 20) ## 0.U(12.W)
+        return inst(31, 12) ## 0.U(12.W)
     }
     def ImmS(inst : UInt): UInt = {
         return Fill(20, inst(31)) ## inst(31, 25) ## inst(11, 7)
