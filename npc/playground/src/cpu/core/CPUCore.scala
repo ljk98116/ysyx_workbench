@@ -339,6 +339,7 @@ class CPUCore(memfile: String) extends Module
         retire.io.free_reg_id_buf_full(i)      := freeregbuf_seq(i).io.freeregbuf_full
         freeregbuf_seq(i).io.inst_valid_retire := retire.io.free_reg_id_valid(i)
         freeregbuf_seq(i).io.freereg_i         := retire.io.free_reg_id_wdata(i)
+        freeregbuf_seq(i).io.rat_flush_en      := retire.io.rat_flush_en
     }
     
     /* retire <-> free rob id buffer */
@@ -346,10 +347,30 @@ class CPUCore(memfile: String) extends Module
         retire.io.free_rob_id_buf_full(i)      := robidbuf_seq(i).io.freeidbuf_full
         robidbuf_seq(i).io.inst_valid_retire   := retire.io.free_rob_id_valid(i)
         robidbuf_seq(i).io.freeid_i            := retire.io.free_rob_id_wdata(i)
+        robidbuf_seq(i).io.rat_flush_en        := retire.io.rat_flush_en
+    }
+
+    /* retire ->fetch/decode/rename1/rename2/dispatch/issue/regread/alu/agu/mem1/mem2/mem3 */
+    fetch.io.rat_flush_en                          := retire.io.rat_flush_en
+    decode.io.rat_flush_en                         := retire.io.rat_flush_en
+    rename1.io.rat_flush_en                        := retire.io.rat_flush_en
+    rename2.io.rat_flush_en                        := retire.io.rat_flush_en
+    dispatch.io.rat_flush_en                       := retire.io.rat_flush_en
+    issue.io.rat_flush_en                          := retire.io.rat_flush_en
+    regread.io.rat_flush_en                        := retire.io.rat_flush_en
+    memstage1.io.rat_flush_en                      := retire.io.rat_flush_en
+    memstage2.io.rat_flush_en                      := retire.io.rat_flush_en
+    memstage3.io.rat_flush_en                      := retire.io.rat_flush_en
+    for(i <- 0 until base.ALU_NUM){
+        alu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
+    }
+    for(i <- 0 until base.AGU_NUM){
+        agu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
     }
 
     /* rob_buffer -> storebuffer */
     storebuffer.io.rob_items_i                 := rob_buffer.io.rob_item_o
     /* retire -> storebuffer */
     storebuffer.io.rob_item_rdy_mask           := retire.io.rob_item_rdy_mask
+    storebuffer.io.rat_flush_en                := retire.io.rat_flush_en
 }

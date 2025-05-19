@@ -8,6 +8,7 @@ class ROBIDBuffer(id : Int) extends Module
 {
     val io = IO(new Bundle{
         /* retire stage */
+        val rat_flush_en = Input(Bool())
         val inst_valid_retire = Input(Bool())
         val freeid_i = Input(UInt(base.ROBID_WIDTH.W))
 
@@ -38,16 +39,20 @@ class ROBIDBuffer(id : Int) extends Module
     io.freeidbuf_empty := head === tail
     io.freeidbuf_full := tail + 1.U === head
 
-    when(rvalid){
+    when(rvalid & ~io.rat_flush_en){
         head := head + 1.U
+    }.elsewhen(io.rat_flush_en){
+        head := 0.U
     }
 
-    when(wvalid){
+    when(wvalid & ~io.rat_flush_en){
         tail := tail + 1.U
+    }.elsewhen(io.rat_flush_en){
+        tail := (idnum - 1).U
     }
     
     /* 初始化 */
-    when(reset.asBool){
+    when(reset.asBool | io.rat_flush_en){
         for(i <- 0 until idnum){
             FreeIdSram.write(i.U, (id * 32 + i).U)
         }
@@ -61,7 +66,7 @@ class ROBIDBuffer(id : Int) extends Module
     }
 
     /* 写入 */
-    when(io.inst_valid_retire & ~io.freeidbuf_full){
+    when(io.inst_valid_retire & ~io.freeidbuf_full & ~io.rat_flush_en){
         FreeIdSram.write(tail, io.freeid_i)
     }
 }

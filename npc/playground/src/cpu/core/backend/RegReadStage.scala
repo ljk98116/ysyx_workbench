@@ -5,10 +5,12 @@ import chisel3.util._
 
 import cpu.config._
 import cpu.config.base.ALU_NUM
+import cpu.core.ROB
 
 class RegReadStage extends Module
 {
     val io = IO(new Bundle {
+        val rat_flush_en = Input(Bool())
         val alu_fu_items_i = Input(Vec(base.ALU_NUM, new ROBItem))
         val agu_fu_items_i = Input(Vec(base.AGU_NUM, new ROBItem))
         /* PRF 读使能 */
@@ -36,8 +38,8 @@ class RegReadStage extends Module
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
 
-    alu_fu_items_reg := io.alu_fu_items_i
-    agu_fu_items_reg := io.agu_fu_items_i
+    alu_fu_items_reg := Mux(~io.rat_flush_en, io.alu_fu_items_i, VecInit(Seq.fill(base.ALU_NUM)(0.U.asTypeOf(new ROBItem))))
+    agu_fu_items_reg := Mux(~io.rat_flush_en, io.agu_fu_items_i, VecInit(Seq.fill(base.AGU_NUM)(0.U.asTypeOf(new ROBItem))))
 
     var prf_rs1_data_ren = WireInit(VecInit(
         Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)

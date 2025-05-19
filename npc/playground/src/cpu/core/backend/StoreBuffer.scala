@@ -12,6 +12,7 @@ import cpu.config.base.AGU_NUM
 class StoreBuffer(size : Int) extends Module{
     var width = log2Ceil(size)
     val io = IO(new Bundle{
+        val rat_flush_en = Input(Bool())
         /* Dispatch */
         val store_buffer_write_en = Input(Bool())
         val store_buffer_item_cnt = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
@@ -56,13 +57,13 @@ class StoreBuffer(size : Int) extends Module{
 
     /* 更新写入项逻辑 */
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.store_buffer_write_en & io.wr_able & io.store_buffer_item_i(i).valid){
+        when(io.store_buffer_write_en & io.wr_able & io.store_buffer_item_i(i).valid & ~io.rat_flush_en){
             store_buffer_vec(tail + i.U) := io.store_buffer_item_i(i)
             store_buffer_mapping(io.store_buffer_item_i(i).rob_id) := tail + i.U
         }
     }
 
-    when(rd_able & store_buffer_vec(head).rdy){
+    when(rd_able & store_buffer_vec(head).rdy & ~io.rat_flush_en){
         store_buffer_vec(head) := 0.U.asTypeOf(new StoreBufferItem)
         store_buffer_mapping(store_buffer_vec(head).rob_id) := 0.U
     }
@@ -70,8 +71,8 @@ class StoreBuffer(size : Int) extends Module{
     wr_able := tail + io.store_buffer_item_cnt < head
     rd_able := head =/= tail
 
-    tail := Mux(wr_able, tail + io.store_buffer_item_cnt, tail)
-    head := Mux(rd_able & store_buffer_vec(head).rdy, head + 1.U, head)
+    tail := Mux(wr_able, tail + io.store_buffer_item_cnt, Mux(~io.rat_flush_en, tail, 0.U))
+    head := Mux(rd_able & store_buffer_vec(head).rdy, head + 1.U, Mux(~io.rat_flush_en, head, 0.U))
 
     var store_buffer_target_addrs = WireInit(VecInit(
         Seq.fill(size)((0.U)(base.ADDR_WIDTH.W))
@@ -82,7 +83,7 @@ class StoreBuffer(size : Int) extends Module{
     }
 
     for(i <- 0 until base.AGU_NUM){
-        when(io.agu_lsflag_i(i)){
+        when(io.agu_lsflag_i(i) & ~io.rat_flush_en){
             store_buffer_vec(store_buffer_mapping(io.agu_robid_i(i))).agu_result := io.agu_result_i(i)
             store_buffer_vec(store_buffer_mapping(io.agu_robid_i(i))).rdy := true.B
             store_buffer_vec(store_buffer_mapping(io.agu_robid_i(i))).wmask := io.agu_wmask_i(i)
@@ -100,7 +101,7 @@ class StoreBuffer(size : Int) extends Module{
 
     /* 更新ROB顶部指令状态 */
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.rob_item_rdy_mask(i) & (io.rob_items_i(i).Opcode === Opcode.SW)){
+        when(io.rob_item_rdy_mask(i) & (io.rob_items_i(i).Opcode === Opcode.SW) & io.rat_flush_en){
             store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).rob_rdy := 
                 store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).valid
         }

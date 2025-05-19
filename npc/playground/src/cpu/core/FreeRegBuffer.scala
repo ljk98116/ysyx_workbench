@@ -4,10 +4,12 @@ import chisel3._
 import chisel3.util._
 import cpu.config._
 
+/* 刷新流水线时的恢复,需要将异常指令后ROB内所有指令的占用的物理寄存器释放 */
 class FreeRegBuffer(id : Int) extends Module
 {
     val io = IO(new Bundle{
         /* retire stage */
+        val rat_flush_en = Input(Bool())
         val inst_valid_retire = Input(Bool())
         val freereg_i = Input(UInt(base.PREG_WIDTH.W))
 
@@ -38,11 +40,11 @@ class FreeRegBuffer(id : Int) extends Module
     io.freeregbuf_empty := head === tail
     io.freeregbuf_full := tail + 1.U === head
 
-    when(rvalid){
+    when(rvalid & ~io.rat_flush_en){
         head := head + 1.U
     }
 
-    when(wvalid){
+    when(wvalid & ~io.rat_flush_en){
         tail := tail + 1.U
     }
     

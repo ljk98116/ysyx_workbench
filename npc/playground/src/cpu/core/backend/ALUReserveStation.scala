@@ -54,6 +54,7 @@ class ReserveFreeIdBuffer(size : Int) extends Module
 /* 组合逻辑判断当前每一项是否是最老的能发射的 */
 class ALUReserveStation(size: Int) extends Module {
     val io = IO(new Bundle {
+        val rat_flush_en = Input(Bool())
         var rob_item_i = Input(new ROBItem)
         /* 总线状态 */
         var cdb_i = Input(new CDB)
@@ -126,6 +127,10 @@ class ALUReserveStation(size: Int) extends Module {
                 for(j <- 0 until size){
                     age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
                 }
+            }.elsewhen(io.rat_flush_en){
+                for(j <- 0 until size){
+                    age_mat(i)(j) := false.B
+                }                
             }
         }
     }
@@ -167,7 +172,7 @@ class ALUReserveStation(size: Int) extends Module {
                     age_mat(i)(j) := false.B
                 }
             }
-        }.otherwise{
+        }.elsewhen(~io.rat_flush_en){
             var rob_item = WireInit((0.U).asTypeOf(new ROBItem))
             var rdy1_vec = WireInit(VecInit(
                 Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
@@ -185,6 +190,8 @@ class ALUReserveStation(size: Int) extends Module {
             }
             rob_item_reg(i).rdy1 := rdy1_vec.asUInt.orR
             rob_item_reg(i).rdy2 := rdy2_vec.asUInt.orR
+        }.otherwise{
+            rob_item_reg(i) := 0.U.asTypeOf(new ROBItem)
         }
     }
 }

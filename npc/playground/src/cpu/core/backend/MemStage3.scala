@@ -8,6 +8,7 @@ import chisel3.util._
 class MemStage3 extends Module{
     val width = log2Ceil(base.STORE_BUF_SZ)
     val io = IO(new Bundle {
+        val rat_flush_en = Input(Bool())
         val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
         val rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
         val mem_read_en_i = Input(Vec(base.AGU_NUM, Bool()))
@@ -29,9 +30,9 @@ class MemStage3 extends Module{
         Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
 
-    rob_item_reg := io.rob_item_i
-    mem_read_en_reg := io.mem_read_en_i
-    mem_read_mask_reg := io.mem_read_mask_i
+    rob_item_reg := Mux(~io.rat_flush_en, io.rob_item_i, VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))))
+    mem_read_en_reg := Mux(~io.rat_flush_en, io.mem_read_en_i, VecInit(Seq.fill(base.AGU_NUM)(false.B)))
+    mem_read_mask_reg := Mux(~io.rat_flush_en, io.mem_read_mask_i, VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W))))
 
     var rob_item_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))

@@ -10,6 +10,7 @@ import cpu.config._
 class RenameStage2 extends Module
 {
     val io = IO(new Bundle{
+        val rat_flush_en = Input(Bool())
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
@@ -80,17 +81,17 @@ class RenameStage2 extends Module
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
 
-    pc_vec_reg := io.pc_vec_i
-    inst_valid_mask_reg := io.inst_valid_mask_i
-    DecodeRes_reg := io.DecodeRes_i
-    rat_wen_reg := io.rat_wen_i
-    rat_waddr_reg := io.rat_waddr_i
-    rat_wdata_reg := io.rat_wdata_i
-    rat_ren_reg := io.rat_ren_i
-    rat_raddr_reg := io.rat_raddr_i
-    rs1_match_reg := io.rs1_match
-    rs2_match_reg := io.rs2_match
-    inst_valid_cnt_reg := io.inst_valid_cnt_i
+    pc_vec_reg := Mux(~io.rat_flush_en, io.pc_vec_i, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
+    inst_valid_mask_reg := Mux(~io.rat_flush_en, io.inst_valid_mask_i, 0.U)
+    DecodeRes_reg := Mux(~io.rat_flush_en, io.DecodeRes_i, VecInit(Seq.fill(base.FETCH_WIDTH)(0.U.asTypeOf(new DecodeRes))))
+    rat_wen_reg := Mux(~io.rat_flush_en, io.rat_wen_i, 0.U)
+    rat_waddr_reg := Mux(~io.rat_flush_en, io.rat_waddr_i, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.AREG_WIDTH.W))))
+    rat_wdata_reg := Mux(~io.rat_flush_en, io.rat_wdata_i, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))))
+    rat_ren_reg := Mux(~io.rat_flush_en, io.rat_ren_i, 0.U)
+    rat_raddr_reg := Mux(~io.rat_flush_en, io.rat_raddr_i, VecInit(Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.AREG_WIDTH.W))))
+    rs1_match_reg := Mux(~io.rat_flush_en, io.rs1_match, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))))
+    rs2_match_reg := Mux(~io.rat_flush_en, io.rs2_match, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))))
+    inst_valid_cnt_reg := Mux(~io.rat_flush_en, io.inst_valid_cnt_i, 0.U)
 
     /* wires */
     var rob_item_o = WireInit(

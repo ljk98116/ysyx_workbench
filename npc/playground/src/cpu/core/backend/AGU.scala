@@ -9,6 +9,7 @@ import cpu.config._
 class AGU extends Module
 {
     val io = IO(new Bundle{
+        val rat_flush_en = Input(Bool())
         val rob_item_i = Input(new ROBItem)
         val rs1_data_i = Input(UInt(base.DATA_WIDTH.W))
         val rs2_data_i = Input(UInt(base.DATA_WIDTH.W))
@@ -26,9 +27,9 @@ class AGU extends Module
     var rs1_data_reg = RegInit((0.U)(base.DATA_WIDTH.W))
     var rs2_data_reg = RegInit((0.U)(base.DATA_WIDTH.W))
 
-    rob_item_reg := io.rob_item_i
-    rs1_data_reg := io.rs1_data_i
-    rs2_data_reg := io.rs2_data_i
+    rob_item_reg := Mux(~io.rat_flush_en, io.rob_item_i, 0.U.asTypeOf(new ROBItem))
+    rs1_data_reg := Mux(~io.rat_flush_en, io.rs1_data_i, 0.U)
+    rs2_data_reg := Mux(~io.rat_flush_en, io.rs2_data_i, 0.U)
 
     var result = WireInit((0.U)(base.DATA_WIDTH.W))
     var areg_wr_addr = WireInit((0.U)(base.AREG_WIDTH.W))

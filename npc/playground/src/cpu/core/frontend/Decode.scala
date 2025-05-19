@@ -7,6 +7,7 @@ import cpu.config._
 class Decode extends Module
 {
     val io = IO(new Bundle{
+        val rat_flush_en = Input(Bool())
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.DATA_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
@@ -23,9 +24,9 @@ class Decode extends Module
     var inst_valid_mask_reg = RegInit((0.U)(base.FETCH_WIDTH.W))
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
 
-    pc_vec_reg := io.pc_vec_i
-    inst_valid_mask_reg := io.inst_valid_mask_i
-    inst_valid_cnt_reg := io.inst_valid_cnt_i
+    pc_vec_reg := Mux(~io.rat_flush_en, io.pc_vec_i, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
+    inst_valid_mask_reg := Mux(~io.rat_flush_en, io.inst_valid_mask_i, 0.U)
+    inst_valid_cnt_reg := Mux(~io.rat_flush_en, io.inst_valid_cnt_i, 0.U)
 
     io.pc_vec_o := pc_vec_reg
     io.inst_valid_mask_o := inst_valid_mask_reg

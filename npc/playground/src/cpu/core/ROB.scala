@@ -51,19 +51,14 @@ class ROB extends Module
             ROBID2LocMem(io.rob_item_i(i).id) := (tail + i.U)(base.ROBID_WIDTH - 1, 0)
         }
     }
-    for(i <- 0 until size){
-        when(io.rat_flush_en){
-            ROBItemMem(i) := 0.U.asTypeOf(new ROBItem)
-            ROBID2LocMem(i) := 0.U
-        }
-    }
+
     /* ROB r logic */
     /* 默认输出head -> head + 3的指令 */
     var rob_item_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
     for(i <- 0 until base.FETCH_WIDTH){
-        rob_item_o(i) := ROBItemMem((head + i.U)(base.ROBID_WIDTH - 1, 0))
+        rob_item_o(i) := Mux(io.robr_able, ROBItemMem((head + i.U)(base.ROBID_WIDTH - 1, 0)), 0.U.asTypeOf(new ROBItem))
     }
 
     /* ROB总线更新逻辑 */
