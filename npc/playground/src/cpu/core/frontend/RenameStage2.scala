@@ -128,6 +128,9 @@ class RenameStage2 extends Module
         rob_item_o(i).isBranch := DecodeRes_reg(i).IsBranch
         rob_item_o(i).isLoad   := DecodeRes_reg(i).IsLoad
         rob_item_o(i).isStore  := DecodeRes_reg(i).IsStore
+        rob_item_o(i).rs1      := DecodeRes_reg(i).rs1
+        rob_item_o(i).rs2      := DecodeRes_reg(i).rs2
+        rob_item_o(i).rd       := DecodeRes_reg(i).rd
         /* 暂时所有分支指令均冲刷流水线 */
         rob_item_o(i).misBrPred := DecodeRes_reg(i).IsBranch
         rob_item_o(i).oldpd := io.rat_rdata_i(3 * i + 2)

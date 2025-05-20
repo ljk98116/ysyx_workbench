@@ -4,69 +4,56 @@ import chisel3._
 import chisel3.util._
 import cpu.config._
 
-class ROBIDBuffer(id : Int) extends Module
+/* 遇到分支指令或者可能触发中断异常的指令进行checkpoint记录 */
+class ROBIDBuffer extends Module
 {
     val io = IO(new Bundle{
         /* retire stage */
         val rat_flush_en = Input(Bool())
-        val inst_valid_retire = Input(Bool())
-        val freeid_i = Input(UInt(base.ROBID_WIDTH.W))
+
+        val retire_cnt = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
+        val retire_rdy_mask = Input(UInt(base.FETCH_WIDTH.W))
+        val freeid_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
 
         /* output */
-        val inst_valid_rename1 = Input(Bool())
-        val freeid_o = Output(UInt(base.ROBID_WIDTH.W))
+        val inst_valid_cnt = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
+        /* 输出头部fetch_width个ID */
+        val freeid_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
 
-        val freeidbuf_empty = Output(Bool())
-        val freeidbuf_full = Output(Bool())
+        val rd_able = Output(Bool())
+        val wr_able = Output(Bool())
     })
 
-    val idnum = (1 << base.ROBID_WIDTH) / 4
+    val idnum = (1 << base.ROBID_WIDTH)
     val width = log2Ceil(idnum)
 
-    val FreeIdSram = SyncReadMem((1 << base.ROBID_WIDTH) / 4, UInt(base.ROBID_WIDTH.W))
+    val FreeIdReg = RegInit(VecInit(
+        Seq.tabulate(idnum)((i) => {i.U})
+    ))
     
     var head = RegInit((0.U)(width.W))
     var tail = RegInit(((idnum - 1).U)(width.W))
 
-    var freeregs_o = WireInit((0.U)(base.ROBID_WIDTH.W))
+    var free_id_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ROBID_WIDTH.W))
+    ))
 
-    var rvalid = WireInit(false.B)
-    rvalid := io.inst_valid_rename1 & ~io.freeidbuf_empty
+    io.rd_able := head =/= tail & head + 1.U =/= tail & head + 2.U =/= tail & head + 3.U =/= tail
+    io.wr_able := tail + 1.U =/= head & tail + 2.U =/= head & tail + 3.U =/= head & tail + 4.U =/= head
 
-    var wvalid = WireInit(false.B)
-    wvalid := io.inst_valid_retire & ~io.freeidbuf_full
+    head := Mux(io.rd_able & ~io.rat_flush_en, head + io.inst_valid_cnt, head)
+    tail := Mux(io.wr_able, tail + io.retire_cnt, tail)
 
-    io.freeidbuf_empty := head === tail
-    io.freeidbuf_full := tail + 1.U === head
-
-    when(rvalid & ~io.rat_flush_en){
-        head := head + 1.U
-    }.elsewhen(io.rat_flush_en){
-        head := 0.U
+    for(i <- 0 until base.FETCH_WIDTH){
+        free_id_o(i) := FreeIdReg(head + i.U)
     }
 
-    when(wvalid & ~io.rat_flush_en){
-        tail := tail + 1.U
-    }.elsewhen(io.rat_flush_en){
-        tail := (idnum - 1).U
-    }
-    
-    /* 初始化 */
-    when(reset.asBool | io.rat_flush_en){
-        for(i <- 0 until idnum){
-            FreeIdSram.write(i.U, (id * 32 + i).U)
+    for(i <- 0 until base.FETCH_WIDTH){
+        when(io.retire_rdy_mask(i)){
+            FreeIdReg(tail + i.U) := io.freeid_i(i)
         }
     }
 
-    /* 读取 */
-    when(io.inst_valid_rename1 & ~io.freeidbuf_empty){
-        io.freeid_o := FreeIdSram.read(head)
-    }.otherwise{
-        io.freeid_o := 0.U
-    }
-
-    /* 写入 */
-    when(io.inst_valid_retire & ~io.freeidbuf_full & ~io.rat_flush_en){
-        FreeIdSram.write(tail, io.freeid_i)
-    }
+    /* connect */
+    io.freeid_o := free_id_o
 }
