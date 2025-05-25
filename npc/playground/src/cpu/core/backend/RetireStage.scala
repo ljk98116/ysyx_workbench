@@ -21,12 +21,10 @@ class RetireStage extends Module
         val rat_write_data = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
 
         /* free reg id buffer */
-        val free_reg_id_buf_full = Input(Vec(base.FETCH_WIDTH, Bool()))
         val free_reg_id_valid = Output(Vec(base.FETCH_WIDTH, Bool()))
         val free_reg_id_wdata = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
 
         /* free rob id buffer */
-        val free_rob_id_buf_full = Input(Vec(base.FETCH_WIDTH, Bool()))
         val free_rob_id_valid = Output(Vec(base.FETCH_WIDTH, Bool()))
         val free_rob_id_wdata = Output(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
 
@@ -62,7 +60,7 @@ class RetireStage extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         store_mask_mid(i) := ~(io.rob_items_i(i).isStore)
         load_mask_mid(i) := ~(io.rob_items_i(i).isLoad)
-        branch_mask_mid(i) := ~(io.rob_items_i(i).isBranch & io.rob_items_i(i).misBrPred)
+        branch_mask_mid(i) := ~(io.rob_items_i(i).isBranch & io.rob_items_i(i).ExceptionType === ExceptionType.BRANCH_PREDICTION_ERROR.U)
     }
 
     /* 屏蔽高位重复1 */
@@ -256,7 +254,7 @@ class RetireStage extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        free_reg_id_valid(i) := ~io.free_reg_id_buf_full(i) & rob_item_rdy_mask(i) 
+        free_reg_id_valid(i) := rob_item_rdy_mask(i) 
         free_reg_id_wdata(i) := io.rob_items_i(i).oldpd
     }
 
@@ -269,7 +267,7 @@ class RetireStage extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        free_rob_id_valid(i) := ~io.free_rob_id_buf_full(i) & rob_item_rdy_mask(i) 
+        free_rob_id_valid(i) := rob_item_rdy_mask(i) 
         free_rob_id_wdata(i) := io.rob_items_i(i).id
     }    
 

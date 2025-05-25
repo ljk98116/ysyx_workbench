@@ -7,6 +7,7 @@ import cpu.config._
 
 /* 制造读使能，准备读取RAT */
 /* 分析相关性，准备下一周期修改RAT */
+/* 决定是否增加FreeRegIdBuffer的tail */
 class RenameStage1 extends Module
 {
     val io = IO(new Bundle {
@@ -115,16 +116,18 @@ class RenameStage1 extends Module
             when(DecodeRes_reg(i).HasRd & DecodeRes_reg(j).HasRd)
             {
                 rat_waw_mask(i)(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rd
+            }.otherwise{
+                rat_waw_mask(i)(j) := false.B
             }
         }
     }
 
     /* 存在WAW冲突，不写RAT */
     rat_wen := Cat(
-        ~rat_waw_mask(3).asUInt.orR,
-        ~rat_waw_mask(2).asUInt.orR, 
-        ~rat_waw_mask(1).asUInt.orR, 
-        ~rat_waw_mask(0).asUInt.orR
+        ~(rat_waw_mask(3).asUInt.orR),
+        ~(rat_waw_mask(2).asUInt.orR), 
+        ~(rat_waw_mask(1).asUInt.orR), 
+        ~(rat_waw_mask(0).asUInt.orR)
     )
 
     for(i <- 0 until base.FETCH_WIDTH)

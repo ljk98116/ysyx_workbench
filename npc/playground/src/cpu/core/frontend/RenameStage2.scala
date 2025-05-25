@@ -131,9 +131,14 @@ class RenameStage2 extends Module
         rob_item_o(i).rs1      := DecodeRes_reg(i).rs1
         rob_item_o(i).rs2      := DecodeRes_reg(i).rs2
         rob_item_o(i).rd       := DecodeRes_reg(i).rd
+        rob_item_o(i).rdy      := false.B
+        rob_item_o(i).rdy2     := false.B
+        rob_item_o(i).rdy1     := false.B
         /* 暂时所有分支指令均冲刷流水线 */
-        rob_item_o(i).misBrPred := DecodeRes_reg(i).IsBranch
+        rob_item_o(i).hasException := DecodeRes_reg(i).IsBranch
+        rob_item_o(i).ExceptionType := Mux(DecodeRes_reg(i).IsBranch, ExceptionType.BRANCH_PREDICTION_ERROR.U, ExceptionType.NORMAL.U)
         rob_item_o(i).oldpd := io.rat_rdata_i(3 * i + 2)
+        rob_item_o(i).reg_wb_data := 0.U
         when(DecodeRes_reg(i).HasRs1){
             rob_item_o(i).ps1 := Mux(rs1_match_reg(i)(2), 
                 rat_wdata_reg(2),

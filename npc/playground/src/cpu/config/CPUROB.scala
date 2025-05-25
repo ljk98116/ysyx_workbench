@@ -33,6 +33,8 @@ class ROBItem extends Bundle
     var isBranch = Bool()
     var isStore = Bool()
     var isLoad = Bool()
-    var misBrPred = Bool()
+    var hasException = Bool()
+    var ExceptionType = UInt(8.W)
     var targetBrAddr = UInt(base.ADDR_WIDTH.W)
+    var reg_wb_data = UInt(base.DATA_WIDTH.W)
 }

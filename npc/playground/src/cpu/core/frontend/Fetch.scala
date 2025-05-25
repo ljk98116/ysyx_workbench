@@ -22,13 +22,13 @@ class Fetch extends Module
 
     /* pipeline */
     var inst_valid_mask = RegInit((0.U)(base.FETCH_WIDTH.W))
-    inst_valid_mask := io.inst_valid_mask_i
+    inst_valid_mask := Mux(~io.rat_flush_en, io.inst_valid_mask_i, 0.U(base.FETCH_WIDTH.W))
 
     var pc = RegInit((0.U)(base.ADDR_WIDTH.W))
-    pc := io.pc_i
+    pc := Mux(~io.rat_flush_en, io.pc_i, (0.U)(base.ADDR_WIDTH.W))
 
     var inst_valid_cnt = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_cnt := io.inst_valid_cnt_i
+    inst_valid_cnt := Mux(~io.rat_flush_en, io.inst_valid_cnt_i, (0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
 
     var inst_valid_mask_o = WireInit((0.U)(base.FETCH_WIDTH.W))
     var pc_vec_o = WireInit(VecInit(

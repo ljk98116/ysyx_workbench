@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 
 import cpu.config._
+import cpu.config.base.FETCH_WIDTH
 
 class IssueStage extends Module
 {
@@ -37,9 +38,14 @@ class IssueStage extends Module
         Seq.fill(base.AGU_NUM)((0.U)(agu_step.W))
     ))
 
-    alu_items_vec_reg := io.alu_items_vec_i
-    agu_items_vec_reg := io.agu_items_vec_i
-    agu_items_cnt_vec_reg := io.agu_items_cnt_vec_i
+    alu_items_vec_reg := Mux(~io.rat_flush_en, io.alu_items_vec_i, VecInit(Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))))
+    agu_items_vec_reg := Mux(~io.rat_flush_en, io.agu_items_vec_i, 
+        VecInit(Seq.fill(base.AGU_NUM)(
+            VecInit(Seq.fill(agu_step)((0.U).asTypeOf(new ROBItem)))
+        )))
+    agu_items_cnt_vec_reg := Mux(~io.rat_flush_en, io.agu_items_cnt_vec_i, VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(agu_step.W))
+    ))
 
     /* ReserveStations接收总线信号 */
     /* ALU */
@@ -49,7 +55,7 @@ class IssueStage extends Module
 
     for(i <- 0 until base.ALU_NUM){
         alu_reserve_stations(i).io.cdb_i := io.cdb_i
-        alu_reserve_stations(i).io.rob_item_i := io.alu_items_vec_i(i)
+        alu_reserve_stations(i).io.rob_item_i := alu_items_vec_reg(i)
         alu_reserve_stations(i).io.rat_flush_en := io.rat_flush_en
     }
     var alu_fu_items_o = WireInit(VecInit(
@@ -74,8 +80,8 @@ class IssueStage extends Module
     }
     for(i <- 0 until base.AGU_NUM){
         agu_reserve_stations(i).io.cdb_i := io.cdb_i
-        agu_reserve_stations(i).io.rob_item_i := io.agu_items_vec_i(i)
-        agu_reserve_stations(i).io.valid_cnt_i := io.agu_items_cnt_vec_i(i)
+        agu_reserve_stations(i).io.rob_item_i := agu_items_vec_reg(i)
+        agu_reserve_stations(i).io.valid_cnt_i := agu_items_cnt_vec_reg(i)
         agu_reserve_stations(i).io.rat_flush_en := io.rat_flush_en
     }
 

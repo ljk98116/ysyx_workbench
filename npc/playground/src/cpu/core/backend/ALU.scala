@@ -40,8 +40,8 @@ class ALU extends Module
 
     areg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.rd, 0.U)
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
-    valid_o := io.rob_item_i.valid
-    rob_id_o := io.rob_item_i.id
+    valid_o := rob_item_reg.valid
+    rob_id_o := rob_item_reg.id
 
     result := 0.U
     branch_target_addr := 0.U

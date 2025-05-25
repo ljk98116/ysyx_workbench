@@ -6,6 +6,7 @@ import chisel3.util._
 import cpu.config._
 
 /* 顺序接收ROB项，顺序发射，效率极低 */
+/* 异常时清空队列 */
 class AGUReservestation(stepsize:Int, size : Int) extends Module
 {
     val width = log2Ceil(size)

@@ -14,10 +14,10 @@ class ReserveFreeIdBuffer(size : Int) extends Module
     var width = log2Ceil(size)
     val io = IO(new Bundle{
         /* issue stage */
+        val free_id_ren = Input(Bool())
+        val rat_flush_en = Input(Bool())
         val issued_i = Input(Bool())
         val issued_id_i = Input(UInt(width.W))
-        val free_id_ren = Input(Bool())
-
         /* output */
         val free_id_o = Output(UInt(width.W)) 
         val rd_able = Output(Bool())
@@ -31,18 +31,22 @@ class ReserveFreeIdBuffer(size : Int) extends Module
     var head = RegInit((0.U)(width.W))
     var tail = RegInit(((size - 1).U)(width.W))
 
-    io.rd_able := Mux(head + 1.U < tail, true.B, false.B)
-    io.wr_able := Mux(tail + io.issued_i.asUInt < head, true.B, false.B)
+    io.rd_able := (head =/= tail)
+    io.wr_able := (tail + 1.U) =/= head
 
     for(i <- 0 until size){
-        IDRegFile(i) := Mux(io.issued_i & i.U === tail, io.issued_id_i, IDRegFile(i))
+        when(~io.rat_flush_en){
+            IDRegFile(i) := Mux(io.issued_i & (i.U === tail), io.issued_id_i, IDRegFile(i)) 
+        }.otherwise{
+            IDRegFile(i) := i.U
+        }
     }
 
     var free_id_o = WireInit((0.U)(width.W))
-    free_id_o := Mux(io.free_id_ren, IDRegFile(head), 0.U)
+    free_id_o := IDRegFile(head)
 
-    head := Mux(io.rd_able & io.free_id_ren, head + 1.U, head)
-    tail := Mux(io.wr_able & io.issued_i, tail + io.issued_i.asUInt, tail)
+    head := Mux(io.rd_able, Mux(~io.rat_flush_en, head + io.free_id_ren, 0.U), head)
+    tail := Mux(io.wr_able & io.issued_i & ~io.rat_flush_en, tail + io.issued_i.asUInt, Mux(io.rat_flush_en, (size - 1).U, tail))
 
     /* connect */
     io.free_id_o := free_id_o
@@ -71,7 +75,7 @@ class ALUReserveStation(size: Int) extends Module {
     /* 读写使能与空闲队列保持一致 */
     io.read_able := freeIdBuffer.io.rd_able
     io.write_able := freeIdBuffer.io.wr_able
-    freeIdBuffer.io.free_id_ren := io.rob_item_i.valid
+    
 
     /* age matrix */
     var age_mat = RegInit(VecInit(
@@ -117,24 +121,10 @@ class ALUReserveStation(size: Int) extends Module {
     issue_idx := OHToUInt(issue_oh_vec.asUInt)
     io.rob_item_o := Mux(issue_oh_vec.asUInt =/= 0.U, rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)), (0.U).asTypeOf(new ROBItem))
     /* 回收issue_idx */
-    freeIdBuffer.io.issued_i := issue_oh_vec.asUInt.orR
+    freeIdBuffer.io.rat_flush_en := io.rat_flush_en
+    freeIdBuffer.io.issued_i := issue_oh_vec.asUInt.orR & ~io.rat_flush_en
     freeIdBuffer.io.issued_id_i := issue_idx(log2Ceil(size) - 1, 0)
-    /* 更新对应的年龄矩阵 */
-    when(freeIdBuffer.io.issued_i){
-        for(i <- 0 until size){
-            /* 此时发射后的位置比所有项都年轻 */
-            when(i.U === issue_idx){
-                for(j <- 0 until size){
-                    age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
-                }
-            }.elsewhen(io.rat_flush_en){
-                for(j <- 0 until size){
-                    age_mat(i)(j) := false.B
-                }                
-            }
-        }
-    }
-
+    freeIdBuffer.io.free_id_ren := io.rob_item_i.valid
     /* 使用总线消息更新发射队列进入项 */
     var rob_item_i_update = WireInit((0.U).asTypeOf(new ROBItem))
     /* 2 stage logic */
@@ -155,13 +145,13 @@ class ALUReserveStation(size: Int) extends Module {
         rdy1_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps1
         rdy2_vec(i + base.ALU_NUM) := io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps2
     }    
-    rob_item_i_update.rdy1 := rdy1_vec.asUInt.orR
-    rob_item_i_update.rdy2 := rdy2_vec.asUInt.orR
+    rob_item_i_update.rdy1 := rdy1_vec.asUInt.orR | io.rob_item_i.rdy1
+    rob_item_i_update.rdy2 := rdy2_vec.asUInt.orR | io.rob_item_i.rdy2
     /* update issue rob regs */
     /* update age matrix, age[i]为0表示当前ID比其他位置都年轻*/
     /* 新分配的reg更新年龄矩阵 */
     for(i <- 0 until size){
-        when(i.U === freeIdBuffer.io.free_id_o & io.rob_item_i.valid){
+        when(~io.rat_flush_en & (i.U === freeIdBuffer.io.free_id_o) & io.rob_item_i.valid){
             rob_item_reg(i) := rob_item_i_update
             /* 有效的项比新写入的项要老 */
             for(j <- 0 until size){
@@ -172,7 +162,7 @@ class ALUReserveStation(size: Int) extends Module {
                     age_mat(i)(j) := false.B
                 }
             }
-        }.elsewhen(~io.rat_flush_en){
+        }.elsewhen(~io.rat_flush_en & (i.U =/= freeIdBuffer.io.free_id_o) & rob_item_reg(i).valid & (i.U =/= issue_idx)){
             var rob_item = WireInit((0.U).asTypeOf(new ROBItem))
             var rdy1_vec = WireInit(VecInit(
                 Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
@@ -188,10 +178,17 @@ class ALUReserveStation(size: Int) extends Module {
                 rdy1_vec(j + base.ALU_NUM) := io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1
                 rdy2_vec(j + base.ALU_NUM) := io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2
             }
-            rob_item_reg(i).rdy1 := rdy1_vec.asUInt.orR
-            rob_item_reg(i).rdy2 := rdy2_vec.asUInt.orR
-        }.otherwise{
+            rob_item_reg(i).rdy1 := rdy1_vec.asUInt.orR | rob_item_reg(i).rdy1
+            rob_item_reg(i).rdy2 := rdy2_vec.asUInt.orR | rob_item_reg(i).rdy2
+        }.elsewhen((i.U === issue_idx) & freeIdBuffer.io.issued_i & ~io.rat_flush_en){
+            for(j <- 0 until size){
+                age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
+            }
+        }.elsewhen(io.rat_flush_en){
             rob_item_reg(i) := 0.U.asTypeOf(new ROBItem)
+            for(j <- 0 until size){
+                age_mat(i)(j) := false.B
+            }
         }
     }
 }

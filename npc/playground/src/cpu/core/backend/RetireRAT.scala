@@ -9,6 +9,7 @@ class RetireRAT extends Module
 {
     val io = IO(new Bundle{
         /* RAT读写使能 */
+        val rat_flush_en = Input(Bool())
         val rat_wen = Input(UInt(base.FETCH_WIDTH.W))
         val rat_waddr = Input(Vec(base.FETCH_WIDTH, UInt(base.AREG_WIDTH.W)))
         val rat_wdata = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
@@ -30,5 +31,10 @@ class RetireRAT extends Module
     }
 
     /* connect */
-    io.rat_all_data := rat_mapping
+    for(i <- 0 until 1 << base.AREG_WIDTH){
+        io.rat_all_data(i) := rat_mapping(i)
+    }
+    for(i <- 0 until base.FETCH_WIDTH){
+        io.rat_all_data(io.rat_waddr(i)) := Mux(io.rat_flush_en, io.rat_wdata(i), rat_mapping(io.rat_waddr(i))) 
+    }
 }

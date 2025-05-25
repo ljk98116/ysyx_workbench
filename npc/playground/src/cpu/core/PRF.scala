@@ -15,6 +15,7 @@ class PRF extends Module
         val prf_rs2_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.PREG_WIDTH.W)))
         /* cdb消息, 写入PRF */
         val cdb_i = Input(new CDB)
+        val rat_flush_en = Input(Bool())
         /* 读数据结果 */
         val prf_rs1_data_rdata = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val prf_rs2_data_rdata = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
@@ -59,16 +60,36 @@ class PRF extends Module
         prf_rs2_data_rdata(i) := Mux(io.prf_rs2_data_ren(i), prf_regs(io.prf_rs2_data_raddr(i)), 0.U)
     }
 
+    for(i <- 0 until (1 << base.PREG_WIDTH)){
+        for(j <- 0 until base.ALU_NUM){
+            when(io.cdb_i.alu_channel(j).phy_reg_id === i.U & ~io.rat_flush_en){
+                prf_valid_regs(i) := 
+                    Mux(io.cdb_i.alu_channel(j).valid,
+                        true.B,
+                        prf_valid_regs(i)
+                    )
+            }.elsewhen(io.rat_flush_en){
+                prf_valid_regs(i) := true.B
+            }
+        }
+        for(j <- 0 until base.AGU_NUM){
+            when(io.cdb_i.agu_channel(j).phy_reg_id === i.U & ~io.rat_flush_en){
+                prf_valid_regs(i) := 
+                    Mux(io.cdb_i.agu_channel(j).valid,
+                        true.B,
+                        prf_valid_regs(i)
+                    )                
+            }.elsewhen(io.rat_flush_en){
+                prf_valid_regs(i) := true.B
+            }
+        }
+    }
+
     for(i <- 0 until base.ALU_NUM){
         prf_regs(io.cdb_i.alu_channel(i).phy_reg_id) := 
             Mux(io.cdb_i.alu_channel(i).valid, 
                 io.cdb_i.alu_channel(i).reg_wr_data, 
                 prf_regs(io.cdb_i.alu_channel(i).phy_reg_id)
-            )
-        prf_valid_regs(io.cdb_i.alu_channel(i).phy_reg_id) := 
-            Mux(io.cdb_i.alu_channel(i).valid,
-                true.B,
-                prf_valid_regs(io.cdb_i.alu_channel(i).phy_reg_id)
             )
     }
 
@@ -77,11 +98,6 @@ class PRF extends Module
             Mux(io.cdb_i.agu_channel(i).valid, 
                 io.cdb_i.agu_channel(i).reg_wr_data, 
                 prf_regs(io.cdb_i.agu_channel(i).phy_reg_id)
-            )
-        prf_valid_regs(io.cdb_i.agu_channel(i).phy_reg_id) := 
-            Mux(io.cdb_i.agu_channel(i).valid,
-                true.B,
-                prf_valid_regs(io.cdb_i.agu_channel(i).phy_reg_id)
             )
     }    
 

@@ -115,19 +115,19 @@ class CPUCore(memfile: String) extends Module
         decode.io.inst_vec_i(i)     := memory.io.rdata(i)
     }
 
-    /* decode -> freeregbuffer */
-    for(i <- 0 until base.FETCH_WIDTH){
-        freeregbuf_seq(i).io.inst_valid_decode := decode.io.inst_valid_mask_o(i)
-    }
-
     /* rename1 -> robidbuffer */
     for(i <- 0 until base.FETCH_WIDTH){
-        robidbuf_seq(i).io.inst_valid_rename1 := rename1.io.inst_valid_mask_o(i)
+        robidbuf_seq(i).io.rat_write_en_rename := rename2.io.rob_item_o(i).valid
     }
 
     /* freeregbuffer -> renamestage1 */
     for(i <- 0 until base.FETCH_WIDTH){
         rename1.io.freereg_vec_i(i) := freeregbuf_seq(i).io.freereg_o
+    }
+
+    /* rename1 -> freeregbuffer */
+    for(i <- 0 until base.FETCH_WIDTH){
+        freeregbuf_seq(i).io.rat_write_en_rename := rename1.io.rat_wen_o(i)
     }
 
     /* decode -> renamestage1 */
@@ -138,7 +138,7 @@ class CPUCore(memfile: String) extends Module
 
     /* robidbuffer -> rename2 */
     for(i <- 0 until base.FETCH_WIDTH){
-        rename2.io.rob_freeid_vec_i(i)  := robidbuf_seq(i).io.freeid_o
+        rename2.io.rob_freeid_vec_i(i)  := robidbuf_seq(i).io.free_robid_o
     }
     
     /* rename1 -> rename2 */
@@ -172,6 +172,8 @@ class CPUCore(memfile: String) extends Module
 
     /* rename2 -> dispatch */
     dispatch.io.rob_item_i          := rename2.io.rob_item_o
+    // dontTouch(dispatch.io.rob_item_o)
+
     dispatch.io.inst_valid_cnt_i    := rename2.io.inst_valid_cnt_o
     dispatch.io.cdb_i               := cdb
     dispatch.io.prf_valid_rs1_rdata := prf.io.prf_valid_rs1_rdata
@@ -179,7 +181,6 @@ class CPUCore(memfile: String) extends Module
 
     /* dispatch -> ROB */
     rob_buffer.io.rob_item_i        := dispatch.io.rob_item_o
-    rob_buffer.io.inst_valid_cnt_i  := dispatch.io.inst_valid_cnt_o
 
     /* dispatch -> prf */
     prf.io.prf_valid_rs1_ren        := dispatch.io.prf_valid_rs1_ren
@@ -188,6 +189,8 @@ class CPUCore(memfile: String) extends Module
     prf.io.prf_valid_rs2_raddr      := dispatch.io.prf_valid_rs2_raddr
 
     /* dispatch -> IssueStage */
+    // dontTouch(dispatch.io.alu_items_vec_o)
+    // dontTouch(dispatch.io.agu_items_vec_o)
     issue.io.alu_items_vec_i        := dispatch.io.alu_items_vec_o
     issue.io.agu_items_vec_i        := dispatch.io.agu_items_vec_o
     issue.io.agu_items_cnt_vec_i    := dispatch.io.agu_items_cnt_vec_o
@@ -318,7 +321,7 @@ class CPUCore(memfile: String) extends Module
     retire.io.rob_items_i               := rob_buffer.io.rob_item_o
 
     /* retire -> ROB */
-    rob_buffer.io.commit_num_i          := retire.io.rob_item_commit_cnt
+    rob_buffer.io.retire_rdy_mask       := retire.io.rob_item_rdy_mask
     rob_buffer.io.rat_flush_en          := retire.io.rat_flush_en
 
     /* retire -> retireRAT */
@@ -336,18 +339,16 @@ class CPUCore(memfile: String) extends Module
 
     /* retire <-> free reg id buffer */
     for(i <- 0 until base.FETCH_WIDTH){
-        retire.io.free_reg_id_buf_full(i)      := freeregbuf_seq(i).io.freeregbuf_full
-        freeregbuf_seq(i).io.inst_valid_retire := retire.io.free_reg_id_valid(i)
-        freeregbuf_seq(i).io.freereg_i         := retire.io.free_reg_id_wdata(i)
-        freeregbuf_seq(i).io.rat_flush_en      := retire.io.rat_flush_en
+        freeregbuf_seq(i).io.rat_write_en_retire := retire.io.free_reg_id_valid(i)
+        freeregbuf_seq(i).io.freereg_i           := retire.io.free_reg_id_wdata(i)
+        freeregbuf_seq(i).io.rat_flush_en        := retire.io.rat_flush_en
     }
     
     /* retire <-> free rob id buffer */
     for(i <- 0 until base.FETCH_WIDTH){
-        retire.io.free_rob_id_buf_full(i)      := robidbuf_seq(i).io.freeidbuf_full
-        robidbuf_seq(i).io.inst_valid_retire   := retire.io.free_rob_id_valid(i)
-        robidbuf_seq(i).io.freeid_i            := retire.io.free_rob_id_wdata(i)
-        robidbuf_seq(i).io.rat_flush_en        := retire.io.rat_flush_en
+        robidbuf_seq(i).io.rat_write_en_retire   := retire.io.free_rob_id_valid(i)
+        robidbuf_seq(i).io.free_robid_i          := retire.io.free_rob_id_wdata(i)
+        robidbuf_seq(i).io.rat_flush_en          := retire.io.rat_flush_en
     }
 
     /* retire ->fetch/decode/rename1/rename2/dispatch/issue/regread/alu/agu/mem1/mem2/mem3 */
@@ -361,6 +362,8 @@ class CPUCore(memfile: String) extends Module
     memstage1.io.rat_flush_en                      := retire.io.rat_flush_en
     memstage2.io.rat_flush_en                      := retire.io.rat_flush_en
     memstage3.io.rat_flush_en                      := retire.io.rat_flush_en
+    prf.io.rat_flush_en                            := retire.io.rat_flush_en
+    retireRAT.io.rat_flush_en                      := retire.io.rat_flush_en
     for(i <- 0 until base.ALU_NUM){
         alu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
     }

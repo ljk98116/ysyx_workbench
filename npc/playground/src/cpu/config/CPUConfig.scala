@@ -14,3 +14,8 @@ object base
     val STORE_BUF_SZ = 4
 }
 
+object ExceptionType {
+    val NORMAL = "h00"
+    val BRANCH_PREDICTION_ERROR = "hFF"
+
+}

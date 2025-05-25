@@ -19,7 +19,7 @@ class RenameRAT extends Module
 
         /* retire stage */
         val rat_flush_en = Input(Bool())
-        val rat_flush_data = Input(Vec(1 << base.AREG_WIDTH, UInt(base.PREG_WIDTH.W)))
+        val rat_flush_data = Input(Vec(1 << base.AREG_WIDTH, UInt(base.PREG_WIDTH.W)))  
     })
 
     var rat_mapping = RegInit(VecInit(
@@ -35,11 +35,12 @@ class RenameRAT extends Module
     for(i <- 0 until (1 << base.AREG_WIDTH))
     {
         for(j <- 0 until base.FETCH_WIDTH){
-            when(io.rat_wen(j) & io.rat_waddr(j) === i.U & ~io.rat_flush_en){
+            when(io.rat_wen(j) & (io.rat_waddr(j) === i.U) & ~io.rat_flush_en){
                 rat_mapping(i) := io.rat_wdata(j)
-            }.elsewhen(io.rat_flush_en){
-                rat_mapping(i) := io.rat_flush_data(i)
             }
+        }
+        when(io.rat_flush_en){
+            rat_mapping(i) := io.rat_flush_data(i)
         }
     }
 

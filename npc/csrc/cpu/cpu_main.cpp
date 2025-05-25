@@ -156,7 +156,7 @@ int main(int argc, char **argv){
     npc = RESET_VECTOR;
     reset(5);
 #if 1
-    while(cycle_count < 100) {
+    while(cycle_count < 1000) {
         printf("%d cycle going\n", cycle_count);
         //CPU运行一个周期
         single_cycle();
