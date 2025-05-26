@@ -51,6 +51,9 @@ class Decode extends Module
                     decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
                     decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
                     decoderes(i).Type   := InstType.TYPEI
+                    decoderes(i).HasRs1 := true.B
+                    decoderes(i).HasRs2 := false.B
+                    decoderes(i).HasRd  := true.B
                 }
                 is(
                     Opcode.JALR
@@ -61,7 +64,10 @@ class Decode extends Module
                     decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
                     decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
                     decoderes(i).Type   := InstType.TYPEI
-                    decoderes(i).IsBranch := true.B                    
+                    decoderes(i).IsBranch := true.B
+                    decoderes(i).HasRs1 := true.B
+                    decoderes(i).HasRs2 := false.B
+                    decoderes(i).HasRd  := true.B                    
                 }
                 /* type U */
                 is(
@@ -72,6 +78,9 @@ class Decode extends Module
                     decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
                     decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
                     decoderes(i).Type   := InstType.TYPEU
+                    decoderes(i).HasRs1 := false.B
+                    decoderes(i).HasRs2 := false.B
+                    decoderes(i).HasRd  := true.B
                 }
                 /* type UJ */
                 is(
@@ -82,6 +91,9 @@ class Decode extends Module
                     decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
                     decoderes(i).Type   := InstType.TYPEUJ
                     decoderes(i).IsBranch := true.B
+                    decoderes(i).HasRs1 := false.B
+                    decoderes(i).HasRs2 := false.B
+                    decoderes(i).HasRd  := true.B
                 }
                 /* type S */
                 is(
@@ -94,15 +106,11 @@ class Decode extends Module
                     decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)    
                     decoderes(i).Type   := InstType.TYPES        
                     decoderes(i).IsStore := true.B 
+                    decoderes(i).HasRs1 := true.B
+                    decoderes(i).HasRs2 := true.B
+                    decoderes(i).HasRd  := false.B
                 }
             }
-            decoderes(i).HasRs1 := (decoderes(i).Type =/= InstType.TYPEU) & 
-                    (decoderes(i).Type =/= InstType.TYPEUJ)
-            decoderes(i).HasRs2 := (decoderes(i).Type =/= InstType.TYPEU) & 
-                    (decoderes(i).Type =/= InstType.TYPEUJ) &
-                    (decoderes(i).Type =/= InstType.TYPEI)
-            decoderes(i).HasRd := (decoderes(i).Type =/= InstType.TYPES) & 
-                (decoderes(i).Type =/= InstType.TYPESB)
         }
     }
 

@@ -178,7 +178,7 @@ class RenameStage2 extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        prf_valid_rd_wen(i) := true.B
+        prf_valid_rd_wen(i) := DecodeRes_reg(i).HasRd
         prf_valid_rd_waddr(i) := rat_wdata_reg(i)
         prf_valid_rd_wdata(i) := false.B
     }

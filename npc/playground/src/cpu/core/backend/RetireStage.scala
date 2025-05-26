@@ -272,7 +272,7 @@ class RetireStage extends Module
     }    
 
     /* connect */
-    io.rob_item_rdy_mask := rob_item_rdy_mask
+    io.rob_item_rdy_mask := rob_item_rdy_mask | Cat(~io.rob_items_i(3).valid, ~io.rob_items_i(2).valid, ~io.rob_items_i(1).valid, ~io.rob_items_i(0).valid)
     io.rob_item_commit_cnt := rob_item_commit_cnt
     io.rat_write_en := rat_write_en
     io.rat_write_addr := rat_write_addr
