@@ -110,7 +110,7 @@ class ALUReserveStation(size: Int) extends Module {
         /* 不能发射同样满足条件 */
         for(j <- 0 until size){
             if(j != i){
-                issue_loc_mask(j) := ~issue_able_vec(j) | (issue_able_vec(j) & (age_mat(i)(j) | ~rob_item_reg(j).valid))
+                issue_loc_mask(j) := ~issue_able_vec(j) | (issue_able_vec(j) & age_mat(i)(j))
             }
         }
         issue_loc_mask(i) := true.B
@@ -158,9 +158,7 @@ class ALUReserveStation(size: Int) extends Module {
                 if(i != j){
                     age_mat(j)(i) := rob_item_reg(j).valid
                 }
-                else{
-                    age_mat(i)(j) := false.B
-                }
+                age_mat(i)(j) := false.B
             }
         }.elsewhen(~io.rat_flush_en & (i.U =/= freeIdBuffer.io.free_id_o) & rob_item_reg(i).valid & (i.U =/= issue_idx)){
             var rob_item = WireInit((0.U).asTypeOf(new ROBItem))
@@ -183,6 +181,7 @@ class ALUReserveStation(size: Int) extends Module {
         }.elsewhen((i.U === issue_idx) & freeIdBuffer.io.issued_i & ~io.rat_flush_en){
             for(j <- 0 until size){
                 age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
+                age_mat(j)(issue_idx(log2Ceil(size) - 1, 0)) := rob_item_reg(j).valid
             }
         }.elsewhen(io.rat_flush_en){
             rob_item_reg(i) := 0.U.asTypeOf(new ROBItem)
