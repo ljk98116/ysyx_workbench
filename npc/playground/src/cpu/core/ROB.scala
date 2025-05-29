@@ -7,12 +7,14 @@ import cpu.config._
 import cpu.core.frontend._
 
 /* 监听总线，看是否就绪 */
-/* 状态机刷新掉head->tail之间的部分 */
+/* 状态机刷新掉head->tail之间的部分,必须是状态机来恢复freereg状态，避免与RAT撞车 */
+/* flush过程需要暂停整个CPU */
 class ROB extends Module
 {
     val io = IO(new Bundle {
         var rat_flush_en = Input(Bool())
         var retire_rdy_mask = Input(UInt(base.FETCH_WIDTH.W))
+        var rob_state = Output(Bool())
         val rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         /* 输出头部的4条指令,用来提交或者恢复现场 */
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))

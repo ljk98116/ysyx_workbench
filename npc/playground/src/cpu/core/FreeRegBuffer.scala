@@ -10,7 +10,7 @@ class FreeRegBuffer(id : Int) extends Module
 {
     val io = IO(new Bundle{
         /* retire stage */
-        val rat_flush_en = Input(Bool())
+        val rob_state = Input(Bool())
         val rat_write_en_retire = Input(Bool())
         val freereg_i = Input(UInt(base.PREG_WIDTH.W))
 
@@ -36,26 +36,25 @@ class FreeRegBuffer(id : Int) extends Module
     wr_able := tail + 1.U =/= head
 
     for(i <- 0 until regnum){
-        when(io.rat_flush_en){
-            FreeRegIds(i) := ((id << base.AREG_WIDTH) + i).U
+        when(io.rob_state & (i.U === head - 1.U) & wr_able){
+            FreeRegIds(i) := io.freereg_i
         }.elsewhen(io.rat_write_en_retire & wr_able & (i.U === tail)){
             FreeRegIds(i) := io.freereg_i
         }
     }
 
-
     freereg_o := Mux(rd_able, FreeRegIds(head), 0.U)
 
     head := Mux(
-        rd_able & io.rat_write_en_rename & ~io.rat_flush_en,
+        rd_able & io.rat_write_en_rename & ~io.rob_state,
         head + 1.U,
-        Mux(~io.rat_flush_en, head, 0.U) 
+        Mux(io.rob_state & wr_able, head - 1.U, head) 
     )
 
     tail := Mux(
-        wr_able & io.rat_write_en_retire & ~io.rat_flush_en,
+        wr_able & io.rat_write_en_retire & ~io.rob_state,
         tail + 1.U,
-        Mux(~io.rat_flush_en, tail, (regnum - 1).U)
+        tail
     )
     /* connect */
     io.freereg_o := freereg_o
