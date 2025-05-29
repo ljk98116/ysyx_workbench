@@ -172,7 +172,8 @@ class CPUCore(memfile: String) extends Module
 
     /* rename2 -> dispatch */
     dispatch.io.rob_item_i          := rename2.io.rob_item_o
-    // dontTouch(dispatch.io.rob_item_o)
+    dontTouch(dispatch.io.rob_item_i)
+    dontTouch(dispatch.io.rob_item_o)
 
     dispatch.io.inst_valid_cnt_i    := rename2.io.inst_valid_cnt_o
     dispatch.io.cdb_i               := cdb
@@ -181,6 +182,7 @@ class CPUCore(memfile: String) extends Module
 
     /* dispatch -> ROB */
     rob_buffer.io.rob_item_i        := dispatch.io.rob_item_o
+    dontTouch(rob_buffer.io.rob_item_i)
 
     /* dispatch -> prf */
     prf.io.prf_valid_rs1_ren        := dispatch.io.prf_valid_rs1_ren
@@ -319,6 +321,8 @@ class CPUCore(memfile: String) extends Module
 
     /* ROB -> retire */
     retire.io.rob_items_i               := rob_buffer.io.rob_item_o
+    dontTouch(rob_buffer.io.rob_item_o)
+    dontTouch(retire.io.rob_items_i)
 
     /* retire -> ROB */
     rob_buffer.io.retire_rdy_mask       := retire.io.rob_item_rdy_mask
