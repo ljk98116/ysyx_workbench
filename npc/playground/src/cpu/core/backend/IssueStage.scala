@@ -12,6 +12,7 @@ class IssueStage extends Module
 
     var io = IO(new Bundle {
         val rat_flush_en = Input(Bool())
+        val rob_state = Input(Bool())
         val alu_items_vec_i = Input(Vec(base.ALU_NUM, new ROBItem))
         val agu_items_vec_i = Input(
             Vec(base.AGU_NUM, Vec(agu_step, new ROBItem)))
@@ -38,14 +39,25 @@ class IssueStage extends Module
         Seq.fill(base.AGU_NUM)((0.U)(agu_step.W))
     ))
 
-    alu_items_vec_reg := Mux(~io.rat_flush_en, io.alu_items_vec_i, VecInit(Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))))
-    agu_items_vec_reg := Mux(~io.rat_flush_en, io.agu_items_vec_i, 
+    alu_items_vec_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.alu_items_vec_i, alu_items_vec_reg), 
+        VecInit(Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem)))
+    )
+    agu_items_vec_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.agu_items_vec_i, agu_items_vec_reg), 
         VecInit(Seq.fill(base.AGU_NUM)(
             VecInit(Seq.fill(agu_step)((0.U).asTypeOf(new ROBItem)))
-        )))
-    agu_items_cnt_vec_reg := Mux(~io.rat_flush_en, io.agu_items_cnt_vec_i, VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(agu_step.W))
-    ))
+        ))
+    )
+    agu_items_cnt_vec_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.agu_items_cnt_vec_i, agu_items_cnt_vec_reg), 
+        VecInit(
+            Seq.fill(base.AGU_NUM)((0.U)(agu_step.W))
+        )
+    )
 
     /* ReserveStations接收总线信号 */
     /* ALU */

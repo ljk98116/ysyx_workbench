@@ -9,6 +9,7 @@ class MemStage2 extends Module{
     val width = log2Ceil(base.STORE_BUF_SZ)
     val io = IO(new Bundle {
         val rat_flush_en = Input(Bool())
+        val rob_state = Input(Bool())
         val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
         val mem_read_en_i = Input(Vec(base.AGU_NUM, Bool()))
         val mem_read_addr_i = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
@@ -64,14 +65,46 @@ class MemStage2 extends Module{
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
 
-    mem_read_en_reg := Mux(~io.rat_flush_en, io.mem_read_en_i, VecInit(Seq.fill(base.AGU_NUM)(false.B)))
-    mem_read_addr_reg := Mux(~io.rat_flush_en, io.mem_read_addr_i, VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))))
-    mem_read_mask_reg := Mux(~io.rat_flush_en, io.mem_read_mask_i, VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W))))
-    mem_write_en_reg := Mux(~io.rat_flush_en, io.mem_write_en_i, false.B)
-    mem_write_addr_reg := Mux(~io.rat_flush_en, io.mem_write_addr_i, 0.U)
-    mem_write_mask_reg := Mux(~io.rat_flush_en, io.mem_write_mask_i, 0.U)
-    mem_write_data_reg := Mux(~io.rat_flush_en, io.mem_write_data_i, 0.U)
-    rob_item_reg := Mux(~io.rat_flush_en, io.rob_item_i, VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))))
+    mem_read_en_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.mem_read_en_i, mem_read_en_reg),
+        VecInit(Seq.fill(base.AGU_NUM)(false.B))
+    )
+    mem_read_addr_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.mem_read_addr_i, mem_read_addr_reg), 
+        VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
+    )
+    mem_read_mask_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.mem_read_mask_i, mem_read_mask_reg), 
+        VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W)))
+    )
+    mem_write_en_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.mem_write_en_i, mem_write_en_reg), 
+        false.B
+    )
+    mem_write_addr_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.mem_write_addr_i, mem_write_addr_reg), 
+        0.U
+    )
+    mem_write_mask_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.mem_write_mask_i, mem_write_mask_reg), 
+        0.U
+    )
+    mem_write_data_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.mem_write_data_i, mem_write_data_reg), 
+        0.U
+    )
+    rob_item_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.rob_item_i, rob_item_reg),
+        VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem)))
+    )
 
     var mem_write_en_o = WireInit(false.B)
     var mem_write_addr_o = WireInit((0.U)(base.ADDR_WIDTH.W))

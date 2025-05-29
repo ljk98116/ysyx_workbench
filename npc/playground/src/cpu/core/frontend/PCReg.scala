@@ -9,6 +9,7 @@ class PCReg extends Module
     val io = IO(new Bundle{
         /* retire stage */
         val rat_flush_en = Input(Bool())
+        val rob_state = Input(Bool())
         val rat_flush_pc = Input(UInt(base.ADDR_WIDTH.W))
         /* output */
         val pc_o = Output(UInt(base.ADDR_WIDTH.W))
@@ -45,7 +46,7 @@ class PCReg extends Module
         }
     }
 
-    pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, nextpc)
+    pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, Mux(~io.rob_state, nextpc, pc_reg))
 
     io.pc_o := pc_reg
     io.inst_valid_mask_o := Mux(~io.rat_flush_en, inst_valid_mask, 0.U)

@@ -13,15 +13,15 @@ class PriorityEncoder(width : Int) extends Module{
         val val_i = Input(UInt(width.W))
         val idx_o = Output(UInt(log2Ceil(width).W))
     })
-    /* 维护每一个位置低位是否为0，高位是否存在1 且自己是1 */
+    /* 维护每一个位置低位是否为0，且自己是1 */
     /* 2 stage logic */
     var valid_mask_vec = WireInit(VecInit(
         Seq.fill(width)(false.B)
     ))
     for(i <- 1 until width - 1){
-        valid_mask_vec(i) := ~io.val_i(i-1, 0).orR & io.val_i(width - 1, i+1).orR & io.val_i(i)
+        valid_mask_vec(i) := ~io.val_i(i-1, 0).orR & io.val_i(i)
     }
-    valid_mask_vec(0) := io.val_i(width - 1, 1).orR & io.val_i(0)
+    valid_mask_vec(0) := io.val_i(0)
     valid_mask_vec(width - 1) := ~io.val_i(width - 2, 0).orR & io.val_i(width -1)
     /* 找最高位的1的位置 */
     var idx_bit_vec = WireInit(VecInit(

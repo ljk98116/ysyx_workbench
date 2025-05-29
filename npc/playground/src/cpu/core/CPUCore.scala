@@ -345,7 +345,7 @@ class CPUCore(memfile: String) extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         freeregbuf_seq(i).io.rat_write_en_retire := retire.io.free_reg_id_valid(i)
         freeregbuf_seq(i).io.freereg_i           := retire.io.free_reg_id_wdata(i)
-        freeregbuf_seq(i).io.rat_flush_en        := retire.io.rat_flush_en
+        freeregbuf_seq(i).io.rob_state           := rob_buffer.io.rob_state
     }
     
     /* retire <-> free rob id buffer */
@@ -355,7 +355,7 @@ class CPUCore(memfile: String) extends Module
         robidbuf_seq(i).io.rat_flush_en          := retire.io.rat_flush_en
     }
 
-    /* retire ->fetch/decode/rename1/rename2/dispatch/issue/regread/alu/agu/mem1/mem2/mem3 */
+    /* retire -> fetch/decode/rename1/rename2/dispatch/issue/regread/alu/agu/mem1/mem2/mem3 */
     fetch.io.rat_flush_en                          := retire.io.rat_flush_en
     decode.io.rat_flush_en                         := retire.io.rat_flush_en
     rename1.io.rat_flush_en                        := retire.io.rat_flush_en
@@ -368,11 +368,25 @@ class CPUCore(memfile: String) extends Module
     memstage3.io.rat_flush_en                      := retire.io.rat_flush_en
     prf.io.rat_flush_en                            := retire.io.rat_flush_en
     retireRAT.io.rat_flush_en                      := retire.io.rat_flush_en
+    /* rob_state -> pc/fetch/decode/rename1/rename2/dispatch/issue/regread/alu/agu/mem1/mem2/mem3 */
+    pc_reg.io.rob_state                         := rob_buffer.io.rob_state
+    fetch.io.rob_state                          := rob_buffer.io.rob_state
+    decode.io.rob_state                         := rob_buffer.io.rob_state
+    rename1.io.rob_state                        := rob_buffer.io.rob_state
+    rename2.io.rob_state                        := rob_buffer.io.rob_state
+    dispatch.io.rob_state                       := rob_buffer.io.rob_state
+    issue.io.rob_state                          := rob_buffer.io.rob_state
+    regread.io.rob_state                        := rob_buffer.io.rob_state
+    memstage1.io.rob_state                      := rob_buffer.io.rob_state
+    memstage2.io.rob_state                      := rob_buffer.io.rob_state
+    memstage3.io.rob_state                      := rob_buffer.io.rob_state    
     for(i <- 0 until base.ALU_NUM){
         alu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
+        alu_vec(i).io.rob_state    := rob_buffer.io.rob_state
     }
     for(i <- 0 until base.AGU_NUM){
         agu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
+        agu_vec(i).io.rob_state    := rob_buffer.io.rob_state
     }
 
     /* rob_buffer -> storebuffer */

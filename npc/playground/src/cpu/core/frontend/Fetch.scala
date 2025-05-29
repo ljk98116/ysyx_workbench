@@ -12,6 +12,7 @@ class Fetch extends Module
     val io = IO(new Bundle{
         val pc_i = Input(UInt(base.ADDR_WIDTH.W))
         val rat_flush_en = Input(Bool())
+        val rob_state = Input(Bool())
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
@@ -22,20 +23,32 @@ class Fetch extends Module
 
     /* pipeline */
     var inst_valid_mask = RegInit((0.U)(base.FETCH_WIDTH.W))
-    inst_valid_mask := Mux(~io.rat_flush_en, io.inst_valid_mask_i, 0.U(base.FETCH_WIDTH.W))
+    inst_valid_mask := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.inst_valid_mask_i, inst_valid_mask), 
+        0.U(base.FETCH_WIDTH.W)
+    )
 
     var pc = RegInit((0.U)(base.ADDR_WIDTH.W))
-    pc := Mux(~io.rat_flush_en, io.pc_i, (0.U)(base.ADDR_WIDTH.W))
+    pc := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.pc_i, pc),
+        (0.U)(base.ADDR_WIDTH.W)
+    )
 
     var inst_valid_cnt = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_cnt := Mux(~io.rat_flush_en, io.inst_valid_cnt_i, (0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
+    inst_valid_cnt := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.inst_valid_cnt_i, inst_valid_cnt),
+        (0.U)(log2Ceil(base.FETCH_WIDTH + 1).W)
+    )
 
     var inst_valid_mask_o = WireInit((0.U)(base.FETCH_WIDTH.W))
     var pc_vec_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
     ))
     var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_mask_o := Mux(~io.rat_flush_en, inst_valid_mask, 0.U)
+    inst_valid_mask_o := Mux(~io.rat_flush_en & ~io.rob_state, inst_valid_mask, 0.U)
     pc_vec_o(0) := Mux(~io.rat_flush_en, pc, 0.U)
     pc_vec_o(1) := Mux(~io.rat_flush_en, pc + 4.U, 0.U)
     pc_vec_o(2) := Mux(~io.rat_flush_en, pc + 8.U, 0.U)

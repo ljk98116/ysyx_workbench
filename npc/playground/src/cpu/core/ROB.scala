@@ -32,6 +32,10 @@ class ROB extends Module
             VecInit(Seq.fill(bankcap)(0.U.asTypeOf(new ROBItem)))
         ))
     )
+    val normal::flush::Nil = Enum(2)
+    var rob_state = RegInit(normal)
+    var next_rob_state = WireInit(normal)
+
     dontTouch(ROBBankRegs)
 
     var ROBIDLocMem = RegInit(VecInit(
@@ -88,9 +92,30 @@ class ROB extends Module
         }
     }
 
-    tail := Mux(io.robw_able & rob_input_valid.asUInt.orR & ~io.rat_flush_en, tail + 1.U, Mux(~io.rat_flush_en, tail, 0.U))
-    head := Mux(io.robr_able & io.retire_rdy_mask.andR & ~io.rat_flush_en, head + 1.U, Mux(~io.rat_flush_en, head, 0.U))
+    /* Retire出现异常，normal->flush */
+    /* head + 1.U == tail, flush->normal */
+    when(rob_state === normal & io.rat_flush_en){
+        next_rob_state := flush
+    }.elsewhen(rob_state === flush & head + 1.U === tail){
+        next_rob_state := normal
+    }.otherwise{
+        next_rob_state := rob_state
+    }
+
+    rob_state := next_rob_state
+
+    when(io.robw_able & rob_input_valid.asUInt.orR & rob_state === normal & ~io.rat_flush_en){
+        tail := tail + 1.U
+    }
+
+    when(
+        (io.robr_able & io.retire_rdy_mask.andR & rob_state === normal & ~io.rat_flush_en) |
+        (io.robw_able & rob_state === flush & head =/= tail)
+    ){
+        head := head + 1.U
+    }
 
     /* connect */
     io.rob_item_o := rob_item_o
+    io.rob_state  := rob_state
 }

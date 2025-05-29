@@ -12,6 +12,7 @@ class RenameStage1 extends Module
 {
     val io = IO(new Bundle {
         val rat_flush_en = Input(Bool())
+        val rob_state = Input(Bool())
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val DecodeRes_i = Input(Vec(base.FETCH_WIDTH, new DecodeRes))
@@ -51,10 +52,26 @@ class RenameStage1 extends Module
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
 
-    pc_vec_reg := Mux(~io.rat_flush_en, io.pc_vec_i, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
-    inst_valid_mask_reg := Mux(~io.rat_flush_en, io.inst_valid_mask_i, 0.U)
-    DecodeRes_reg := Mux(~io.rat_flush_en, io.DecodeRes_i, VecInit(Seq.fill(base.FETCH_WIDTH)(0.U.asTypeOf(new DecodeRes))))
-    inst_valid_cnt_reg := Mux(~io.rat_flush_en, io.inst_valid_cnt_i, 0.U)
+    pc_vec_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.pc_vec_i,pc_vec_reg), 
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
+    )
+    inst_valid_mask_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.inst_valid_mask_i, inst_valid_mask_reg),
+        0.U
+    )
+    DecodeRes_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.DecodeRes_i, DecodeRes_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(0.U.asTypeOf(new DecodeRes)))
+    )
+    inst_valid_cnt_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.inst_valid_cnt_i, inst_valid_cnt_reg),
+        0.U
+    )
 
     /* rs1/rs2 是否哪一个最近的前置rd相等，给出掩码 */
     var rs1_match = WireInit(
