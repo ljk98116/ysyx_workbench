@@ -260,6 +260,7 @@ class CPUCore(memfile: String) extends Module
         storebuffer.io.agu_result_i(i) := agu_vec(i).io.result
         storebuffer.io.agu_wmask_i(i)  := agu_vec(i).io.mem_rw_mask
         storebuffer.io.agu_wdata_i(i)  := agu_vec(i).io.mem_wr_data
+        storebuffer.io.valid_i(i)      := agu_vec(i).io.valid
     }
     
     /* StoreBuffer -> MemStage1 */

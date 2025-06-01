@@ -37,7 +37,7 @@ uint8_t pmem[CONFIG_MSIZE] PG_ALIGN = {};
 static TOP_NAME dut;
 
 static void paddr_write(int waddr, int wdata){
-    *(int*)&pmem[waddr] = wdata;
+    *(int*)&pmem[waddr - RESET_VECTOR] = wdata;
 }
 
 extern "C" int pmem_read(int raddr){

@@ -58,6 +58,7 @@ class MemStage1 extends Module
         Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
     ))
 
+    var storebuffer_item_reg = RegInit((0.U).asTypeOf(new StoreBufferItem))
     rob_item_reg := Mux(
         ~io.rat_flush_en, 
         Mux(~io.rob_state, io.rob_item_i, rob_item_reg), 
@@ -77,6 +78,12 @@ class MemStage1 extends Module
         ~io.rat_flush_en, 
         Mux(~io.rob_state, io.agu_mem_wdata, agu_mem_wdata_reg),
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
+    )
+
+    storebuffer_item_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.storebuffer_head_item_i, storebuffer_item_reg),
+        0.U.asTypeOf(new StoreBufferItem)
     )
 
     var storebuffer_ren_o = WireInit(VecInit(
@@ -127,15 +134,15 @@ class MemStage1 extends Module
         priority_decoder_vec(i).io.in := raw_mask.asUInt
         storebuffer_raddr_o(i) := priority_decoder_vec(i).io.out
         storebuffer_rmask_o(i) := agu_rw_mask_reg(i)
-        mem_read_en_o(i) := ~storebuffer_ren_o(i)
+        mem_read_en_o(i) := ~storebuffer_ren_o(i) & rob_item_reg(i).valid & rob_item_reg(i).isLoad
         mem_read_addr_o(i) := agu_result_reg(i)
         mem_read_mask_o(i) := agu_rw_mask_reg(i)
     }
 
-    mem_write_en_o := io.storebuffer_head_item_i.valid & io.storebuffer_head_item_i.rdy & io.storebuffer_head_item_i.rob_rdy
-    mem_write_addr_o := io.storebuffer_head_item_i.agu_result
-    mem_write_data_o := io.storebuffer_head_item_i.wdata
-    mem_write_wmask_o := io.storebuffer_head_item_i.wmask
+    mem_write_en_o := storebuffer_item_reg.valid & storebuffer_item_reg.rdy & storebuffer_item_reg.rob_rdy
+    mem_write_addr_o := storebuffer_item_reg.agu_result
+    mem_write_data_o := storebuffer_item_reg.wdata
+    mem_write_wmask_o := storebuffer_item_reg.wmask
 
     /* connect */
     io.storebuffer_ren_o := storebuffer_ren_o

@@ -184,24 +184,104 @@ class Dispatch extends Module
             rob_item_reg(i).Opcode === Opcode.SW
     }
 
-    /* 紧密排布storebuffer进入项，4-5层逻辑 */
-    var store_item_target_idx = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(log2Ceil(base.FETCH_WIDTH).W))
-    ))
-
-    store_item_target_idx(0) := 0.U
-    store_item_target_idx(1) := store_flags(0) & store_flags(1)
-    store_item_target_idx(2) := Mux(store_flags(2), store_buffer_item_cnt_mid(0), 0.U)
-    store_item_target_idx(3) := Mux(store_flags(3), store_buffer_item_cnt_mid(0) + store_flags(2), 0.U)
-
-    for(i <- 0 until base.FETCH_WIDTH){
-        store_buffer_item_o(store_item_target_idx(i)).rob_id := rob_item_reg(i).id
-        store_buffer_item_o(store_item_target_idx(i)).valid  := rob_item_reg(i).valid
-        store_buffer_item_o(store_item_target_idx(i)).wmask  := 0.U
-        store_buffer_item_o(store_item_target_idx(i)).wdata  := 0.U
-        store_buffer_item_o(store_item_target_idx(i)).agu_result  := 0.U
-        store_buffer_item_o(store_item_target_idx(i)).rdy  := false.B
-        store_buffer_item_o(store_item_target_idx(i)).rob_rdy  := false.B
+    dontTouch(store_buffer_item_o)
+    switch(store_flags.asUInt){
+        is("b0000".U){
+        }
+        is("b0001".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+        }
+        is("b0010".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid  := rob_item_reg(1).valid
+        }
+        is("b0100".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(0).valid  := rob_item_reg(2).valid
+        }
+        is("b1000".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(0).valid  := rob_item_reg(3).valid
+        }
+        is("b0011".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid  := rob_item_reg(1).valid            
+        }
+        is("b0101".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid  := rob_item_reg(2).valid            
+        }   
+        is("b1001".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(1).valid  := rob_item_reg(3).valid            
+        } 
+        is("b0110".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid  := rob_item_reg(1).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid  := rob_item_reg(2).valid            
+        }   
+        is("b1010".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid  := rob_item_reg(1).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(1).valid  := rob_item_reg(3).valid            
+        }  
+        is("b1100".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(0).valid  := rob_item_reg(2).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(1).valid  := rob_item_reg(3).valid            
+        }   
+        is("b0111".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid  := rob_item_reg(1).valid    
+            store_buffer_item_o(2).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(2).valid  := rob_item_reg(2).valid         
+        }
+        is("b1011".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid  := rob_item_reg(1).valid    
+            store_buffer_item_o(2).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(2).valid  := rob_item_reg(3).valid         
+        }
+        is("b1101".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid  := rob_item_reg(2).valid    
+            store_buffer_item_o(2).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(2).valid  := rob_item_reg(3).valid         
+        }
+        is("b1110".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid  := rob_item_reg(1).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid  := rob_item_reg(2).valid    
+            store_buffer_item_o(2).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(2).valid  := rob_item_reg(3).valid             
+        }
+        is("b1111".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid  := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid  := rob_item_reg(1).valid    
+            store_buffer_item_o(2).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(2).valid  := rob_item_reg(2).valid
+            store_buffer_item_o(3).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(3).valid  := rob_item_reg(3).valid             
+        }
     }
 
     /* connect */

@@ -23,6 +23,7 @@ class StoreBuffer(size : Int) extends Module{
         val agu_wdata_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val agu_lsflag_i = Input(Vec(base.AGU_NUM, Bool()))
         val agu_robid_i = Input(Vec(base.AGU_NUM, UInt(base.ROBID_WIDTH.W)))
+        val valid_i = Input(Vec(base.AGU_NUM, Bool()))
         /* MemStage1检查store buffer */
         val store_buffer_target_addrs = Output(Vec(size, UInt(base.ADDR_WIDTH.W)))
         /* MemStage2 load forwarding */
@@ -42,10 +43,6 @@ class StoreBuffer(size : Int) extends Module{
         Seq.fill(size)((0.U).asTypeOf(new StoreBufferItem))
     ))
 
-    var store_buffer_mapping = RegInit(VecInit(
-        Seq.fill(1 << base.ROBID_WIDTH)((0.U)(width.W))
-    ))
-
     var store_buffer_rdata = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
     ))
@@ -59,20 +56,14 @@ class StoreBuffer(size : Int) extends Module{
     for(i <- 0 until base.FETCH_WIDTH){
         when(io.store_buffer_write_en & io.wr_able & io.store_buffer_item_i(i).valid & ~io.rat_flush_en){
             store_buffer_vec(tail + i.U) := io.store_buffer_item_i(i)
-            store_buffer_mapping(io.store_buffer_item_i(i).rob_id) := tail + i.U
         }
     }
 
-    when(rd_able & store_buffer_vec(head).rdy & ~io.rat_flush_en){
-        store_buffer_vec(head) := 0.U.asTypeOf(new StoreBufferItem)
-        store_buffer_mapping(store_buffer_vec(head).rob_id) := 0.U
-    }
-
-    wr_able := tail + io.store_buffer_item_cnt < head
+    wr_able := (tail + 1.U =/=  head) & (tail + 2.U =/=  head) & (tail + 3.U =/=  head) & (tail + 4.U =/=  head)
     rd_able := head =/= tail
 
-    tail := Mux(wr_able, tail + io.store_buffer_item_cnt, Mux(~io.rat_flush_en, tail, 0.U))
-    head := Mux(rd_able & store_buffer_vec(head).rdy, head + 1.U, Mux(~io.rat_flush_en, head, 0.U))
+    tail := Mux(wr_able & ~io.rat_flush_en & io.store_buffer_write_en, tail + io.store_buffer_item_cnt, Mux(~io.rat_flush_en, tail, 0.U))
+    head := Mux(rd_able & store_buffer_vec(head).rdy & store_buffer_vec(head).rob_rdy & ~io.rat_flush_en, head + 1.U, Mux(~io.rat_flush_en, head, 0.U))
 
     var store_buffer_target_addrs = WireInit(VecInit(
         Seq.fill(size)((0.U)(base.ADDR_WIDTH.W))
@@ -82,12 +73,36 @@ class StoreBuffer(size : Int) extends Module{
         store_buffer_target_addrs(i) := store_buffer_vec(i).agu_result
     }
 
-    for(i <- 0 until base.AGU_NUM){
-        when(io.agu_lsflag_i(i) & ~io.rat_flush_en){
-            store_buffer_vec(store_buffer_mapping(io.agu_robid_i(i))).agu_result := io.agu_result_i(i)
-            store_buffer_vec(store_buffer_mapping(io.agu_robid_i(i))).rdy := true.B
-            store_buffer_vec(store_buffer_mapping(io.agu_robid_i(i))).wmask := io.agu_wmask_i(i)
-            store_buffer_vec(store_buffer_mapping(io.agu_robid_i(i))).wdata := io.agu_wdata_i(i)
+    for(i <- 0 until size){
+        for(j <- 0 until base.AGU_NUM){
+            when(
+                io.agu_lsflag_i(j) & 
+                ~io.rat_flush_en & 
+                (store_buffer_vec(i).rob_id === io.agu_robid_i(j)) &
+                io.valid_i(j) &
+                (i.U >= head) & 
+                (i.U < tail) &
+                store_buffer_vec(i).valid
+            ){
+                store_buffer_vec(i).agu_result := io.agu_result_i(j)
+                store_buffer_vec(i).rdy := true.B
+                store_buffer_vec(i).wmask := io.agu_wmask_i(j)
+                store_buffer_vec(i).wdata := io.agu_wdata_i(j)
+            }
+        }
+    }
+    /* 更新ROB顶部指令状态 */
+    for(i <- 0 until size){
+        for(j <- 0 until base.FETCH_WIDTH){
+            when(
+                io.rob_item_rdy_mask(j) & 
+                (io.rob_items_i(j).Opcode === Opcode.SW) & 
+                (i.U >= head) &
+                (i.U < tail) &
+                store_buffer_vec(i).valid
+            ){
+                store_buffer_vec(i).rob_rdy := true.B               
+            }
         }
     }
 
@@ -96,14 +111,6 @@ class StoreBuffer(size : Int) extends Module{
             store_buffer_rdata(i) := store_buffer_vec(io.store_buffer_raddr(i)).wdata
         }.otherwise{
             store_buffer_rdata(i) := 0.U
-        }
-    }
-
-    /* 更新ROB顶部指令状态 */
-    for(i <- 0 until base.FETCH_WIDTH){
-        when(io.rob_item_rdy_mask(i) & (io.rob_items_i(i).Opcode === Opcode.SW) & io.rat_flush_en){
-            store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).rob_rdy := 
-                store_buffer_vec(store_buffer_mapping(io.rob_items_i(i).id)).valid
         }
     }
 

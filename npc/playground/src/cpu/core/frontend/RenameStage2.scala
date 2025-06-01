@@ -169,7 +169,7 @@ class RenameStage2 extends Module
         rob_item_o(i).funct7 := DecodeRes_reg(i).funct7
         rob_item_o(i).shamt := DecodeRes_reg(i).shamt
         rob_item_o(i).id := io.rob_freeid_vec_i(i)
-        rob_item_o(i).pd := rat_wdata_reg(i)
+        rob_item_o(i).pd := Mux(DecodeRes_reg(i).HasRd, rat_wdata_reg(i), 0.U)
         rob_item_o(i).isBranch := DecodeRes_reg(i).IsBranch
         rob_item_o(i).isLoad   := DecodeRes_reg(i).IsLoad
         rob_item_o(i).isStore  := DecodeRes_reg(i).IsStore

@@ -21,6 +21,7 @@ class AGU extends Module
         val mem_wr_data = Output(UInt(base.DATA_WIDTH.W))
         val mem_rw_mask = Output(UInt(8.W))
         val ls_flag = Output(Bool())
+        val valid = Output(Bool())
     })
 
     /* pipeline */
@@ -71,11 +72,12 @@ class AGU extends Module
     }
 
     /* connect */
-    io.result := result
+    io.result := Mux(rob_item_reg.valid, result, 0.U)
     io.areg_wr_addr := areg_wr_addr
     io.preg_wr_addr := preg_wr_addr
-    io.mem_wr_data := mem_wr_data
-    io.mem_rw_mask := mem_rw_mask
+    io.mem_wr_data := Mux(rob_item_reg.valid, mem_wr_data, 0.U)
+    io.mem_rw_mask := Mux(rob_item_reg.valid, mem_rw_mask, 0.U)
     io.rob_item_o  := rob_item_o
     io.ls_flag     := ls_flag
+    io.valid       := rob_item_reg.valid
 }
