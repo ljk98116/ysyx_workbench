@@ -1,26 +1,15 @@
-/***************************************************************************************
-* Copyright (c) 2014-2024 Zihao Yu, Nanjing University
-*
-* NEMU is licensed under Mulan PSL v2.
-* You can use this software according to the terms and conditions of the Mulan PSL v2.
-* You may obtain a copy of Mulan PSL v2 at:
-*          http://license.coscl.org.cn/MulanPSL2
-*
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-* EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-* MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-*
-* See the Mulan PSL v2 for more details.
-***************************************************************************************/
+#include <sdb/sdb.hpp>
 
-#include <isa.h>
-#include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-#include "sdb.h"
-#include <memory/paddr.h>
-#include <utils.h>
+#include <stdlib.h>
+#include <utils.hpp>
 
+#include <cpu/cpu.hpp>
+#include <isa.hpp>
+#include <memory/paddr.hpp>
+
+namespace npc{
 static int is_batch_mode = false;
 
 void init_regex();
@@ -35,7 +24,7 @@ static char* rl_gets() {
     line_read = NULL;
   }
 
-  line_read = readline("(nemu) ");
+  line_read = readline("(npc) ");
 
   if (line_read && *line_read) {
     add_history(line_read);
@@ -74,9 +63,9 @@ static int cmd_info(char *args){
     isa_reg_display();
   }
   /* 打印监视点 */
-  if(args[0] == 'w'){
-    print_watchpoints();
-  }
+  // if(args[0] == 'w'){
+  //   print_watchpoints();
+  // }
   return 0;
 }
 
@@ -122,28 +111,6 @@ static int cmd_p(char *args){
   return success == true ? 0 : -1; 
 }
 
-static int cmd_w(char *args){
-  WP *wp = new_WP();
-  if(!wp){
-    Log("Hardware watchpoint allocate failed");
-    return -1;
-  }
-  wp->expr = strdup(args);
-  AddWP(wp);
-  Log("Hardware watchpoint %d : %s", wp->NO, args);
-  return 0;
-}
-
-static int cmd_d(char *args){
-  bool success = true;
-  word_t idx = expr(args, &success);
-  if(success) {
-    success = DeleteWP(idx);
-    if(success) Log("watchpoint %d deleted successfully", idx);
-  }
-  return success == true ? 0 : -1;
-}
-
 static struct {
   const char *name;
   const char *description;
@@ -154,12 +121,12 @@ static struct {
   { "q", "Exit NEMU", cmd_q },
 
   /* TODO: Add more commands */
-  { "si", "Step N insts, default is 1", cmd_si},
+  { "si", "Step N period, default is 1", cmd_si},
   { "info", "get info for register[r] or watchpoints[w]", cmd_info},
-  { "x", "output the expr value within N *4 bytes in format hex", cmd_x},
+  { "x", "output the expr value within N * 4 bytes in format hex", cmd_x},
   { "p", "get expr value", cmd_p},
-  { "w", "set watchpoint", cmd_w},
-  { "d", "del watchpoint id N", cmd_d}
+  // { "w", "set watchpoint", cmd_w},
+  // { "d", "del watchpoint id N", cmd_d}
 };
 
 #define NR_CMD ARRLEN(cmd_table)
@@ -191,7 +158,7 @@ void sdb_set_batch_mode() {
   is_batch_mode = true;
 }
 
-void sdb_mainloop() {
+void sdb_mainloop(){
   if (is_batch_mode) {
     cmd_c(NULL);
     return;
@@ -234,5 +201,7 @@ void init_sdb() {
   init_regex();
 
   /* Initialize the watchpoint pool. */
-  init_wp_pool();
+  // init_wp_pool();
+}
+
 }

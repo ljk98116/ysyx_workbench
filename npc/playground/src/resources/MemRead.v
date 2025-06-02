@@ -1,4 +1,4 @@
-import "DPI-C" function int pmem_read(input int raddr);
+import "DPI-C" function int npc_pmem_read(input int raddr);
 
 module MemReadAPI(
     input clk,
@@ -11,7 +11,7 @@ module MemReadAPI(
             rdata <= 32'b0;
         end
         else begin
-            rdata <= pmem_read(raddr);
+            rdata <= npc_pmem_read(raddr);
         end
     end    
 endmodule

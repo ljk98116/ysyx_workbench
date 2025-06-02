@@ -26,8 +26,8 @@ image: image-dep
 	@$(OBJCOPY) -S --set-section-flags .bss=alloc,contents -O binary $(IMAGE).elf $(IMAGE).bin
 
 run: insert-arg
-	../../../npc/build/CPUCore $(IMAGE).bin
+	../../../npc/build/CPUCore --diff=$(NEMU_HOME)/build/riscv32-nemu-interpreter-so $(IMAGE).bin
 
 gdb: insert-arg
-	gdb ../../../npc/build/CPUCore
+	gdb ../../../npc/build/CPUCore $(IMAGE).bin
 .PHONY: insert-arg
