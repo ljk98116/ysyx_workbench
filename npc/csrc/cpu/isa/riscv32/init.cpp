@@ -3,11 +3,8 @@
 namespace npc{
 
 static void restart() {
-  /* Set the initial program counter. */
-  cpu.pc = RESET_VECTOR;
-
   /* The zero register is always 0. */
-  cpu.gpr[0] = 0;
+  memset(cpu.gpr, 0, sizeof(cpu.gpr));
 }
 
 void init_isa(){

@@ -1,26 +1,37 @@
 #include <cpu/cpu.hpp>
+#include <cpu/difftest.hpp>
+
 #include <isa.hpp>
 #include <locale.h>
 #include <utils.hpp>
+#include "VCPUCore.h"
+
+// use vcd
+#include <verilated_vcd_c.h>
 
 namespace npc{
 #define MAX_INST_TO_PRINT 10
 
 /* npc state */
-CPU_state cpu = {};
+npc_CPU_state cpu = {};
 uint8_t retire_RAT[32];
 uint8_t rename_RAT[32];
+uint8_t commit_num;
+uint32_t cycle;
+bool ref_stop;
+
+static TOP_NAME dut;
 
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us
 static bool g_print_step = false;
 
-static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
+static void trace_and_difftest() {
 #ifdef CONFIG_ITRACE_COND
   if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
 #endif
   // if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); }
-  IFDEF(CONFIG_DIFFTEST, difftest_step(_this->pc, dnpc));
+  IFDEF(CONFIG_DIFFTEST, difftest_step());
   // IFDEF(CONFIG_WATCH_POINT, watchpoint_step());
 }
 
@@ -34,17 +45,36 @@ static void statistic() {
 }
 
 void assert_fail_msg() {
-  isa_reg_display();
+  isa_reg_display(&cpu, false);
   statistic();
 }
 
-static void exec_once(Decode *s, vaddr_t pc){
-
+/* 执行一个周期 */
+static void exec_once(){
+  commit_num = 0;
+  dut.clock = 0; dut.eval();
+  dut.clock = 1; dut.eval();
+  /* 存在指令提交,进行difftest */
+  if(commit_num > 0){
+    Log("npc commit_num:%d", commit_num);
+    trace_and_difftest();
+  }
+  ++cycle;
 }
 
 /* 执行n个周期 */
 static void execute(uint64_t n) {
+  while(n-- > 0 && !ref_stop) {
+    exec_once();
+  }
+}
 
+void cpu_reset(){
+  dut.reset = 1;
+  int n = 5;
+  while (n -- > 0) exec_once();
+  dut.reset = 0;  
+  ref_stop = false;
 }
 
 /* Simulate how the CPU works. */
@@ -56,7 +86,6 @@ void cpu_exec(uint64_t n) {
       return;
     default: nemu_state.state = NEMU_RUNNING;
   }
-
   uint64_t timer_start = get_time();
 
   execute(n);

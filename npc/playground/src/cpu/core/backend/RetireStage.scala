@@ -3,7 +3,7 @@ package cpu.core.backend
 import cpu.config._
 import chisel3._
 import chisel3.util._
-import cpu.core.utils
+import cpu.core.utils._
 
 /* retire阶段写storebuffer */
 class RetireStage extends Module
@@ -95,7 +95,7 @@ class RetireStage extends Module
     var rat_flush_pc = WireInit((0.U)(base.ADDR_WIDTH.W))
     /* 存在异常且异常的前置指令可提交时置位 */
     var rat_flush_en = WireInit(false.B)
-    var encoder = Module(new utils.PriorityEncoder(base.FETCH_WIDTH))
+    var encoder = Module(new PriorityEncoder(base.FETCH_WIDTH))
     encoder.io.val_i := Cat(
         io.rob_items_i(3).hasException,
         io.rob_items_i(2).hasException,
@@ -156,6 +156,30 @@ class RetireStage extends Module
         free_rob_id_valid(i) := rob_item_rdy_mask(i) 
         free_rob_id_wdata(i) := io.rob_items_i(i).id
     }    
+
+    /* debug */
+    var commit = Module(new CommitAPI)
+    commit.io.rst := reset.asBool
+    commit.io.rat_write_en := 
+        rat_write_en.asUInt
+    
+    commit.io.valid := rob_item_rdy_mask.asUInt.andR
+    commit.io.rat_write_addr_0 := rat_write_addr(0)
+    commit.io.rat_write_addr_1 := rat_write_addr(1)
+    commit.io.rat_write_addr_2 := rat_write_addr(2)
+    commit.io.rat_write_addr_3 := rat_write_addr(3)
+    commit.io.rat_write_data_0 := rat_write_data(0)
+    commit.io.rat_write_data_1 := rat_write_data(1)
+    commit.io.rat_write_data_2 := rat_write_data(2)
+    commit.io.rat_write_data_3 := rat_write_data(3)
+    commit.io.reg_write_data_0 := io.rob_items_i(0).reg_wb_data
+    commit.io.reg_write_data_1 := io.rob_items_i(1).reg_wb_data
+    commit.io.reg_write_data_2 := io.rob_items_i(2).reg_wb_data
+    commit.io.reg_write_data_3 := io.rob_items_i(3).reg_wb_data
+    commit.io.pc0              := io.rob_items_i(0).pc
+    commit.io.pc1              := io.rob_items_i(1).pc
+    commit.io.pc2              := io.rob_items_i(2).pc
+    commit.io.pc3              := io.rob_items_i(3).pc
 
     /* connect */
     io.rob_item_rdy_mask := rob_item_rdy_mask.asUInt

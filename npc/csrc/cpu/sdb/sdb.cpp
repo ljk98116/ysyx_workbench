@@ -60,7 +60,7 @@ static int cmd_info(char *args){
   }
   /* 打印寄存器 */
   if(args[0] == 'r'){
-    isa_reg_display();
+    isa_reg_display(&cpu, false);
   }
   /* 打印监视点 */
   // if(args[0] == 'w'){
@@ -159,6 +159,9 @@ void sdb_set_batch_mode() {
 }
 
 void sdb_mainloop(){
+  cpu_reset();
+  cycle = 0;
+  
   if (is_batch_mode) {
     cmd_c(NULL);
     return;

@@ -321,9 +321,9 @@ class CPUCore(memfile: String) extends Module
     rob_buffer.io.cdb_i                 := cdb
 
     /* ROB -> retire */
-    retire.io.rob_items_i               := rob_buffer.io.rob_item_o
     dontTouch(rob_buffer.io.rob_item_o)
     dontTouch(retire.io.rob_items_i)
+    retire.io.rob_items_i               := rob_buffer.io.rob_item_o
 
     /* retire -> ROB */
     rob_buffer.io.retire_rdy_mask       := retire.io.rob_item_rdy_mask

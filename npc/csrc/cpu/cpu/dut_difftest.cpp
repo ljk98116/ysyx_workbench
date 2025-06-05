@@ -4,7 +4,7 @@
 #include <cpu/cpu.hpp>
 #include <memory/paddr.hpp>
 #include <utils.hpp>
-#include <difftest-def.hpp>
+#include <cpu/difftest.hpp>
 
 namespace npc{
 
@@ -78,45 +78,38 @@ void init_difftest(char *ref_so_file, long img_size, int port) {
 
   ref_difftest_init(port);
   ref_difftest_memcpy(RESET_VECTOR, guest_to_host(RESET_VECTOR), img_size, DIFFTEST_TO_REF);
-  ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);
+  CPU_state ref;
+  ref.pc = RESET_VECTOR;
+  memset(ref.gpr, 0, sizeof(ref.gpr));
+  ref_difftest_regcpy(&ref, DIFFTEST_TO_REF);
 }
 
-static void checkregs(CPU_state *ref, vaddr_t pc) {
-  if (!isa_difftest_checkregs(ref, pc)) {
+static void checkregs(CPU_state *ref) {
+  if (!isa_difftest_checkregs(ref)) {
     nemu_state.state = NEMU_ABORT;
-    nemu_state.halt_pc = pc;
-    isa_reg_display();
+    if(commit_num > 0) nemu_state.halt_pc = cpu.pc[commit_num - 1];
+    Log("npc regs:\n");
+    isa_reg_display(&cpu, false);
+    Log("nemu regs:\n");
+    isa_reg_display(ref, true);
+  }
+  else{
+    Log("%d th cycle, check done", cycle);
+    isa_reg_display(&cpu, false);
   }
 }
 
 /* 乱序npc指令提交时触发difftest_step */
-void difftest_step(vaddr_t pc, vaddr_t npc) {
+void difftest_step() {
+  static int last_ref_pc;
   CPU_state ref_r;
-
-  if (skip_dut_nr_inst > 0) {
+  if(commit_num > 0){
+    ref_difftest_exec(commit_num);
     ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);
-    if (ref_r.pc == npc) {
-      skip_dut_nr_inst = 0;
-      checkregs(&ref_r, npc);
-      return;
-    }
-    skip_dut_nr_inst --;
-    if (skip_dut_nr_inst == 0)
-      panic("can not catch up with ref.pc = " FMT_WORD " at pc = " FMT_WORD, ref_r.pc, pc);
-    return;
+    if(ref_r.pc == last_ref_pc) ref_stop = true;
+    checkregs(&ref_r);
+    last_ref_pc = ref_r.pc;
   }
-
-  if (is_skip_ref) {
-    // to skip the checking of an instruction, just copy the reg state to reference design
-    ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);
-    is_skip_ref = false;
-    return;
-  }
-
-  ref_difftest_exec(1);
-  ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);
-
-  checkregs(&ref_r, pc);
 }
 
 

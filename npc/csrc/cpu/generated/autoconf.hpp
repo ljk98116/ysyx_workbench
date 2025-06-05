@@ -4,6 +4,7 @@
  * NEMU Configuration Menu
  *
  */
+#define CONFIG_DIFFTEST 1
 #define CONFIG_DIFFTEST_REF_NAME "none"
 #define CONFIG_ENGINE "interpreter"
 #define CONFIG_PC_RESET_OFFSET 0x0

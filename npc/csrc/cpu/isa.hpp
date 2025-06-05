@@ -11,14 +11,14 @@ namespace npc{
 // typedef concat(__GUEST_ISA__, _CPU_state) CPU_state;
 // typedef concat(__GUEST_ISA__, _ISADecodeInfo) ISADecodeInfo;
 typedef riscv32_CPU_state CPU_state;
-
+typedef npc_riscv32_CPU_state npc_CPU_state;
 // monitor
 extern unsigned char isa_logo[];
 void init_isa();
 
 // reg
-extern CPU_state cpu;
-void isa_reg_display();
+extern npc_CPU_state cpu;
+void isa_reg_display(void *cpu_ptr, bool is_ref);
 word_t isa_reg_str2val(const char *name, bool *success);
 
 // exec
@@ -40,7 +40,7 @@ vaddr_t isa_raise_intr(word_t NO, vaddr_t epc);
 word_t isa_query_intr();
 
 // difftest
-bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc);
+bool isa_difftest_checkregs(CPU_state *ref_r);
 void isa_difftest_attach();
 
 }
