@@ -57,6 +57,7 @@ static void exec_once(VerilatedVcdC* tfp){
   if(commit_num > 0){
     Log("npc commit_num:%d at %d th cycle", commit_num, cycle);
     trace_and_difftest();
+    g_nr_guest_inst += commit_num;
   }
   ++cycle;
 }
@@ -90,7 +91,7 @@ void cpu_exec(uint64_t n, VerilatedVcdC* tfp) {
   uint64_t timer_start = get_time();
 
   execute(n, tfp);
-  
+
   uint64_t timer_end = get_time();
   g_timer += timer_end - timer_start;
 

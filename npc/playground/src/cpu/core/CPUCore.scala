@@ -127,7 +127,7 @@ class CPUCore(memfile: String) extends Module
 
     /* rename1 -> freeregbuffer */
     for(i <- 0 until base.FETCH_WIDTH){
-        freeregbuf_seq(i).io.rat_write_en_rename := rename1.io.rat_wen_o(i)
+        freeregbuf_seq(i).io.rat_write_en_rename := rename1.io.inst_valid_mask_o(i)
     }
 
     /* decode -> renamestage1 */
@@ -349,6 +349,7 @@ class CPUCore(memfile: String) extends Module
         freeregbuf_seq(i).io.rat_write_en_retire := retire.io.free_reg_id_valid(i)
         freeregbuf_seq(i).io.freereg_i           := retire.io.free_reg_id_wdata(i)
         freeregbuf_seq(i).io.rob_state           := rob_buffer.io.rob_state
+        freeregbuf_seq(i).io.flush_freereg_valid := retire.io.flush_free_reg_valid(i)
     }
     
     /* retire <-> free rob id buffer */

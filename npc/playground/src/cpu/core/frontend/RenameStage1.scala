@@ -141,10 +141,10 @@ class RenameStage1 extends Module
 
     /* 存在WAW冲突，不写RAT */
     rat_wen := Cat(
-        ~(rat_waw_mask(3).asUInt.orR) & (DecodeRes_reg(3).asUInt =/= 0.U) & DecodeRes_reg(3).HasRd,
-        ~(rat_waw_mask(2).asUInt.orR) & (DecodeRes_reg(2).asUInt =/= 0.U) & DecodeRes_reg(2).HasRd, 
-        ~(rat_waw_mask(1).asUInt.orR) & (DecodeRes_reg(1).asUInt =/= 0.U) & DecodeRes_reg(1).HasRd, 
-        ~(rat_waw_mask(0).asUInt.orR) & (DecodeRes_reg(0).asUInt =/= 0.U) & DecodeRes_reg(0).HasRd
+        ~(rat_waw_mask(3).asUInt.orR) & DecodeRes_reg(3).HasRd,
+        ~(rat_waw_mask(2).asUInt.orR) & DecodeRes_reg(2).HasRd, 
+        ~(rat_waw_mask(1).asUInt.orR) & DecodeRes_reg(1).HasRd, 
+        ~(rat_waw_mask(0).asUInt.orR) & DecodeRes_reg(0).HasRd
     )
 
     for(i <- 0 until base.FETCH_WIDTH)

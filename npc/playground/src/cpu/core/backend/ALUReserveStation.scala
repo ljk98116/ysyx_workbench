@@ -118,8 +118,8 @@ class ALUReserveStation(size: Int) extends Module {
     }
 
     var issue_idx = WireInit((size.U)((log2Ceil(size) + 1).W))
-    issue_idx := OHToUInt(issue_oh_vec.asUInt)
-    io.rob_item_o := Mux(issue_oh_vec.asUInt =/= 0.U, rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)), (0.U).asTypeOf(new ROBItem))
+    issue_idx := Mux(~issue_oh_vec.asUInt.orR, size.U, OHToUInt(issue_oh_vec.asUInt))
+    io.rob_item_o := Mux(issue_idx =/= size.U, rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)), (0.U).asTypeOf(new ROBItem))
     /* 回收issue_idx */
     freeIdBuffer.io.rat_flush_en := io.rat_flush_en
     freeIdBuffer.io.issued_i := issue_oh_vec.asUInt.orR & ~io.rat_flush_en
@@ -183,6 +183,7 @@ class ALUReserveStation(size: Int) extends Module {
                 age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
                 age_mat(j)(issue_idx(log2Ceil(size) - 1, 0)) := rob_item_reg(j).valid
             }
+            rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)) := 0.U.asTypeOf(new ROBItem)
         }.elsewhen(io.rat_flush_en){
             rob_item_reg(i) := 0.U.asTypeOf(new ROBItem)
             for(j <- 0 until size){

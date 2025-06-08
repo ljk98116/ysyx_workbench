@@ -13,6 +13,7 @@ class FreeRegBuffer(id : Int) extends Module
         val rob_state = Input(Bool())
         val rat_write_en_retire = Input(Bool())
         val freereg_i = Input(UInt(base.PREG_WIDTH.W))
+        val flush_freereg_valid = Input(Bool())
 
         /* output */
         val rat_write_en_rename = Input(Bool())
@@ -48,7 +49,7 @@ class FreeRegBuffer(id : Int) extends Module
     head := Mux(
         rd_able & io.rat_write_en_rename & ~io.rob_state,
         head + 1.U,
-        Mux(io.rob_state & wr_able, head - 1.U, head) 
+        Mux(io.rob_state & wr_able & io.flush_freereg_valid, head - 1.U, head) 
     )
 
     tail := Mux(

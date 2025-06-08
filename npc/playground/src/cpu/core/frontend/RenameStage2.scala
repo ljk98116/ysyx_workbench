@@ -182,7 +182,17 @@ class RenameStage2 extends Module
         /* 暂时所有分支指令均冲刷流水线 */
         rob_item_o(i).hasException := false.B
         rob_item_o(i).ExceptionType := ExceptionType.NORMAL.U
-        rob_item_o(i).oldpd := io.rat_rdata_i(3 * i + 2)
+        /* 前置最近指令是否有相同的rd，用前置指令的pd */
+        /* 找最近指令的pd */
+        var waw_mask = WireInit(VecInit(Seq.fill(base.FETCH_WIDTH)(false.B)))
+        var target_idx = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+        for(j <- 0 until i){
+            waw_mask(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rd
+        }
+        val prio_decoder = Module(new cpu.core.utils.PriorityDecoder(4))
+        prio_decoder.io.in := waw_mask.asUInt
+        target_idx := prio_decoder.io.out
+        rob_item_o(i).oldpd := Mux(waw_mask.asUInt.orR, rat_wdata_reg(target_idx(log2Ceil(base.FETCH_WIDTH) - 1, 0)), io.rat_rdata_i(3 * i + 2))
         rob_item_o(i).reg_wb_data := 0.U
         when(DecodeRes_reg(i).HasRs1){
             rob_item_o(i).ps1 := Mux(rs1_match_reg(i)(2), 
