@@ -54,28 +54,24 @@ void npc_commit(
         cpu.gpr[rat_write_addr_0] = reg_write_data_0;
         ++commit_num;
         cpu.pc[0] = pc0;
-        Log("pc0: 0x%x", pc0);
     }
     if(rat_write_en & 0x2){
         retire_RAT[rat_write_addr_1] = rat_write_data_1;
         cpu.gpr[rat_write_addr_1] = reg_write_data_1;
         ++commit_num;
         cpu.pc[1] = pc1;
-        Log("pc1: 0x%x", pc1);
     }
     if(rat_write_en & 0x4){
         retire_RAT[rat_write_addr_2] = rat_write_data_2;
         cpu.gpr[rat_write_addr_2] = reg_write_data_2;
         ++commit_num;
         cpu.pc[2] = pc2;
-        Log("pc2: 0x%x", pc2);
     }
     if(rat_write_en & 0x8){
         retire_RAT[rat_write_addr_3] = rat_write_data_3;
         cpu.gpr[rat_write_addr_3] = reg_write_data_3;
         ++commit_num;
         cpu.pc[3] = pc3;
-        Log("pc3: 0x%x", pc3);
     }    
 }
 

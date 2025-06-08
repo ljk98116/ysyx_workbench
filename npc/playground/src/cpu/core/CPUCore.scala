@@ -239,6 +239,8 @@ class CPUCore(memfile: String) extends Module
         cdb.alu_channel(i).phy_reg_id   := alu_vec(i).io.preg_wr_addr
         cdb.alu_channel(i).reg_wr_data  := alu_vec(i).io.result
         cdb.alu_channel(i).branch_target_addr := alu_vec(i).io.branch_target_addr
+        cdb.alu_channel(i).has_exception := alu_vec(i).io.has_exception
+        cdb.alu_channel(i).exception_type := alu_vec(i).io.exception_type
     }
 
     /* CDB -> PRF */
@@ -380,7 +382,8 @@ class CPUCore(memfile: String) extends Module
     regread.io.rob_state                        := rob_buffer.io.rob_state
     memstage1.io.rob_state                      := rob_buffer.io.rob_state
     memstage2.io.rob_state                      := rob_buffer.io.rob_state
-    memstage3.io.rob_state                      := rob_buffer.io.rob_state    
+    memstage3.io.rob_state                      := rob_buffer.io.rob_state
+    retire.io.rob_state                         := rob_buffer.io.rob_state    
     for(i <- 0 until base.ALU_NUM){
         alu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
         alu_vec(i).io.rob_state    := rob_buffer.io.rob_state

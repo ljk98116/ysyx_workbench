@@ -21,6 +21,8 @@ class ALU extends Module
         val preg_wr_addr = Output(UInt(base.PREG_WIDTH.W))
         val valid_o = Output(Bool())
         val rob_id_o = Output(UInt(base.ROBID_WIDTH.W))
+        val has_exception = Output(Bool())
+        val exception_type = Output(UInt(8.W))
     })
 
     /* pipeline */
@@ -50,14 +52,18 @@ class ALU extends Module
     var branch_target_addr = WireInit((0.U)(base.ADDR_WIDTH.W))
     var valid_o = WireInit(false.B)
     var rob_id_o = WireInit((0.U)(base.ROBID_WIDTH.W))
+    var has_exception = WireInit(false.B)
+    var exception_type = WireInit((0.U)(8.W))
 
     areg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.rd, 0.U)
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
-    valid_o := rob_item_reg.valid
+    valid_o := rob_item_reg.valid & rob_item_reg.HasRd
     rob_id_o := rob_item_reg.id
 
     result := 0.U
     branch_target_addr := 0.U
+    has_exception := false.B
+    exception_type := ExceptionType.NORMAL.U
     switch(rob_item_reg.Opcode){
         is(Opcode.ADDI){
             result := rs1_data_reg + rob_item_reg.Imm
@@ -68,11 +74,15 @@ class ALU extends Module
         is(Opcode.JAL){
             result := rob_item_reg.pc + 4.U
             branch_target_addr := rob_item_reg.pc + rob_item_reg.Imm
+            has_exception := true.B
+            exception_type := ExceptionType.BRANCH_PREDICTION_ERROR.U
             // to do: 异常检查
         }
         is(Opcode.JALR){
             result := rob_item_reg.pc + 4.U
             branch_target_addr := rs1_data_reg + rob_item_reg.Imm
+            has_exception := true.B
+            exception_type := ExceptionType.BRANCH_PREDICTION_ERROR.U
             // to do: 异常检查         
         }
         is(Opcode.LUI){
@@ -82,7 +92,9 @@ class ALU extends Module
     }
 
     /* connect */
-    io.result := result
+    io.has_exception := has_exception
+    io.exception_type := exception_type
+    io.result := Mux(rob_item_reg.rd =/= 0.U, result, 0.U)
     io.areg_wr_addr := areg_wr_addr
     io.preg_wr_addr := preg_wr_addr
     io.branch_target_addr := branch_target_addr

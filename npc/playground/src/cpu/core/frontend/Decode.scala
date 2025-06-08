@@ -66,7 +66,7 @@ class Decode extends Module
                     decoderes(i).Type   := InstType.TYPEI
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := false.B
-                    decoderes(i).HasRd  := io.inst_vec_i(i)(11, 7) =/= 0.U
+                    decoderes(i).HasRd  := true.B
                 }
                 is(
                     Opcode.JALR
@@ -80,7 +80,7 @@ class Decode extends Module
                     decoderes(i).IsBranch := true.B
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := false.B
-                    decoderes(i).HasRd  := io.inst_vec_i(i)(11, 7) =/= 0.U                   
+                    decoderes(i).HasRd  := true.B                   
                 }
                 /* type U */
                 is(
@@ -93,7 +93,7 @@ class Decode extends Module
                     decoderes(i).Type   := InstType.TYPEU
                     decoderes(i).HasRs1 := false.B
                     decoderes(i).HasRs2 := false.B
-                    decoderes(i).HasRd  := io.inst_vec_i(i)(11, 7) =/= 0.U
+                    decoderes(i).HasRd  := true.B
                 }
                 /* type UJ */
                 is(
@@ -106,7 +106,7 @@ class Decode extends Module
                     decoderes(i).IsBranch := true.B
                     decoderes(i).HasRs1 := false.B
                     decoderes(i).HasRs2 := false.B
-                    decoderes(i).HasRd  := io.inst_vec_i(i)(11, 7) =/= 0.U
+                    decoderes(i).HasRd  := true.B
                 }
                 /* type S */
                 is(

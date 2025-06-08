@@ -106,7 +106,11 @@ void difftest_step() {
   if(commit_num > 0){
     ref_difftest_exec(commit_num);
     ref_difftest_regcpy(&ref_r, DIFFTEST_TO_DUT);
-    if(ref_r.pc == last_ref_pc) ref_stop = true;
+    if(ref_r.pc == last_ref_pc) {
+      ref_stop = true;
+      nemu_state.state = NEMU_END;
+      nemu_state.halt_pc = ref_r.pc;
+    }
     checkregs(&ref_r);
     last_ref_pc = ref_r.pc;
   }

@@ -9,6 +9,7 @@ import cpu.core.utils._
 class RetireStage extends Module
 {
     val io = IO(new Bundle{
+        val rob_state = Input(Bool())
         /* 当前头部ROB项 */
         val rob_items_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         /* 是否可以提交 */
@@ -60,9 +61,13 @@ class RetireStage extends Module
     var rob_item_rdy_mask = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
-    rob_item_rdy_mask(0) := (io.rob_items_i(0).valid & io.rob_items_i(0).rdy) | ~io.rob_items_i(0).valid
+    var commit_item_rdy_mask = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    rob_item_rdy_mask(0) := (io.rob_items_i(0).valid & io.rob_items_i(0).rdy & ~store_mask_mid(0)) | (io.rob_items_i(0).valid & store_mask_mid(0))
+    commit_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
     rob_item_rdy_mask(1) := 
-        ~io.rob_items_i(1).valid |
+        (~io.rob_items_i(1).valid & rob_item_rdy_mask(0)) |
         (        
             ~io.rob_items_i(0).hasException & io.rob_items_i(1).valid &
             (
@@ -70,8 +75,10 @@ class RetireStage extends Module
                 (store_mask_mid(1) & rob_item_rdy_mask(0))
             )
         )
+    commit_item_rdy_mask(1) := 
+        (io.rob_items_i(1).valid & io.rob_items_i(1).rdy & ~store_mask_mid(1)) | (io.rob_items_i(1).valid & store_mask_mid(1)) | (~io.rob_items_i(1).valid & commit_item_rdy_mask(0))
     rob_item_rdy_mask(2) :=
-        ~io.rob_items_i(2).valid |
+        (~io.rob_items_i(2).valid & rob_item_rdy_mask(1))  |
         (
             ~io.rob_items_i(1).hasException & ~io.rob_items_i(0).hasException & io.rob_items_i(2).valid &
             (
@@ -79,9 +86,10 @@ class RetireStage extends Module
                 (store_mask_mid(2) & rob_item_rdy_mask(1) & rob_item_rdy_mask(0))
             )
         )
-
+    commit_item_rdy_mask(2) := 
+        (io.rob_items_i(2).valid & io.rob_items_i(2).rdy & ~store_mask_mid(2)) | (io.rob_items_i(2).valid & store_mask_mid(2)) | (~io.rob_items_i(2).valid & commit_item_rdy_mask(1))
     rob_item_rdy_mask(3) :=
-        ~io.rob_items_i(3).valid |
+        (~io.rob_items_i(3).valid & rob_item_rdy_mask(2)) |
         (
             ~io.rob_items_i(2).hasException & ~io.rob_items_i(1).hasException & 
             ~io.rob_items_i(0).hasException & io.rob_items_i(3).valid &
@@ -90,7 +98,8 @@ class RetireStage extends Module
                 (store_mask_mid(3) & rob_item_rdy_mask(2) & rob_item_rdy_mask(1) & rob_item_rdy_mask(0))
             )
         )
-
+    commit_item_rdy_mask(3) := 
+        (io.rob_items_i(3).valid & io.rob_items_i(3).rdy & ~store_mask_mid(3)) | (io.rob_items_i(3).valid & store_mask_mid(3)) | (~io.rob_items_i(3).valid & commit_item_rdy_mask(2))
     /* 存在异常刷新流水线 */
     var rat_flush_pc = WireInit((0.U)(base.ADDR_WIDTH.W))
     /* 存在异常且异常的前置指令可提交时置位 */
@@ -163,7 +172,7 @@ class RetireStage extends Module
     commit.io.rat_write_en := 
         rat_write_en.asUInt
     
-    commit.io.valid := rob_item_rdy_mask.asUInt.andR
+    commit.io.valid := commit_item_rdy_mask.asUInt.andR & ~io.rob_state
     commit.io.rat_write_addr_0 := rat_write_addr(0)
     commit.io.rat_write_addr_1 := rat_write_addr(1)
     commit.io.rat_write_addr_2 := rat_write_addr(2)

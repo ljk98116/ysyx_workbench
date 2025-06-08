@@ -75,8 +75,8 @@ class RegReadStage extends Module
         Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
     ))
     for(i <- 0 until base.ALU_NUM){
-        prf_rs1_data_ren(i) := alu_fu_items_reg(i).HasRs1
-        prf_rs2_data_ren(i) := alu_fu_items_reg(i).HasRs2
+        prf_rs1_data_ren(i) := alu_fu_items_reg(i).HasRs1 & (alu_fu_items_reg(i).rs1 =/= 0.U)
+        prf_rs2_data_ren(i) := alu_fu_items_reg(i).HasRs2 & (alu_fu_items_reg(i).rs2 =/= 0.U)
         prf_rs1_data_raddr(i) := alu_fu_items_reg(i).ps1
         prf_rs2_data_raddr(i) := alu_fu_items_reg(i).ps2
         alu_channel_rs1_rdata(i) := io.prf_rs1_data_rdata(i)

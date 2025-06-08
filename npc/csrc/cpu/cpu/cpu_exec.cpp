@@ -6,9 +6,6 @@
 #include <utils.hpp>
 #include "VCPUCore.h"
 
-// use vcd
-#include <verilated_vcd_c.h>
-
 namespace npc{
 #define MAX_INST_TO_PRINT 10
 
@@ -50,35 +47,39 @@ void assert_fail_msg() {
 }
 
 /* 执行一个周期 */
-static void exec_once(){
+static void exec_once(VerilatedVcdC* tfp){
   commit_num = 0;
   dut.clock = 0; dut.eval();
   dut.clock = 1; dut.eval();
+  //vcd记录仿真结果
+  if(tfp != nullptr) tfp->dump(cycle);
   /* 存在指令提交,进行difftest */
   if(commit_num > 0){
-    Log("npc commit_num:%d", commit_num);
+    Log("npc commit_num:%d at %d th cycle", commit_num, cycle);
     trace_and_difftest();
   }
   ++cycle;
 }
 
 /* 执行n个周期 */
-static void execute(uint64_t n) {
-  while(n-- > 0 && !ref_stop) {
-    exec_once();
+static void execute(uint64_t n, VerilatedVcdC* tfp) {
+  while(n-- > 0 && !ref_stop && nemu_state.state != NEMU_ABORT && nemu_state.state != NEMU_END) {
+    exec_once(tfp);
   }
 }
 
-void cpu_reset(){
+void cpu_reset(VerilatedVcdC* tfp){
   dut.reset = 1;
+  dut.trace(tfp, 99); // 跟踪所有信号（99=递归深度）
+  tfp->open("wave2.vcd"); // 输出文件名
   int n = 5;
-  while (n -- > 0) exec_once();
+  while (n -- > 0) exec_once(tfp);
   dut.reset = 0;  
   ref_stop = false;
 }
 
 /* Simulate how the CPU works. */
-void cpu_exec(uint64_t n) {
+void cpu_exec(uint64_t n, VerilatedVcdC* tfp) {
   g_print_step = (n < MAX_INST_TO_PRINT);
   switch (nemu_state.state) {
     case NEMU_END: case NEMU_ABORT: case NEMU_QUIT:
@@ -88,8 +89,8 @@ void cpu_exec(uint64_t n) {
   }
   uint64_t timer_start = get_time();
 
-  execute(n);
-
+  execute(n, tfp);
+  
   uint64_t timer_end = get_time();
   g_timer += timer_end - timer_start;
 

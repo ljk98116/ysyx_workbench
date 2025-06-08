@@ -15,8 +15,11 @@ void isa_reg_display(void *cpu_ptr, bool is_ref) {
     CPU_state *ref_ptr = (CPU_state*)cpu_ptr;
     printf("ref pc: 0x%x\n", ref_ptr->pc);
     const int total_reg_num = 32;
-    for(int i=0;i<total_reg_num;++i){
-      printf("%s: 0x%x \n", reg_name(i), gpr(ref_ptr, i));
+    for(int i=0;i<total_reg_num / 4 ;++i){
+      printf("%s: 0x%x \t", reg_name(4 * i), gpr(ref_ptr, 4 * i));
+      printf("%s: 0x%x \t", reg_name(4 * i + 1), gpr(ref_ptr, 4 * i + 1));
+      printf("%s: 0x%x \t", reg_name(4 * i + 2), gpr(ref_ptr, 4 * i + 2));
+      printf("%s: 0x%x \n", reg_name(4 * i + 3), gpr(ref_ptr, 4 * i + 3));
     }
   }
   else{
@@ -25,8 +28,11 @@ void isa_reg_display(void *cpu_ptr, bool is_ref) {
       printf("npc pc: 0x%x\n", dut_ptr->pc[commit_num - 1]);
     }
     const int total_reg_num = 32;
-    for(int i=0;i<total_reg_num;++i){
-      printf("%s: 0x%x \n", reg_name(i), gpr(dut_ptr, i));
+    for(int i=0;i<total_reg_num / 4 ;++i){
+      printf("%s: 0x%x \t", reg_name(4 * i), gpr(dut_ptr, 4 * i));
+      printf("%s: 0x%x \t", reg_name(4 * i + 1), gpr(dut_ptr, 4 * i + 1));
+      printf("%s: 0x%x \t", reg_name(4 * i + 2), gpr(dut_ptr, 4 * i + 2));
+      printf("%s: 0x%x \n", reg_name(4 * i + 3), gpr(dut_ptr, 4 * i + 3));
     }    
   }
 }

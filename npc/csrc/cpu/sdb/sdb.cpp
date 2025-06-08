@@ -9,8 +9,13 @@
 #include <isa.hpp>
 #include <memory/paddr.hpp>
 
+// use vcd
+#include <verilated_vcd_c.h>
+#include <VCPUCore.h>
+
 namespace npc{
 static int is_batch_mode = false;
+static VerilatedVcdC* tfp_cur;
 
 void init_regex();
 void init_wp_pool();
@@ -34,7 +39,7 @@ static char* rl_gets() {
 }
 
 static int cmd_c(char *args) {
-  cpu_exec(-1);
+  cpu_exec(-1, tfp_cur);
   return 0;
 }
 
@@ -49,7 +54,7 @@ static int cmd_help(char *args);
 static int cmd_si(char *args){
   word_t N = 1;
   if(args) N = atoll(args);
-  cpu_exec(N);
+  cpu_exec(N, tfp_cur);
   return 0;
 }
 
@@ -159,9 +164,10 @@ void sdb_set_batch_mode() {
 }
 
 void sdb_mainloop(){
-  cpu_reset();
+  VerilatedVcdC* tfp = new VerilatedVcdC; // 创建 VCD 对象
   cycle = 0;
-  
+  cpu_reset(tfp);
+  tfp_cur = tfp;
   if (is_batch_mode) {
     cmd_c(NULL);
     return;
@@ -190,7 +196,15 @@ void sdb_mainloop(){
     int i;
     for (i = 0; i < NR_CMD; i ++) {
       if (strcmp(cmd, cmd_table[i].name) == 0) {
-        if (cmd_table[i].handler(args) < 0) { return; }
+        if (cmd_table[i].handler(args) < 0) { 
+          tfp->close();
+          if(tfp != nullptr) {
+            delete tfp;
+            tfp_cur = nullptr;
+            tfp = nullptr;
+          }
+          return; 
+        }
         break;
       }
     }

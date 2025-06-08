@@ -75,6 +75,8 @@ class ROB extends Module
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).rdy := true.B
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).targetBrAddr := io.cdb_i.alu_channel(i).branch_target_addr
+            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).hasException := io.cdb_i.alu_channel(i).has_exception
+            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).ExceptionType := io.cdb_i.alu_channel(i).exception_type
         }
     }
     for(i <- 0 until base.AGU_NUM){
