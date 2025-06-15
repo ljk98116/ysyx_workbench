@@ -72,22 +72,18 @@ class RetireStage extends Module
     2.该位置无效但前置位置可提交
     3.该位置前面有异常
     */
-    rob_item_rdy_mask(0) := (io.rob_items_i(0).valid & io.rob_items_i(0).rdy & ~store_mask_mid(0)) | 
-        (io.rob_items_i(0).valid & store_mask_mid(0))
-    commit_item_rdy_mask(0) := (io.rob_items_i(0).valid & io.rob_items_i(0).rdy & ~store_mask_mid(0)) | 
-        (io.rob_items_i(0).valid & store_mask_mid(0))
+    rob_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
+    commit_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
     rob_item_rdy_mask(1) := 
         (~io.rob_items_i(1).valid & rob_item_rdy_mask(0)) |
         (        
             ~io.rob_items_i(0).hasException & io.rob_items_i(1).valid &
             (
-                (io.rob_items_i(1).rdy & ~store_mask_mid(1)) |
-                (store_mask_mid(1) & rob_item_rdy_mask(0))
+                io.rob_items_i(1).rdy
             )
         )
     commit_item_rdy_mask(1) := 
-        (io.rob_items_i(1).valid & io.rob_items_i(1).rdy & ~store_mask_mid(1)) | 
-        (io.rob_items_i(1).valid & store_mask_mid(1)) | 
+        (io.rob_items_i(1).valid & io.rob_items_i(1).rdy) | 
         (~io.rob_items_i(1).valid & commit_item_rdy_mask(0)) |
         (io.rob_items_i(1).valid & (io.rob_items_i(0).hasException))
         
@@ -96,13 +92,11 @@ class RetireStage extends Module
         (
             ~io.rob_items_i(1).hasException & ~io.rob_items_i(0).hasException & io.rob_items_i(2).valid &
             (
-                (io.rob_items_i(2).rdy & ~store_mask_mid(2)) |
-                (store_mask_mid(2) & rob_item_rdy_mask(1) & rob_item_rdy_mask(0))
+                io.rob_items_i(2).rdy
             )
         )
     commit_item_rdy_mask(2) := 
-        (io.rob_items_i(2).valid & io.rob_items_i(2).rdy & ~store_mask_mid(2)) | 
-        (io.rob_items_i(2).valid & store_mask_mid(2)) | 
+        (io.rob_items_i(2).valid & io.rob_items_i(2).rdy) |
         (~io.rob_items_i(2).valid & commit_item_rdy_mask(1)) |
         (io.rob_items_i(2).valid & (io.rob_items_i(1).hasException | io.rob_items_i(0).hasException))
     rob_item_rdy_mask(3) :=
@@ -111,13 +105,11 @@ class RetireStage extends Module
             ~io.rob_items_i(2).hasException & ~io.rob_items_i(1).hasException & 
             ~io.rob_items_i(0).hasException & io.rob_items_i(3).valid &
             (
-                (io.rob_items_i(3).rdy & ~store_mask_mid(3)) |
-                (store_mask_mid(3) & rob_item_rdy_mask(2) & rob_item_rdy_mask(1) & rob_item_rdy_mask(0))
+                io.rob_items_i(3).rdy
             )
         )
     commit_item_rdy_mask(3) := 
-        (io.rob_items_i(3).valid & io.rob_items_i(3).rdy & ~store_mask_mid(3)) | 
-        (io.rob_items_i(3).valid & store_mask_mid(3)) | 
+        (io.rob_items_i(3).valid & io.rob_items_i(3).rdy) | 
         (~io.rob_items_i(3).valid & commit_item_rdy_mask(2)) |
         (io.rob_items_i(3).valid & (io.rob_items_i(2).hasException | io.rob_items_i(1).hasException | io.rob_items_i(0).hasException))
     /* 存在异常刷新流水线 */

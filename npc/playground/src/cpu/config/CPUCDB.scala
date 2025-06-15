@@ -21,6 +21,8 @@ class AGU_CDB_Channel extends Bundle{
     val valid = Bool()
     val reg_wr_data = UInt(base.DATA_WIDTH.W)
     val rob_id = UInt(base.ROBID_WIDTH.W)
+    val wdata = UInt(base.DATA_WIDTH.W)
+    val wmask = UInt(8.W)
     // val has_exception = Bool()
     // val exception_type = UInt(8.W)
 }
