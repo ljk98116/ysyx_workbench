@@ -70,8 +70,7 @@ class ROB extends Module
     }
 
     for(i <- 0 until base.ALU_NUM){
-        when(io.cdb_i.alu_channel(i).valid & ~io.rob_state & ~io.rat_flush_en & (i.U === io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))
-        ){
+        when(io.cdb_i.alu_channel(i).valid & ~io.rob_state & ~io.rat_flush_en){
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).rdy := true.B
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).targetBrAddr := io.cdb_i.alu_channel(i).branch_target_addr
@@ -80,8 +79,7 @@ class ROB extends Module
         }
     }
     for(i <- 0 until base.AGU_NUM){
-        when(io.cdb_i.agu_channel(i).valid & ~io.rob_state & ~io.rat_flush_en & (i.U === io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))
-        ){
+        when(io.cdb_i.agu_channel(i).valid & ~io.rob_state & ~io.rat_flush_en){
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).rdy := true.B
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
         }

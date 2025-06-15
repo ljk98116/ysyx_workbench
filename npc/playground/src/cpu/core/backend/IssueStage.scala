@@ -55,7 +55,7 @@ class IssueStage extends Module
 
     /* AGU */
     var agu_reserve_stations = Seq.fill(base.AGU_NUM){
-        Module(new AGUReservestation(agu_step, 8))
+        Module(new AGUReservestation(agu_step, 32))
     }
     for(i <- 0 until base.AGU_NUM){
         agu_reserve_stations(i).io.cdb_i := io.cdb_i

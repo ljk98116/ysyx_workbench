@@ -11,6 +11,7 @@ object Opcode
     val JAL     = "b1101111".U
     val JALR    = "b1100111".U
     val SW      = "b0100011".U
+    val LW      = "b0000011".U
 }
 
 object Funct3
@@ -18,6 +19,7 @@ object Funct3
     val JALR    = "b000".U
     val ADDI    = "b000".U
     val SW      = "b010".U
+    val LW      = "b010".U
 }
 
 /* 符号扩展 */

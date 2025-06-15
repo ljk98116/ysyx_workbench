@@ -123,8 +123,8 @@ class Dispatch extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        is_alu_vec(i) := ~(rob_item_reg(i).Opcode === Opcode.SW)
-        is_agu_vec(i) := rob_item_reg(i).Opcode === Opcode.SW
+        is_alu_vec(i) := ~(rob_item_reg(i).Opcode === Opcode.SW | rob_item_reg(i).Opcode === Opcode.LW)
+        is_agu_vec(i) := rob_item_reg(i).Opcode === Opcode.SW | rob_item_reg(i).Opcode === Opcode.LW
     }
 
     var alu_items_vec_o = WireInit(VecInit(

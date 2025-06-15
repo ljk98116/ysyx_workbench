@@ -68,6 +68,10 @@ class AGU extends Module
             mem_rw_mask := "b1111".U
             ls_flag     := true.B
         }
+        is(Opcode.LW){
+            result := (rs1_data_reg + rob_item_reg.Imm) & "b1111_1111_1111_1111_1111_1111_1111_1100".U
+            mem_rw_mask := "b1111".U
+        }
         // to do
     }
 

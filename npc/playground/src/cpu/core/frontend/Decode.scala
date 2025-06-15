@@ -57,6 +57,7 @@ class Decode extends Module
                 /* type I */
                 is(
                     Opcode.ADDI,
+                    Opcode.LW
                 ){
                     decoderes(i).Imm    := Imm.ImmI(io.inst_vec_i(i))
                     decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
@@ -67,6 +68,7 @@ class Decode extends Module
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := false.B
                     decoderes(i).HasRd  := true.B
+                    decoderes(i).IsLoad := io.inst_vec_i(i)(6, 0) === Opcode.LW
                 }
                 is(
                     Opcode.JALR

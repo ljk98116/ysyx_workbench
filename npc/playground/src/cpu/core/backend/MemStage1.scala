@@ -128,7 +128,7 @@ class MemStage1 extends Module
             Seq.fill(base.STORE_BUF_SZ)(false.B)
         ))
         for(j <- 0 until base.STORE_BUF_SZ){
-            raw_mask(i) := agu_result_reg(i) === io.storebuffer_addr_i(j)
+            raw_mask(j) := agu_result_reg(i) === io.storebuffer_addr_i(j)
         }
         storebuffer_ren_o(i) := io.ls_flag(i) & raw_mask.asUInt.orR
         priority_decoder_vec(i).io.in := raw_mask.asUInt

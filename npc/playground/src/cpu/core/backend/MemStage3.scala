@@ -63,7 +63,11 @@ class MemStage3 extends Module{
         when(rob_item_reg(i).valid){
             mem_read_data_mid(i) := Mux(mem_read_en_reg(i), io.mem_read_data_i(i), io.storebuffer_rdata(i))
             /* load处理 */
-            
+            switch(mem_read_mask_reg(i)){
+                is("b1111".U){
+                    mem_read_data_o := mem_read_data_mid
+                }
+            }
         }
     }
 
