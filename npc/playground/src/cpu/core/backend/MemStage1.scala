@@ -9,6 +9,8 @@ import cpu.core.utils.PriorityDecoder
 /* 缓存使能到下一周期访问存储器或者storebuffer */
 /* 这里访问存储器只涉及load指令 */
 /* 需要注意组内RAW相关性 */
+/* 后期需要在这里进行TLB转化 */
+/* 处理头部的2条store指令，看是否前推 */
 class MemStage1 extends Module
 {
     val width = log2Ceil(base.STORE_BUF_SZ)
@@ -19,29 +21,25 @@ class MemStage1 extends Module
         val agu_result_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val agu_rw_mask_i = Input(Vec(base.AGU_NUM, UInt(8.W)))
         val agu_mem_wdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
-        val ls_flag = Input(Vec(base.AGU_NUM, Bool()))
         val rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
-        /* storebuffer Input */
-        /* 从head指针开始的地址 */
-        val storebuffer_addr_i = Input(Vec(base.STORE_BUF_SZ, UInt(base.ADDR_WIDTH.W)))
         
         /* storebuffer read req */
         val storebuffer_ren_o = Output(Vec(base.AGU_NUM, Bool()))
         val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(width.W)))
         val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
 
-        /* storebuffer Item */
-        val storebuffer_head_item_i = Input(new StoreBufferItem)
+        /* storebuffer Item 头部的store指令 */
+        val storebuffer_head_item_i = Input(Vec(base.AGU_NUM, new StoreBufferItem))
 
         /* dcache/datasram req */
         val mem_read_en_o = Output(Vec(base.AGU_NUM, Bool()))
         val mem_read_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val mem_read_mask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
 
-        val mem_write_en_o = Output(Bool())
-        val mem_write_addr_o = Output(UInt(base.ADDR_WIDTH.W))
-        val mem_write_wmask_o = Output(UInt(8.W))
-        val mem_write_data_o = Output(UInt(base.DATA_WIDTH.W))
+        val mem_write_en_o = Output(Vec(base.AGU_NUM, Bool()))
+        val mem_write_addr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val mem_write_wmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
+        val mem_write_data_o = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
     })
 
     /* pipeline */
@@ -58,7 +56,10 @@ class MemStage1 extends Module
         Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
     ))
 
-    var storebuffer_item_reg = RegInit((0.U).asTypeOf(new StoreBufferItem))
+    var storebuffer_item_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new StoreBufferItem))
+    ))
+
     rob_item_reg := Mux(
         ~io.rat_flush_en, 
         Mux(~io.rob_state, io.rob_item_i, rob_item_reg), 
@@ -83,7 +84,7 @@ class MemStage1 extends Module
     storebuffer_item_reg := Mux(
         ~io.rat_flush_en,
         Mux(~io.rob_state, io.storebuffer_head_item_i, storebuffer_item_reg),
-        0.U.asTypeOf(new StoreBufferItem)
+        VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new StoreBufferItem)))
     )
 
     var storebuffer_ren_o = WireInit(VecInit(
@@ -110,39 +111,45 @@ class MemStage1 extends Module
         Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
 
-    var mem_write_en_o = WireInit(false.B)
-
-    var mem_write_addr_o = WireInit((0.U)(base.ADDR_WIDTH.W))
-
-    var mem_write_wmask_o = WireInit((0.U)(8.W))
-
-    var mem_write_data_o = WireInit((0.U)(base.DATA_WIDTH.W))
-
-    /* 找到匹配的最新的 */
-    var priority_decoder_vec = Seq.fill(base.AGU_NUM)(
-        Module(new PriorityDecoder(base.STORE_BUF_SZ))
-    )
-
+    var mem_write_en_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
+    var mem_write_addr_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
+    ))
+    var mem_write_wmask_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
+    ))
+    var mem_write_data_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
+    ))
+    /* load/store使能 */
+    /* 将来这里给到TLB,直连TLB判断TLB是否命中 */
     for(i <- 0 until base.AGU_NUM){
-        var raw_mask = WireInit(VecInit(
-            Seq.fill(base.STORE_BUF_SZ)(false.B)
-        ))
-        for(j <- 0 until base.STORE_BUF_SZ){
-            raw_mask(j) := agu_result_reg(i) === io.storebuffer_addr_i(j)
-        }
-        storebuffer_ren_o(i) := io.ls_flag(i) & raw_mask.asUInt.orR
-        priority_decoder_vec(i).io.in := raw_mask.asUInt
-        storebuffer_raddr_o(i) := priority_decoder_vec(i).io.out
-        storebuffer_rmask_o(i) := agu_rw_mask_reg(i)
-        mem_read_en_o(i) := ~storebuffer_ren_o(i) & rob_item_reg(i).valid & rob_item_reg(i).isLoad
-        mem_read_addr_o(i) := agu_result_reg(i)
-        mem_read_mask_o(i) := agu_rw_mask_reg(i)
-    }
+        mem_read_en_o(i) := rob_item_reg(i).valid & rob_item_reg(i).isLoad
+        mem_read_addr_o(i) := Mux(rob_item_reg(i).valid & rob_item_reg(i).isLoad, agu_result_reg(i), 0.U)
+        mem_read_mask_o(i) := Mux(rob_item_reg(i).valid & rob_item_reg(i).isLoad, agu_rw_mask_reg(i), 0.U)
 
-    mem_write_en_o := storebuffer_item_reg.valid & storebuffer_item_reg.rdy & storebuffer_item_reg.rob_rdy
-    mem_write_addr_o := storebuffer_item_reg.agu_result
-    mem_write_data_o := storebuffer_item_reg.wdata
-    mem_write_wmask_o := storebuffer_item_reg.wmask
+        mem_write_en_o(i) := storebuffer_item_reg(i).rdy & storebuffer_item_reg(i).rob_rdy
+        mem_write_addr_o(i) := Mux(
+            storebuffer_item_reg(i).rdy & storebuffer_item_reg(i).rob_rdy, 
+            storebuffer_item_reg(i).agu_result,
+            0.U
+        )
+        mem_write_data_o(i) := Mux(
+            storebuffer_item_reg(i).rdy & storebuffer_item_reg(i).rob_rdy,
+            storebuffer_item_reg(i).wdata,
+            0.U
+        )
+        mem_write_wmask_o(i) := Mux(
+            storebuffer_item_reg(i).rdy & storebuffer_item_reg(i).rob_rdy,
+            storebuffer_item_reg(i).wmask,
+            0.U            
+        )
+        storebuffer_ren_o(i) := rob_item_reg(i).valid & rob_item_reg(i).isLoad
+        storebuffer_raddr_o(i) := Mux(rob_item_reg(i).valid & rob_item_reg(i).isLoad, agu_result_reg(i), 0.U)
+        storebuffer_rmask_o(i) := Mux(rob_item_reg(i).valid & rob_item_reg(i).isLoad, agu_rw_mask_reg(i), 0.U)
+    }
 
     /* connect */
     io.storebuffer_ren_o := storebuffer_ren_o
