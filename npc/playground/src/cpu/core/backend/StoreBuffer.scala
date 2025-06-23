@@ -16,18 +16,24 @@ class StoreBuffer(size : Int) extends Module{
         /* Dispatch */
         val store_buffer_write_en = Input(Vec(base.FETCH_WIDTH, Bool()))
         val store_buffer_item_i = Input(Vec(base.FETCH_WIDTH, new StoreBufferItem))
+        val store_buffer_write_cnt = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
         /* AGU更新store buffer */
-        val cdb_i = Input(new CDB)
-        /* MemStage1 load forwarding */
+        val agu_valid = Input(Vec(base.AGU_NUM, Bool()))
+        val agu_rob_id = Input(Vec(base.AGU_NUM, UInt(base.ROBID_WIDTH.W)))
+        val agu_result = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val agu_wdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val agu_wmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
+        /* MemStage2 load forwarding */
         val store_buffer_ren = Input(Vec(base.AGU_NUM, Bool()))
         val store_buffer_raddr = Input(Vec(base.AGU_NUM, UInt(width.W)))
         val store_buffer_rmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
-        /* MemStage2输出 */
+        /* MemStage3输出 */
         val store_buffer_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val store_buffer_rdata_valid = Output(Vec(base.AGU_NUM, Bool()))
         /* retire段，ROB头部项 */
         val rob_items_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         /* 输出队列头部2个Item */
-        val store_buffer_item_o = Output(new StoreBufferItem)
+        val store_buffer_item_o = Output(Vec(base.AGU_NUM, new StoreBufferItem))
         /* StoreBuffer是否可写入 */
         val wr_able = Bool()
     })
@@ -88,13 +94,62 @@ class StoreBuffer(size : Int) extends Module{
         prio_decoder_vec(i).io.in := load_raw_mask
         /* 寄存器缓存最晚的命中的store指令的数据，下一周期输出 */
         raw_stIdx(i) := Mux(load_raw_mask.orR, size.U, prio_decoder_vec(i).io.out)
-        store_buffer_rdata(i) := storebuffer_item_reg(raw_stIdx(i)).wdata
+        store_buffer_rdata(i) := storebuffer_item_reg(raw_stIdx(i)(width - 1, 0)).wdata
+        io.store_buffer_rdata_valid(i) := raw_stIdx(i) =/= size.U
     }
     store_buffer_item_o(0) := Mux(head =/= tail, storebuffer_item_reg(head), 0.U.asTypeOf(new StoreBufferItem))
     store_buffer_item_o(1) := Mux(head + 1.U =/= tail, storebuffer_item_reg(head + 1.U), 0.U.asTypeOf(new StoreBufferItem))
     
     /* 时序逻辑 */
-    
+    for(i <- 0 until size){
+        when(io.rat_flush_en){
+            storebuffer_item_reg(i) := 0.U.asTypeOf(new StoreBufferItem)
+        }.elsewhen((i.U === tail) & io.store_buffer_item_i(0).valid){
+            storebuffer_item_reg(i) := io.store_buffer_item_i(0)
+        }.elsewhen((i.U === tail + 1.U) & io.store_buffer_item_i(1).valid){
+            storebuffer_item_reg(i) := io.store_buffer_item_i(1)
+        }.elsewhen((i.U === tail + 2.U) & io.store_buffer_item_i(2).valid){
+            storebuffer_item_reg(i) := io.store_buffer_item_i(2)
+        }.elsewhen((i.U === tail + 3.U) & io.store_buffer_item_i(3).valid){
+            storebuffer_item_reg(i) := io.store_buffer_item_i(3)
+        }.otherwise{
+            for(j <- 0 until base.AGU_NUM){
+                when(
+                    storebuffer_item_reg(i).valid & io.agu_valid(j) &
+                    (storebuffer_item_reg(i).rob_id === io.agu_rob_id(j))
+                ){
+                    storebuffer_item_reg(i).rdy := true.B
+                    storebuffer_item_reg(i).agu_result := io.agu_result(j)
+                    storebuffer_item_reg(i).wdata := io.agu_wdata(j)
+                    storebuffer_item_reg(i).wmask := io.agu_wmask(j)
+                }
+            }
+            for(j <- 0 until base.FETCH_WIDTH){
+                when(
+                    storebuffer_item_reg(i).valid & io.rob_items_i(j).valid &
+                    (storebuffer_item_reg(i).rob_id === io.rob_items_i(j).id)
+                ){
+                    storebuffer_item_reg(i).rob_rdy := io.rob_items_i(j).rdy
+                }
+            }
+        }
+    }
+
+    tail := Mux(
+        io.rat_flush_en, 
+        0.U, 
+        Mux(io.wr_able, tail + io.store_buffer_write_cnt, tail)
+    )
+    head := Mux(
+        io.rat_flush_en,
+        0.U,
+        Mux(
+            storebuffer_item_reg(head).rob_rdy & storebuffer_item_reg(head).rdy &
+            storebuffer_item_reg(head + 1.U).rob_rdy & storebuffer_item_reg(head + 1.U).rdy,
+            head + 2.U,
+            Mux(storebuffer_item_reg(head).rob_rdy & storebuffer_item_reg(head).rdy, head + 1.U, head)
+        )
+    )
     /* connect */
     io.store_buffer_rdata := store_buffer_rdata
     io.store_buffer_item_o := store_buffer_item_o

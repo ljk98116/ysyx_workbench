@@ -200,7 +200,7 @@ class CPUCore(memfile: String) extends Module
     /* dispatch -> StoreBuffer */
     storebuffer.io.store_buffer_write_en := dispatch.io.store_buffer_write_en
     storebuffer.io.store_buffer_item_i   := dispatch.io.store_buffer_item_o
-    storebuffer.io.store_buffer_item_cnt := dispatch.io.store_buffer_item_cnt
+    storebuffer.io.store_buffer_write_cnt := dispatch.io.store_buffer_write_cnt
     
     issue.io.cdb_i                  := cdb
 
@@ -252,21 +252,28 @@ class CPUCore(memfile: String) extends Module
         memstage1.io.agu_result_i(i)    := agu_vec(i).io.result
         memstage1.io.agu_rw_mask_i(i)   := agu_vec(i).io.mem_rw_mask
         memstage1.io.agu_mem_wdata(i)   := agu_vec(i).io.mem_wr_data
-        memstage1.io.ls_flag(i)         := agu_vec(i).io.ls_flag
     }
     
     /* AGU -> StoreBuffer */
     for(i <- 0 until base.AGU_NUM){
-        storebuffer.io.agu_lsflag_i(i) := agu_vec(i).io.ls_flag
-        storebuffer.io.agu_robid_i(i)  := agu_vec(i).io.rob_item_o.id
-        storebuffer.io.agu_result_i(i) := agu_vec(i).io.result
-        storebuffer.io.agu_wmask_i(i)  := agu_vec(i).io.mem_rw_mask
-        storebuffer.io.agu_wdata_i(i)  := agu_vec(i).io.mem_wr_data
-        storebuffer.io.valid_i(i)      := agu_vec(i).io.valid
+        storebuffer.io.agu_valid(i) := agu_vec(i).io.valid
+        storebuffer.io.agu_rob_id(i) := agu_vec(i).io.rob_item_o.id
+        storebuffer.io.agu_result(i) := agu_vec(i).io.result
+        storebuffer.io.agu_wdata(i) := agu_vec(i).io.mem_wr_data
+        storebuffer.io.agu_wmask(i) := agu_vec(i).io.mem_rw_mask
     }
-    
+
+    /* AGU -> ROB */
+    for(i <- 0 until base.AGU_NUM){
+        rob_buffer.io.agu_valid(i) := agu_vec(i).io.valid
+        rob_buffer.io.agu_rob_id(i) := agu_vec(i).io.rob_item_o.id
+        rob_buffer.io.agu_result(i) := agu_vec(i).io.result
+        rob_buffer.io.agu_wdata(i) := agu_vec(i).io.mem_wr_data
+        rob_buffer.io.agu_wmask(i) := agu_vec(i).io.mem_rw_mask  
+        rob_buffer.io.agu_ls_flag(i) := agu_vec(i).io.rob_item_o.isStore      
+    }
+
     /* StoreBuffer -> MemStage1 */
-    memstage1.io.storebuffer_addr_i    := storebuffer.io.store_buffer_target_addrs
     memstage1.io.storebuffer_head_item_i := storebuffer.io.store_buffer_item_o
 
     /* MemStage1 -> MemStage2 */
@@ -290,7 +297,7 @@ class CPUCore(memfile: String) extends Module
     /* MemStage2 -> Sram */
     memory.io.wen                       := memstage2.io.mem_write_en_o
     memory.io.waddr                     := memstage2.io.mem_write_addr_o
-    memory.io.wmask                     := memstage2.io.mem_write_mask_o
+    memory.io.wmask                     := memstage2.io.mem_write_wmask_o
     memory.io.wdata                     := memstage2.io.mem_write_data_o
     for(i <- 0 until base.AGU_NUM){
         memory.io.ren(base.FETCH_WIDTH + i)     := memstage2.io.mem_read_en_o(i)
@@ -309,6 +316,7 @@ class CPUCore(memfile: String) extends Module
 
     /* storebuffer -> memstage3 */
     memstage3.io.storebuffer_rdata      := storebuffer.io.store_buffer_rdata
+    memstage3.io.storebuffer_rdata_valid := storebuffer.io.store_buffer_rdata_valid
 
     /* MemStage3 -> CDB */
     for(i <- 0 until base.AGU_NUM){
@@ -397,6 +405,5 @@ class CPUCore(memfile: String) extends Module
     /* rob_buffer -> storebuffer */
     storebuffer.io.rob_items_i                 := rob_buffer.io.rob_item_o
     /* retire -> storebuffer */
-    storebuffer.io.rob_item_rdy_mask           := retire.io.rob_item_rdy_mask
     storebuffer.io.rat_flush_en                := retire.io.rat_flush_en
 }

@@ -15,6 +15,7 @@ class MemStage3 extends Module{
         val mem_read_en_i = Input(Vec(base.AGU_NUM, Bool()))
         val mem_read_mask_i = Input(Vec(base.AGU_NUM, UInt(8.W)))
         val storebuffer_rdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val storebuffer_rdata_valid = Input(Vec(base.AGU_NUM, Bool()))
         val mem_read_data_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val mem_read_data_o = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
     })
@@ -61,7 +62,7 @@ class MemStage3 extends Module{
 
     for(i <- 0 until base.AGU_NUM){
         when(rob_item_reg(i).valid){
-            mem_read_data_mid(i) := Mux(mem_read_en_reg(i), io.mem_read_data_i(i), io.storebuffer_rdata(i))
+            mem_read_data_mid(i) := Mux(~io.storebuffer_rdata_valid(i), io.mem_read_data_i(i), io.storebuffer_rdata(i))
             /* load处理 */
             switch(mem_read_mask_reg(i)){
                 is("b1111".U){

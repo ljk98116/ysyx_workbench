@@ -37,6 +37,7 @@ class Dispatch extends Module
         /* store buffer write */
         val store_buffer_write_en = Output(Vec(base.FETCH_WIDTH, Bool()))
         val store_buffer_item_o = Output(Vec(base.FETCH_WIDTH, new StoreBufferItem))
+        val store_buffer_write_cnt = Output(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
 
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
@@ -181,13 +182,115 @@ class Dispatch extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         store_flags(i) := 
             rob_item_reg(i).Opcode === Opcode.SW
-        store_buffer_item_o(i).rob_id := rob_item_reg(i).id
-        store_buffer_item_o(i).valid  := rob_item_reg(i).valid & store_flags(i)
         store_buffer_item_o(i).agu_result := 0.U
         store_buffer_item_o(i).rdy := false.B
         store_buffer_item_o(i).rob_rdy := false.B
         store_buffer_item_o(i).wdata := 0.U
         store_buffer_item_o(i).wmask := 0.U
+    }
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        store_buffer_item_o(i).rob_id := 0.U
+        store_buffer_item_o(i).valid := false.B
+    }
+    switch(store_flags.asUInt){
+        is("b0000".U){
+
+        }
+        is("b0001".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid
+        }
+        is("b0010".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid := rob_item_reg(1).valid            
+        }
+        is("b0011".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid := rob_item_reg(1).valid            
+        }
+        is("b0100".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(0).valid := rob_item_reg(2).valid          
+        }
+        is("b0101".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid 
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid := rob_item_reg(2).valid
+        }
+        is("b0110".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid := rob_item_reg(1).valid 
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid := rob_item_reg(2).valid            
+        }
+        is("b0111".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid 
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid := rob_item_reg(1).valid
+            store_buffer_item_o(2).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(2).valid := rob_item_reg(2).valid            
+        }
+        is("b1000".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(0).valid := rob_item_reg(3).valid             
+        }
+        is("b1001".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid  
+            store_buffer_item_o(1).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(1).valid := rob_item_reg(3).valid          
+        }
+        is("b1010".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid := rob_item_reg(1).valid  
+            store_buffer_item_o(1).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(1).valid := rob_item_reg(3).valid          
+        }
+        is("b1011".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid  
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid := rob_item_reg(1).valid  
+            store_buffer_item_o(2).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(2).valid := rob_item_reg(3).valid        
+        }
+        is("b1100".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(0).valid := rob_item_reg(2).valid  
+            store_buffer_item_o(1).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(1).valid := rob_item_reg(3).valid          
+        }    
+        is("b1101".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid  
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid := rob_item_reg(2).valid
+            store_buffer_item_o(2).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(2).valid := rob_item_reg(3).valid             
+        } 
+        is("b1110".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(0).valid := rob_item_reg(1).valid  
+            store_buffer_item_o(1).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(1).valid := rob_item_reg(2).valid
+            store_buffer_item_o(2).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(2).valid := rob_item_reg(3).valid             
+        }   
+        is("b1111".U){
+            store_buffer_item_o(0).rob_id := rob_item_reg(0).id
+            store_buffer_item_o(0).valid := rob_item_reg(0).valid  
+            store_buffer_item_o(1).rob_id := rob_item_reg(1).id
+            store_buffer_item_o(1).valid := rob_item_reg(1).valid
+            store_buffer_item_o(2).rob_id := rob_item_reg(2).id
+            store_buffer_item_o(2).valid := rob_item_reg(2).valid
+            store_buffer_item_o(3).rob_id := rob_item_reg(3).id
+            store_buffer_item_o(3).valid := rob_item_reg(3).valid                  
+        }
     }
 
     /* connect */
@@ -204,4 +307,5 @@ class Dispatch extends Module
 
     io.store_buffer_write_en := store_flags
     io.store_buffer_item_o   := store_buffer_item_o
+    io.store_buffer_write_cnt := store_buffer_item_cnt
 }

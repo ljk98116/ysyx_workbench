@@ -13,10 +13,10 @@ class MultiPortSram(ReadPorts : Int, memfile : String, DEBUG: Boolean = false) e
         val ren = Input(Vec(ReadPorts, Bool()))
         val raddr = Input(Vec(ReadPorts, UInt(base.ADDR_WIDTH.W)))
         val rdata = Output(Vec(ReadPorts, UInt(base.DATA_WIDTH.W)))
-        val wen = Input(Bool())
-        val wmask = Input(UInt(8.W))
-        val waddr = Input(UInt(base.ADDR_WIDTH.W))
-        val wdata = Input(UInt(base.DATA_WIDTH.W))
+        val wen = Input(Vec(base.AGU_NUM, Bool()))
+        val wmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
+        val waddr = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val wdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
     })
 
     var rdata = WireInit(VecInit(
@@ -27,34 +27,25 @@ if(DEBUG){
     var read_apis = Seq.fill(ReadPorts)(
         Module(new MemReadAPI)
     )
-    var write_api = Module(new MemWriteAPI)
+    var write_apis = Seq.fill(base.AGU_NUM)(Module(new MemWriteAPI))
     for(i <- 0 until ReadPorts){
         read_apis(i).io.clk := clock
         read_apis(i).io.rst := reset.asBool
-        read_apis(i).io.raddr := Mux(io.ren(i) & ~(io.wen & io.waddr === io.raddr(i) & io.wmask === "b1111".U), io.raddr(i), 0.U)
-        rdata(i) := Mux(io.wen & io.waddr === io.raddr(i) & io.wmask === "b1111".U, io.wdata, read_apis(i).io.rdata)
+        read_apis(i).io.raddr := Mux(io.ren(i), io.raddr(i), 0.U)
+        rdata(i) := read_apis(i).io.rdata
     }
-    write_api.io.clk := clock
-    write_api.io.rst := reset.asBool
-    write_api.io.waddr := io.waddr
-    write_api.io.wdata := io.wdata
-    write_api.io.wmask := io.wmask
+    write_apis(0).io.clk := clock
+    write_apis(0).io.rst := reset.asBool
+    write_apis(0).io.waddr := Mux(io.wen(0) & io.waddr(0) =/= io.waddr(1), io.waddr(0), 0.U)
+    write_apis(0).io.wdata := Mux(io.wen(0) & io.waddr(0) =/= io.waddr(1), io.wdata(0), 0.U)
+    write_apis(0).io.wmask := Mux(io.wen(0) & io.waddr(0) =/= io.waddr(1), io.wmask(0), 0.U)
+    write_apis(1).io.clk := clock
+    write_apis(1).io.rst := reset.asBool
+    write_apis(1).io.waddr := Mux(io.wen(1), io.waddr(1), 0.U)
+    write_apis(1).io.wdata := Mux(io.wen(1), io.wdata(1), 0.U)
+    write_apis(1).io.wmask := Mux(io.wen(1), io.wmask(1), 0.U)
 }
 else{
-    val mems = Seq.fill(ReadPorts)(SyncReadMem(256, UInt(base.DATA_WIDTH.W)))
-    if(memfile != ""){
-        for(i <- 0 until ReadPorts){
-            loadMemoryFromFile(mems(i), memfile)
-        }
-    }
-    for(i <- 0 until ReadPorts){
-        rdata(i) := Mux(io.wen & io.waddr === io.raddr(i) & io.wmask === "b1111".U, io.wdata, mems(i).read(io.raddr(i), io.ren(i)))
-    }
-    when(io.wen) {
-        for(i <- 0 until ReadPorts){
-            mems(i).write(io.waddr, io.wdata)
-        }
-    }
 } 
     io.rdata := rdata
 }

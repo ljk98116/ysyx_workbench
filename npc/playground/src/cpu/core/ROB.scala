@@ -20,6 +20,13 @@ class ROB extends Module
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         /* 核内总线消息 */
         val cdb_i = Input(new CDB)
+        /* store消息 */
+        val agu_valid = Input(Vec(base.AGU_NUM, Bool()))
+        val agu_rob_id = Input(Vec(base.AGU_NUM, UInt(base.ROBID_WIDTH.W)))
+        val agu_result = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val agu_wdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val agu_wmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
+        val agu_ls_flag = Input(Vec(base.AGU_NUM, Bool()))
         /* rob容量信息 */
         val robw_able = Output(Bool())
         val robr_able = Output(Bool())
@@ -82,6 +89,9 @@ class ROB extends Module
         when(io.cdb_i.agu_channel(i).valid & ~io.rob_state & ~io.rat_flush_en){
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).rdy := true.B
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
+        }
+        when(io.agu_valid(i) & io.agu_ls_flag(i) & ~io.rob_state & ~io.rat_flush_en){
+            ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))).rdy := true.B           
         }
     }
 
