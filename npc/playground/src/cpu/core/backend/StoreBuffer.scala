@@ -12,7 +12,7 @@ import cpu.core.utils._
 class StoreBuffer(size : Int) extends Module{
     var width = log2Ceil(size)
     val io = IO(new Bundle{
-        val rat_flush_en = Input(Bool())
+        val rob_state = Input(Bool())
         /* Dispatch */
         val store_buffer_write_en = Input(Vec(base.FETCH_WIDTH, Bool()))
         val store_buffer_item_i = Input(Vec(base.FETCH_WIDTH, new StoreBufferItem))
@@ -102,7 +102,7 @@ class StoreBuffer(size : Int) extends Module{
     
     /* 时序逻辑 */
     for(i <- 0 until size){
-        when(io.rat_flush_en){
+        when(io.rob_state){
             storebuffer_item_reg(i) := 0.U.asTypeOf(new StoreBufferItem)
         }.elsewhen((i.U === tail) & io.store_buffer_item_i(0).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(0)
@@ -136,12 +136,12 @@ class StoreBuffer(size : Int) extends Module{
     }
 
     tail := Mux(
-        io.rat_flush_en, 
+        io.rob_state, 
         0.U, 
         Mux(io.wr_able, tail + io.store_buffer_write_cnt, tail)
     )
     head := Mux(
-        io.rat_flush_en,
+        io.rob_state,
         0.U,
         Mux(
             storebuffer_item_reg(head).rob_rdy & storebuffer_item_reg(head).rdy &

@@ -405,5 +405,5 @@ class CPUCore(memfile: String) extends Module
     /* rob_buffer -> storebuffer */
     storebuffer.io.rob_items_i                 := rob_buffer.io.rob_item_o
     /* retire -> storebuffer */
-    storebuffer.io.rat_flush_en                := retire.io.rat_flush_en
+    storebuffer.io.rob_state                := retire.io.rob_state
 }

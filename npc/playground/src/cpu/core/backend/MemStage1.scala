@@ -81,11 +81,7 @@ class MemStage1 extends Module
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
     )
 
-    storebuffer_item_reg := Mux(
-        ~io.rat_flush_en,
-        Mux(~io.rob_state, io.storebuffer_head_item_i, storebuffer_item_reg),
-        VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new StoreBufferItem)))
-    )
+    storebuffer_item_reg := io.storebuffer_head_item_i
 
     var storebuffer_ren_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)(false.B)
