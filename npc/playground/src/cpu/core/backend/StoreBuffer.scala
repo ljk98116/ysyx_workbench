@@ -23,10 +23,11 @@ class StoreBuffer(size : Int) extends Module{
         val agu_result = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val agu_wdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val agu_wmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
-        /* MemStage2 load forwarding */
+        /* MemStage2 load forwarding & mem_write_en */
         val store_buffer_ren = Input(Vec(base.AGU_NUM, Bool()))
-        val store_buffer_raddr = Input(Vec(base.AGU_NUM, UInt(width.W)))
+        val store_buffer_raddr = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val store_buffer_rmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
+        val mem_write_en = Input(Vec(base.AGU_NUM, Bool()))
         /* MemStage3输出 */
         val store_buffer_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val store_buffer_rdata_valid = Output(Vec(base.AGU_NUM, Bool()))
@@ -35,7 +36,7 @@ class StoreBuffer(size : Int) extends Module{
         /* 输出队列头部2个Item */
         val store_buffer_item_o = Output(Vec(base.AGU_NUM, new StoreBufferItem))
         /* StoreBuffer是否可写入 */
-        val wr_able = Bool()
+        val wr_able = Output(Bool())
     })
 
     var storebuffer_item_reg = RegInit(VecInit(
@@ -44,12 +45,14 @@ class StoreBuffer(size : Int) extends Module{
 
     var head = RegInit((0.U)(width.W))
     var tail = RegInit((0.U)(width.W))
+    var rob_head = RegInit((0.U)(width.W))
+
     /* 是否可写入，必须保留至少fetch_width + 1 的空间 */
     var wr_able_mask = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
     for(i <- 0 until base.FETCH_WIDTH){
-        wr_able_mask(i) := tail + (i + 1).U =/= head
+        wr_able_mask(i) := (tail + (i + 1).U) =/= head
     }
     io.wr_able := wr_able_mask.asUInt.andR
     /* 组合逻辑，判断load RAW相关性 */
@@ -67,7 +70,10 @@ class StoreBuffer(size : Int) extends Module{
     var store_buffer_item_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new StoreBufferItem))
     ))
-
+    var store_buffer_rvalid = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
+    dontTouch(raw_stIdx)
     for(i <- 0 until base.AGU_NUM){
         /* head > tail时候的tail以下部分 */
         var load_raw_mask_1 = WireInit(VecInit(
@@ -83,22 +89,22 @@ class StoreBuffer(size : Int) extends Module{
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                ((j.U < tail & head > tail) | (head < tail))
+                (((j.U < tail) & (head > tail)) | (head < tail))
             load_raw_mask_2(j) := 
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                ((j.U >= head & head > tail) | (head < tail))            
+                (((j.U >= head) & (head > tail)) | (head < tail))            
         }
-        load_raw_mask := Mux(load_raw_mask_1.asUInt.orR, load_raw_mask_1.asUInt, load_raw_mask_2.asUInt)
+        load_raw_mask := Mux(load_raw_mask_1.asUInt =/= 0.U, load_raw_mask_1.asUInt, load_raw_mask_2.asUInt)
         prio_decoder_vec(i).io.in := load_raw_mask
         /* 寄存器缓存最晚的命中的store指令的数据，下一周期输出 */
-        raw_stIdx(i) := Mux(load_raw_mask.orR, size.U, prio_decoder_vec(i).io.out)
+        raw_stIdx(i) := Mux(load_raw_mask.asUInt =/= 0.U, prio_decoder_vec(i).io.out, size.U)
         store_buffer_rdata(i) := storebuffer_item_reg(raw_stIdx(i)(width - 1, 0)).wdata
-        io.store_buffer_rdata_valid(i) := raw_stIdx(i) =/= size.U
+        store_buffer_rvalid(i) := raw_stIdx(i) =/= size.U
     }
-    store_buffer_item_o(0) := Mux(head =/= tail, storebuffer_item_reg(head), 0.U.asTypeOf(new StoreBufferItem))
-    store_buffer_item_o(1) := Mux(head + 1.U =/= tail, storebuffer_item_reg(head + 1.U), 0.U.asTypeOf(new StoreBufferItem))
+    store_buffer_item_o(0) := Mux(rob_head =/= tail, storebuffer_item_reg(rob_head), 0.U.asTypeOf(new StoreBufferItem))
+    store_buffer_item_o(1) := Mux((rob_head + 1.U) =/= tail, storebuffer_item_reg(rob_head + 1.U), 0.U.asTypeOf(new StoreBufferItem))
     
     /* 时序逻辑 */
     for(i <- 0 until size){
@@ -106,11 +112,11 @@ class StoreBuffer(size : Int) extends Module{
             storebuffer_item_reg(i) := 0.U.asTypeOf(new StoreBufferItem)
         }.elsewhen((i.U === tail) & io.store_buffer_item_i(0).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(0)
-        }.elsewhen((i.U === tail + 1.U) & io.store_buffer_item_i(1).valid){
+        }.elsewhen((i.U === (tail + 1.U)) & io.store_buffer_item_i(1).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(1)
-        }.elsewhen((i.U === tail + 2.U) & io.store_buffer_item_i(2).valid){
+        }.elsewhen((i.U === (tail + 2.U)) & io.store_buffer_item_i(2).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(2)
-        }.elsewhen((i.U === tail + 3.U) & io.store_buffer_item_i(3).valid){
+        }.elsewhen((i.U === (tail + 3.U)) & io.store_buffer_item_i(3).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(3)
         }.otherwise{
             for(j <- 0 until base.AGU_NUM){
@@ -140,18 +146,32 @@ class StoreBuffer(size : Int) extends Module{
         0.U, 
         Mux(io.wr_able, tail + io.store_buffer_write_cnt, tail)
     )
+    rob_head := Mux(
+        io.rob_state,
+        0.U,
+        Mux(
+            storebuffer_item_reg(rob_head).rob_rdy & storebuffer_item_reg(rob_head).rdy &
+            storebuffer_item_reg(rob_head + 1.U).rob_rdy & storebuffer_item_reg(rob_head + 1.U).rdy,
+            rob_head + 2.U,
+            Mux(storebuffer_item_reg(rob_head).rob_rdy & storebuffer_item_reg(rob_head).rdy, rob_head + 1.U, rob_head)
+        )
+    )
     head := Mux(
         io.rob_state,
         0.U,
         Mux(
-            storebuffer_item_reg(head).rob_rdy & storebuffer_item_reg(head).rdy &
-            storebuffer_item_reg(head + 1.U).rob_rdy & storebuffer_item_reg(head + 1.U).rdy,
+            (head + 1.U) =/= tail & io.mem_write_en.asUInt === "b11".U, 
             head + 2.U,
-            Mux(storebuffer_item_reg(head).rob_rdy & storebuffer_item_reg(head).rdy, head + 1.U, head)
+            Mux(
+                (head =/= tail) & io.mem_write_en.asUInt.orR,
+                head + 1.U,
+                head
+            )
         )
     )
     /* connect */
     io.store_buffer_rdata := store_buffer_rdata
+    io.store_buffer_rdata_valid := store_buffer_rvalid
     io.store_buffer_item_o := store_buffer_item_o
 }
 

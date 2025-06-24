@@ -25,7 +25,7 @@ class MemStage1 extends Module
         
         /* storebuffer read req */
         val storebuffer_ren_o = Output(Vec(base.AGU_NUM, Bool()))
-        val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(width.W)))
+        val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
 
         /* storebuffer Item 头部的store指令 */
@@ -88,7 +88,7 @@ class MemStage1 extends Module
     ))
 
     var storebuffer_raddr_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(width.W))
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
     ))
 
     var storebuffer_rmask_o = WireInit(VecInit(

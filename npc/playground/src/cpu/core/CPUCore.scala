@@ -289,10 +289,11 @@ class CPUCore(memfile: String) extends Module
     memstage2.io.storebuffer_raddr_i    := memstage1.io.storebuffer_raddr_o
     memstage2.io.storebuffer_rmask_i    := memstage1.io.storebuffer_rmask_o
 
-    /* Memstage2 -> StoreBuffer, load forwarding */
+    /* Memstage2 -> StoreBuffer, load forwarding/real steping */
     storebuffer.io.store_buffer_ren     := memstage2.io.storebuffer_ren_o
     storebuffer.io.store_buffer_raddr   := memstage2.io.storebuffer_raddr_o
     storebuffer.io.store_buffer_rmask   := memstage2.io.storebuffer_rmask_o
+    storebuffer.io.mem_write_en         := memstage2.io.mem_write_en_o
 
     /* MemStage2 -> Sram */
     memory.io.wen                       := memstage2.io.mem_write_en_o

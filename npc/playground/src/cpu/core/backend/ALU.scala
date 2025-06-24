@@ -68,6 +68,9 @@ class ALU extends Module
         is(Opcode.ADDI){
             result := rs1_data_reg + rob_item_reg.Imm
         }
+        is(Opcode.ADD){
+            result := rs1_data_reg + rs2_data_reg
+        }
         is(Opcode.AUIPC){
             result := rob_item_reg.pc + rob_item_reg.Imm
         }

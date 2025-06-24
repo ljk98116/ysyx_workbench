@@ -11,7 +11,7 @@ object base
     val FETCH_WIDTH = 4
     val ALU_NUM = 4
     val AGU_NUM = 2
-    val STORE_BUF_SZ = 8
+    val STORE_BUF_SZ = 16
 }
 
 object ExceptionType {

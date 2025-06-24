@@ -125,6 +125,19 @@ class Decode extends Module
                     decoderes(i).HasRs2 := true.B
                     decoderes(i).HasRd  := false.B
                 }
+                /* type R */
+                is(
+                    Opcode.ADD
+                ){
+                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
+                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
+                    decoderes(i).rs2    := io.inst_vec_i(i)(24, 20)
+                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)    
+                    decoderes(i).Type   := InstType.TYPER        
+                    decoderes(i).HasRs1 := true.B
+                    decoderes(i).HasRs2 := true.B
+                    decoderes(i).HasRd  := true.B                    
+                }
             }
         }
     }

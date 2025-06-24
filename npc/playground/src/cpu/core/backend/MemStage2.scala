@@ -20,7 +20,7 @@ class MemStage2 extends Module{
         val mem_write_data_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         /* store buffer req */
         val storebuffer_ren_i = Input(Vec(base.AGU_NUM, Bool()))
-        val storebuffer_raddr_i = Input(Vec(base.AGU_NUM, UInt(width.W)))
+        val storebuffer_raddr_i = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val storebuffer_rmask_i = Input(Vec(base.AGU_NUM, UInt(8.W))) 
 
         val mem_read_en_o = Output(Vec(base.AGU_NUM, Bool()))
@@ -33,7 +33,7 @@ class MemStage2 extends Module{
         val mem_write_data_o = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
 
         val storebuffer_ren_o = Output(Vec(base.AGU_NUM, Bool()))
-        val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(width.W)))
+        val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(8.W))) 
         val rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
     })
@@ -63,7 +63,7 @@ class MemStage2 extends Module{
         Seq.fill(base.AGU_NUM)(false.B)
     ))
     var storebuffer_raddr_reg = RegInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(width.W))
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
     ))
     var storebuffer_rmask_reg = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)(8.W))
@@ -93,6 +93,21 @@ class MemStage2 extends Module{
     mem_write_mask_reg := io.mem_write_mask_i
     mem_write_data_reg := io.mem_write_data_i
 
+    storebuffer_ren_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.storebuffer_ren_i, storebuffer_ren_reg),
+        VecInit(Seq.fill(base.AGU_NUM)(false.B))        
+    )
+    storebuffer_raddr_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.storebuffer_raddr_i, storebuffer_raddr_reg), 
+        VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
+    )
+    storebuffer_rmask_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.storebuffer_rmask_i, storebuffer_rmask_reg), 
+        VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W)))
+    )    
     rob_item_reg := Mux(
         ~io.rat_flush_en, 
         Mux(~io.rob_state, io.rob_item_i, rob_item_reg),
@@ -125,7 +140,7 @@ class MemStage2 extends Module{
         Seq.fill(base.AGU_NUM)(false.B)
     ))
     var storebuffer_raddr_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)(width.W))
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
     ))
     var storebuffer_rmask_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)(8.W))

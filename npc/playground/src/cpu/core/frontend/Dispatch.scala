@@ -171,11 +171,11 @@ class Dispatch extends Module
     ))
     var store_buffer_item_cnt = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
     var store_buffer_item_cnt_mid = WireInit(VecInit(
-        Seq.fill(2)((0.U)(2.W))
+        Seq.fill(2)((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
     ))
 
     for(i <- 0 until 2){
-        store_buffer_item_cnt_mid(i) := store_flags(2 * i) + store_flags(2 * i + 1) 
+        store_buffer_item_cnt_mid(i) := store_flags(2 * i).asTypeOf(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W)) + store_flags(2 * i + 1).asTypeOf(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
     }
     store_buffer_item_cnt := store_buffer_item_cnt_mid(0) + store_buffer_item_cnt_mid(1)
 

@@ -12,12 +12,14 @@ object Opcode
     val JALR    = "b1100111".U
     val SW      = "b0100011".U
     val LW      = "b0000011".U
+    val ADD     = "b0110011".U
 }
 
 object Funct3
 {
     val JALR    = "b000".U
     val ADDI    = "b000".U
+    val ADD     = "b000".U
     val SW      = "b010".U
     val LW      = "b010".U
 }
