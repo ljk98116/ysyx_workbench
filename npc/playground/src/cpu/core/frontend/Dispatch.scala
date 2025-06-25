@@ -21,9 +21,8 @@ class Dispatch extends Module
         val rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
         val alu_items_vec_o = Output(Vec(base.ALU_NUM, new ROBItem))
-        val agu_items_vec_o = Output(
-            Vec(base.AGU_NUM, Vec(agu_step, new ROBItem)))
-        val agu_items_cnt_vec_o = Output(Vec(base.AGU_NUM, UInt((log2Ceil(agu_step) + 1).W)))
+        val agu_items_vec_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
+        val agu_items_cnt_o = Output(UInt((log2Ceil(FETCH_WIDTH) + 1).W))
         /* 总线接口 */
         val cdb_i = Input(new CDB)
         /* PRF接口 */
@@ -123,8 +122,8 @@ class Dispatch extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        is_alu_vec(i) := ~(rob_item_reg(i).Opcode === Opcode.SW | rob_item_reg(i).Opcode === Opcode.LW)
-        is_agu_vec(i) := rob_item_reg(i).Opcode === Opcode.SW | rob_item_reg(i).Opcode === Opcode.LW
+        is_alu_vec(i) := ~((rob_item_reg(i).Opcode === Opcode.SW) | (rob_item_reg(i).Opcode === Opcode.LW))
+        is_agu_vec(i) := (rob_item_reg(i).Opcode === Opcode.SW) | (rob_item_reg(i).Opcode === Opcode.LW)
     }
 
     var alu_items_vec_o = WireInit(VecInit(
@@ -136,30 +135,85 @@ class Dispatch extends Module
     }
 
     var agu_items_vec_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)(
-            VecInit(Seq.fill(base.FETCH_WIDTH / base.AGU_NUM)((0.U).asTypeOf(new ROBItem)))
+        Seq.fill(base.FETCH_WIDTH)(
+            (0.U).asTypeOf(new ROBItem)
         )
     ))
-    val agu_items_cnt_vec_o = WireInit(VecInit(
-        Seq.fill(base.AGU_NUM)((0.U)((log2Ceil(agu_step) + 1).W))
-    ))
-    for(i <- 0 until base.AGU_NUM){
-        switch(is_agu_vec.asUInt(base.AGU_NUM * i + 1, base.AGU_NUM * i)){
-            is("b00".U){}
-            is("b01".U){
-                agu_items_vec_o(i)(0) := rob_items(base.AGU_NUM * i)
-                agu_items_cnt_vec_o(i) := 1.U
-            }
-            is("b10".U){
-                agu_items_vec_o(i)(0) := rob_items(base.AGU_NUM * i + 1)
-                agu_items_cnt_vec_o(i) := 1.U
-            }
-            is("b11".U){
-                agu_items_vec_o(i)(0) := rob_items(base.AGU_NUM * i)
-                agu_items_vec_o(i)(1) := rob_items(base.AGU_NUM * i + 1)
-                agu_items_cnt_vec_o(i) := 2.U
-            }
+
+    val agu_items_cnt_o = WireInit((0.U)((log2Ceil(FETCH_WIDTH) + 1).W))
+    agu_items_cnt_o := 
+        is_agu_vec(0).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W)) +
+        is_agu_vec(1).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W)) +
+        is_agu_vec(2).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W)) +
+        is_agu_vec(3).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W))
+    
+    for(i <- 0 until base.FETCH_WIDTH){
+        agu_items_vec_o(i) := 0.U.asTypeOf(new ROBItem)
+    }
+    switch(is_agu_vec.asUInt){
+        is("b0000".U){}
+        is("b0001".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
         }
+        is("b0010".U){
+            agu_items_vec_o(0) := rob_item_reg(1)
+        }
+        is("b0011".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)
+        }
+        is("b0100".U){
+            agu_items_vec_o(0) := rob_item_reg(2)
+        }
+        is("b0101".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(2)
+        }
+        is("b0110".U){
+            agu_items_vec_o(0) := rob_item_reg(1)
+            agu_items_vec_o(1) := rob_item_reg(2)
+        }
+        is("b0111".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)
+            agu_items_vec_o(2) := rob_item_reg(2)
+        }
+        is("b1000".U){
+            agu_items_vec_o(0) := rob_item_reg(3)
+        }
+        is("b1001".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(3)
+        }        
+        is("b1010".U){
+            agu_items_vec_o(0) := rob_item_reg(1)
+            agu_items_vec_o(1) := rob_item_reg(3)
+        }    
+        is("b1011".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)
+            agu_items_vec_o(2) := rob_item_reg(3)
+        }    
+        is("b1100".U){
+            agu_items_vec_o(0) := rob_item_reg(2)
+            agu_items_vec_o(1) := rob_item_reg(3)            
+        }
+        is("b1101".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(2)       
+            agu_items_vec_o(2) := rob_item_reg(3)     
+        }
+        is("b1110".U){
+            agu_items_vec_o(0) := rob_item_reg(1)
+            agu_items_vec_o(1) := rob_item_reg(2)       
+            agu_items_vec_o(2) := rob_item_reg(3)            
+        } 
+        is("b1111".U){
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)       
+            agu_items_vec_o(2) := rob_item_reg(2)
+            agu_items_vec_o(3) := rob_item_reg(3)            
+        }       
     }
 
     /* store buffer */
@@ -294,7 +348,7 @@ class Dispatch extends Module
     }
 
     /* connect */
-    io.agu_items_cnt_vec_o := agu_items_cnt_vec_o
+    io.agu_items_cnt_o := agu_items_cnt_o
     io.alu_items_vec_o := alu_items_vec_o
     io.agu_items_vec_o := agu_items_vec_o
     io.prf_valid_rs1_ren := prf_valid_rs1_ren

@@ -7,18 +7,18 @@ import cpu.config._
 
 /* 顺序接收ROB项，顺序发射，效率极低 */
 /* 异常时清空队列 */
-class AGUReservestation(stepsize:Int, size : Int) extends Module
+class AGUReservestation(size : Int) extends Module
 {
     val width = log2Ceil(size)
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
-        var rob_item_i = Input(Vec(stepsize, new ROBItem))
-        var valid_cnt_i = Input(UInt((log2Ceil(stepsize) + 1).W))
+        var rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
+        var valid_cnt_i = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
         /* 总线状态 */
         var cdb_i = Input(new CDB)
-        var rob_item_o = Output(new ROBItem)
-        var write_able = Bool()
-        var read_able = Bool() 
+        var rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
+        var read_able = Output(Bool())
+        var write_able = Output(Bool())
     })
 
     var rob_item_reg = RegInit(VecInit(
@@ -28,12 +28,19 @@ class AGUReservestation(stepsize:Int, size : Int) extends Module
     var head = RegInit((0.U)(width.W))
     var tail = RegInit((0.U)(width.W))
 
-    io.read_able := Mux(head =/= tail, true.B, false.B)
-    io.write_able := Mux((tail + 1.U =/= head) & (tail + 2.U =/= head), true.B, false.B)    
+    io.read_able := head =/= tail
+    io.write_able := 
+        (tail + 1.U =/= head) & 
+        (tail + 2.U =/= head) &
+        (tail + 3.U =/= head) &
+        (tail + 4.U =/= head)
 
-    var rob_item_o = WireInit((0.U).asTypeOf(new ROBItem))
-    for(i <- 0 until stepsize){
-        when((i.U < io.valid_cnt_i) & io.write_able & ~io.rat_flush_en){
+    var rob_item_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)asTypeOf(new ROBItem))
+    ))
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        when(io.write_able & ~io.rat_flush_en & io.rob_item_i(i).valid){
             rob_item_reg(tail + i.U) := io.rob_item_i(i)
         }
     }
@@ -62,15 +69,30 @@ class AGUReservestation(stepsize:Int, size : Int) extends Module
         }
     }
 
-    /* 仅检查队头位置 */
-    var issue_able = WireInit(false.B)
-    issue_able := ~(
+    /* 检查队列前2个位置 */
+    var issue_able0 = WireInit(false.B)
+    issue_able0 := ~(
         (rob_item_reg(head).HasRs1 & ~rob_item_reg(head).rdy1) |
         (rob_item_reg(head).HasRs2 & ~rob_item_reg(head).rdy2)
-    ) & rob_item_reg(head).valid
-    rob_item_o := Mux(issue_able, rob_item_reg(head), (0.U).asTypeOf(new ROBItem))
+    ) & rob_item_reg(head).valid & (head =/= tail)
+    rob_item_o(0) := Mux(issue_able0, rob_item_reg(head), (0.U).asTypeOf(new ROBItem))
 
-    head := Mux(io.read_able & ~io.rat_flush_en, head + issue_able.asUInt, Mux(~io.rat_flush_en, head, 0.U))
+    var issue_able1 = WireInit(false.B)
+    issue_able1 := ~(
+        (rob_item_reg(head + 1.U).HasRs1 & ~rob_item_reg(head + 1.U).rdy1) |
+        (rob_item_reg(head + 1.U).HasRs2 & ~rob_item_reg(head + 1.U).rdy2)
+    ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail)
+    rob_item_o(1) := Mux(issue_able1, rob_item_reg(head + 1.U), (0.U).asTypeOf(new ROBItem))
+
+    head := Mux(
+        io.rat_flush_en,
+        0.U,
+        Mux(
+            issue_able0 & issue_able1, 
+            head + 2.U,
+            Mux(issue_able0, head + 1.U, head)
+        )
+    )
     tail := Mux(io.write_able & ~io.rat_flush_en, tail + io.valid_cnt_i, Mux(~io.rat_flush_en, tail, 0.U))
 
     /* connect */

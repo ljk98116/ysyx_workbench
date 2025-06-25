@@ -14,9 +14,8 @@ class IssueStage extends Module
         val rat_flush_en = Input(Bool())
         val rob_state = Input(Bool())
         val alu_items_vec_i = Input(Vec(base.ALU_NUM, new ROBItem))
-        val agu_items_vec_i = Input(
-            Vec(base.AGU_NUM, Vec(agu_step, new ROBItem)))
-        val agu_items_cnt_vec_i = Input(Vec(base.AGU_NUM, UInt(agu_step.W)))
+        val agu_items_vec_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
+        val agu_items_cnt_i = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
         val cdb_i = Input(new CDB)
         val alu_fu_items_o = Output(Vec(base.ALU_NUM, new ROBItem))
         val agu_fu_items_o = Output(Vec(base.AGU_NUM, new ROBItem))
@@ -54,15 +53,11 @@ class IssueStage extends Module
     }
 
     /* AGU */
-    var agu_reserve_stations = Seq.fill(base.AGU_NUM){
-        Module(new AGUReservestation(agu_step, 32))
-    }
-    for(i <- 0 until base.AGU_NUM){
-        agu_reserve_stations(i).io.cdb_i := io.cdb_i
-        agu_reserve_stations(i).io.rob_item_i := io.agu_items_vec_i(i)
-        agu_reserve_stations(i).io.valid_cnt_i := io.agu_items_cnt_vec_i(i)
-        agu_reserve_stations(i).io.rat_flush_en := io.rat_flush_en
-    }
+    var agu_reserve_station = Module(new AGUReservestation(32))
+    agu_reserve_station.io.cdb_i := io.cdb_i
+    agu_reserve_station.io.rob_item_i := io.agu_items_vec_i
+    agu_reserve_station.io.valid_cnt_i := io.agu_items_cnt_i
+    agu_reserve_station.io.rat_flush_en := io.rat_flush_en
 
     var agu_fu_items_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))
@@ -76,9 +71,9 @@ class IssueStage extends Module
     ))    
 
     for(i <- 0 until base.AGU_NUM){
-        agu_fu_items_o(i) := agu_reserve_stations(i).io.rob_item_o
-        agu_issue_read_able(i) := agu_reserve_stations(i).io.read_able
-        agu_issue_write_able(i) := agu_reserve_stations(i).io.write_able
+        agu_fu_items_o(i) := agu_reserve_station.io.rob_item_o(i)
+        agu_issue_read_able(i) := agu_reserve_station.io.read_able
+        agu_issue_write_able(i) := agu_reserve_station.io.write_able
     }
 
     /* connect */

@@ -195,7 +195,7 @@ class CPUCore(memfile: String) extends Module
     // dontTouch(dispatch.io.agu_items_vec_o)
     issue.io.alu_items_vec_i        := dispatch.io.alu_items_vec_o
     issue.io.agu_items_vec_i        := dispatch.io.agu_items_vec_o
-    issue.io.agu_items_cnt_vec_i    := dispatch.io.agu_items_cnt_vec_o
+    issue.io.agu_items_cnt_i    := dispatch.io.agu_items_cnt_o
 
     /* dispatch -> StoreBuffer */
     storebuffer.io.store_buffer_write_en := dispatch.io.store_buffer_write_en
