@@ -153,66 +153,66 @@ class Dispatch extends Module
     switch(is_agu_vec.asUInt){
         is("b0000".U){}
         is("b0001".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(0) := rob_items(0)
         }
         is("b0010".U){
-            agu_items_vec_o(0) := rob_item_reg(1)
+            agu_items_vec_o(0) := rob_items(1)
         }
         is("b0011".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
-            agu_items_vec_o(1) := rob_item_reg(1)
+            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(1) := rob_items(1)
         }
         is("b0100".U){
-            agu_items_vec_o(0) := rob_item_reg(2)
+            agu_items_vec_o(0) := rob_items(2)
         }
         is("b0101".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
-            agu_items_vec_o(1) := rob_item_reg(2)
+            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(1) := rob_items(2)
         }
         is("b0110".U){
-            agu_items_vec_o(0) := rob_item_reg(1)
-            agu_items_vec_o(1) := rob_item_reg(2)
+            agu_items_vec_o(0) := rob_items(1)
+            agu_items_vec_o(1) := rob_items(2)
         }
         is("b0111".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
-            agu_items_vec_o(1) := rob_item_reg(1)
-            agu_items_vec_o(2) := rob_item_reg(2)
+            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(1) := rob_items(1)
+            agu_items_vec_o(2) := rob_items(2)
         }
         is("b1000".U){
-            agu_items_vec_o(0) := rob_item_reg(3)
+            agu_items_vec_o(0) := rob_items(3)
         }
         is("b1001".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
-            agu_items_vec_o(1) := rob_item_reg(3)
+            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(1) := rob_items(3)
         }        
         is("b1010".U){
-            agu_items_vec_o(0) := rob_item_reg(1)
-            agu_items_vec_o(1) := rob_item_reg(3)
+            agu_items_vec_o(0) := rob_items(1)
+            agu_items_vec_o(1) := rob_items(3)
         }    
         is("b1011".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
-            agu_items_vec_o(1) := rob_item_reg(1)
-            agu_items_vec_o(2) := rob_item_reg(3)
+            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(1) := rob_items(1)
+            agu_items_vec_o(2) := rob_items(3)
         }    
         is("b1100".U){
-            agu_items_vec_o(0) := rob_item_reg(2)
-            agu_items_vec_o(1) := rob_item_reg(3)            
+            agu_items_vec_o(0) := rob_items(2)
+            agu_items_vec_o(1) := rob_items(3)            
         }
         is("b1101".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
-            agu_items_vec_o(1) := rob_item_reg(2)       
-            agu_items_vec_o(2) := rob_item_reg(3)     
+            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(1) := rob_items(2)       
+            agu_items_vec_o(2) := rob_items(3)     
         }
         is("b1110".U){
-            agu_items_vec_o(0) := rob_item_reg(1)
-            agu_items_vec_o(1) := rob_item_reg(2)       
-            agu_items_vec_o(2) := rob_item_reg(3)            
+            agu_items_vec_o(0) := rob_items(1)
+            agu_items_vec_o(1) := rob_items(2)       
+            agu_items_vec_o(2) := rob_items(3)            
         } 
         is("b1111".U){
-            agu_items_vec_o(0) := rob_item_reg(0)
-            agu_items_vec_o(1) := rob_item_reg(1)       
-            agu_items_vec_o(2) := rob_item_reg(2)
-            agu_items_vec_o(3) := rob_item_reg(3)            
+            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(1) := rob_items(1)       
+            agu_items_vec_o(2) := rob_items(2)
+            agu_items_vec_o(3) := rob_items(3)            
         }       
     }
 

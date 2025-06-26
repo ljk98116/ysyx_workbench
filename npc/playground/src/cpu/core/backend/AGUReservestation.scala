@@ -5,8 +5,9 @@ import chisel3.util._
 
 import cpu.config._
 
-/* 顺序接收ROB项，顺序发射，效率极低 */
+/* 顺序接收ROB项，顺序发射 */
 /* 异常时清空队列 */
+/* 如果是前面store后面load，且均能发射，只发射第一个指令, 避免load forwarding失效 */
 class AGUReservestation(size : Int) extends Module
 {
     val width = log2Ceil(size)
@@ -81,7 +82,7 @@ class AGUReservestation(size : Int) extends Module
     issue_able1 := ~(
         (rob_item_reg(head + 1.U).HasRs1 & ~rob_item_reg(head + 1.U).rdy1) |
         (rob_item_reg(head + 1.U).HasRs2 & ~rob_item_reg(head + 1.U).rdy2)
-    ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail)
+    ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail) & ~(rob_item_reg(head + 1.U).isLoad & rob_item_reg(head).isStore)
     rob_item_o(1) := Mux(issue_able1, rob_item_reg(head + 1.U), (0.U).asTypeOf(new ROBItem))
 
     head := Mux(

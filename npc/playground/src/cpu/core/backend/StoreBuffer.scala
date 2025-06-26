@@ -73,7 +73,7 @@ class StoreBuffer(size : Int) extends Module{
     var store_buffer_rvalid = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)(false.B)
     ))
-    dontTouch(raw_stIdx)
+
     for(i <- 0 until base.AGU_NUM){
         /* head > tail时候的tail以下部分 */
         var load_raw_mask_1 = WireInit(VecInit(

@@ -65,14 +65,47 @@ class ALU extends Module
     has_exception := false.B
     exception_type := ExceptionType.NORMAL.U
     switch(rob_item_reg.Opcode){
-        is(Opcode.ADDI){
-            result := rs1_data_reg + rob_item_reg.Imm
-        }
         is(Opcode.ADD){
-            result := rs1_data_reg + rs2_data_reg
+            switch(rob_item_reg.funct7){
+                is(Funct7.ADD){
+                    result := rs1_data_reg + rs2_data_reg
+                }
+                is(Funct7.SUB){
+                    result := rs1_data_reg - rs2_data_reg
+                }
+            }
         }
         is(Opcode.AUIPC){
             result := rob_item_reg.pc + rob_item_reg.Imm
+        }
+        is(
+            Opcode.ADDI,
+            // Opcode.SLLI,
+            // Opcode.SRLI,
+            // Opcode.SRAI,
+        ){
+            switch(rob_item_reg.funct3){
+                is(Funct3.ADDI){
+                    result := rs1_data_reg + rob_item_reg.Imm
+                }
+                is(Funct3.SLLI){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.SLLI){
+                            result := rs1_data_reg << rob_item_reg.Imm(4, 0)
+                        }
+                    }
+                }
+                is(Funct3.SRLI){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.SRLI){
+                            result := rs1_data_reg >> rob_item_reg.Imm(4, 0)
+                        }
+                        is(Funct7.SRAI){
+                            result := (rs1_data_reg.asSInt >> rob_item_reg.Imm(4, 0)).asUInt
+                        }
+                    }
+                }
+            }
         }
         is(Opcode.JAL){
             result := rob_item_reg.pc + 4.U
@@ -90,6 +123,19 @@ class ALU extends Module
         }
         is(Opcode.LUI){
             result := rob_item_reg.Imm
+        }
+        is(Opcode.BEQ){
+            switch(rob_item_reg.funct3){
+                is(Funct3.BEQ){
+                    branch_target_addr := Mux(
+                        rs1_data_reg === rs2_data_reg,
+                        rob_item_reg.pc + rob_item_reg.Imm,
+                        rob_item_reg.pc + 4.U
+                    )
+                    has_exception := true.B
+                    exception_type := ExceptionType.BRANCH_PREDICTION_ERROR.U 
+                }
+            }
         }
         // to do
     }
