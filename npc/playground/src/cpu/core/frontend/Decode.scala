@@ -60,6 +60,7 @@ class Decode extends Module
                     //Opcode.SLLI
                     //Opcode.SRLI
                     //Opcode.SRAI
+                    //Opcode.SLTIU
                     Opcode.LW
                 ){
                     decoderes(i).Imm    := Imm.ImmI(io.inst_vec_i(i))
@@ -136,6 +137,7 @@ class Decode extends Module
                     decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
                     decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
                     decoderes(i).rs2    := io.inst_vec_i(i)(24, 20)
+                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
                     decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
                     decoderes(i).funct7 := io.inst_vec_i(i)(31, 25)    
                     decoderes(i).Type   := InstType.TYPER        
@@ -144,11 +146,16 @@ class Decode extends Module
                     decoderes(i).HasRd  := true.B                    
                 }
                 /* type SB */
-                is(Opcode.BEQ){
+                is(
+                    Opcode.BEQ,
+                    // Opcode.BNE
+                ){
                     decoderes(i).Imm    := Imm.ImmSB(io.inst_vec_i(i))
                     decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
+                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
+                    decoderes(i).rs2    := io.inst_vec_i(i)(24, 20)
                     decoderes(i).Type   := InstType.TYPESB
+                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
                     decoderes(i).IsBranch := true.B
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := true.B

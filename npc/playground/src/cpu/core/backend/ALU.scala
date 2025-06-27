@@ -57,7 +57,7 @@ class ALU extends Module
 
     areg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.rd, 0.U)
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
-    valid_o := rob_item_reg.valid & rob_item_reg.HasRd
+    valid_o := rob_item_reg.valid & (rob_item_reg.HasRd | rob_item_reg.Opcode === Opcode.BEQ)
     rob_id_o := rob_item_reg.id
 
     result := 0.U
@@ -105,6 +105,9 @@ class ALU extends Module
                         }
                     }
                 }
+                is(Funct3.SLTIU){
+                    result := Mux(rs1_data_reg === 0.U, 1.U, 0.U)
+                }
             }
         }
         is(Opcode.JAL){
@@ -134,6 +137,15 @@ class ALU extends Module
                     )
                     has_exception := true.B
                     exception_type := ExceptionType.BRANCH_PREDICTION_ERROR.U 
+                }
+                is(Funct3.BNE){
+                    branch_target_addr := Mux(
+                        rs1_data_reg =/= rs2_data_reg,
+                        rob_item_reg.pc + rob_item_reg.Imm,
+                        rob_item_reg.pc + 4.U
+                    )
+                    has_exception := true.B
+                    exception_type := ExceptionType.BRANCH_PREDICTION_ERROR.U                    
                 }
             }
         }

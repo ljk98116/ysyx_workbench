@@ -7,17 +7,23 @@ object Opcode
 {
     val LUI     = "b0110111".U
     val AUIPC   = "b0010111".U
+
     val ADDI    = "b0010011".U
+    val SLTIU   = "b0010011".U
+    val SLLI    = "b0010011".U
+    val SRLI    = "b0010011".U
+    val SRAI    = "b0010011".U
+
     val JAL     = "b1101111".U
     val JALR    = "b1100111".U
     val SW      = "b0100011".U
     val LW      = "b0000011".U
+
     val ADD     = "b0110011".U
     val SUB     = "b0110011".U
-    val SLLI    = "b0010011".U
-    val SRLI    = "b0010011".U
-    val SRAI    = "b0010011".U
+
     val BEQ     = "b1100011".U
+    val BNE     = "b1100011".U
 }
 
 object Funct3
@@ -31,6 +37,8 @@ object Funct3
     val SRLI    = "b101".U
     val SRAI    = "b101".U
     val BEQ     = "b000".U
+    val BNE     = "b001".U
+    val SLTIU   = "b011".U
 }
 
 object Funct7
