@@ -185,7 +185,7 @@ class RenameStage2 extends Module
         /* 前置最近指令是否有相同的rd，用前置指令的pd */
         /* 找最近指令的pd */
         var waw_mask = WireInit(VecInit(Seq.fill(base.FETCH_WIDTH)(false.B)))
-        var target_idx = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+        var target_idx = WireInit((base.FETCH_WIDTH.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
         for(j <- 0 until i){
             waw_mask(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rd
         }

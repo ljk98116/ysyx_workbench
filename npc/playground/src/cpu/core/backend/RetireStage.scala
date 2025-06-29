@@ -125,10 +125,11 @@ class RetireStage extends Module
     )
     rat_flush_pc := io.rob_items_i(encoder.io.idx_o).targetBrAddr
     rat_flush_en := 
-        (io.rob_items_i(0).hasException & io.rob_items_i(0).rdy) |
+        ((io.rob_items_i(0).hasException & io.rob_items_i(0).rdy) |
         (io.rob_items_i(1).hasException & io.rob_items_i(1).rdy & rob_item_rdy_mask(0)) |
         (io.rob_items_i(2).hasException & io.rob_items_i(2).rdy & rob_item_rdy_mask(1) & rob_item_rdy_mask(0)) |
-        (io.rob_items_i(3).hasException & io.rob_items_i(3).rdy & rob_item_rdy_mask(2) & rob_item_rdy_mask(1) & rob_item_rdy_mask(0))
+        (io.rob_items_i(3).hasException & io.rob_items_i(3).rdy & rob_item_rdy_mask(2) & rob_item_rdy_mask(1) & rob_item_rdy_mask(0))) &
+        ~io.rob_state
 
     /* retire RAT */
     var rat_write_en = WireInit(VecInit(
@@ -142,7 +143,7 @@ class RetireStage extends Module
     ))
     for(i <- 0 until base.FETCH_WIDTH){
         when(rob_item_rdy_mask(i)){
-            rat_write_en(i) := io.rob_items_i(i).valid
+            rat_write_en(i) := io.rob_items_i(i).valid & ~io.rob_state
             rat_write_addr(i) := io.rob_items_i(i).rd
             rat_write_data(i) := io.rob_items_i(i).pd
         }.otherwise{
@@ -165,13 +166,15 @@ class RetireStage extends Module
     /* 前置无异常 */
     for(i <- 0 until base.FETCH_WIDTH){
         if(i > 0){
-            free_reg_id_valid(i) := commit_item_rdy_mask.asUInt.andR & exception_mask_mid.asUInt(i-1, 0).orR
+            free_reg_id_valid(i) := 
+                commit_item_rdy_mask.asUInt.andR & 
+                (~exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_state &io.rob_items_i(i).HasRd
         }
         else{
-            free_reg_id_valid(i) := commit_item_rdy_mask.asUInt.andR
+            free_reg_id_valid(i) := commit_item_rdy_mask.asUInt.andR & ~io.rob_state & io.rob_items_i(i).HasRd
         }
-        free_reg_id_wdata(i) := io.rob_items_i(i).oldpd
-        flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid
+        free_reg_id_wdata(i) := Mux(~io.rob_state, io.rob_items_i(i).oldpd, io.rob_items_i(i).pd)
+        flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
     }
 
     /* Free rob id buffer */
@@ -183,7 +186,7 @@ class RetireStage extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        free_rob_id_valid(i) := commit_item_rdy_mask.asUInt.andR 
+        free_rob_id_valid(i) := commit_item_rdy_mask.asUInt.andR | io.rob_state
         free_rob_id_wdata(i) := io.rob_items_i(i).id
     }    
 
@@ -200,6 +203,7 @@ class RetireStage extends Module
     commit.io.rat_write_addr_3 := rat_write_addr(3)
     commit.io.rat_write_data_0 := rat_write_data(0)
     commit.io.rat_write_data_1 := rat_write_data(1)
+
     commit.io.rat_write_data_2 := rat_write_data(2)
     commit.io.rat_write_data_3 := rat_write_data(3)
     commit.io.reg_write_data_0 := io.rob_items_i(0).reg_wb_data
@@ -212,7 +216,7 @@ class RetireStage extends Module
     commit.io.pc3              := io.rob_items_i(3).pc
 
     /* connect */
-    io.rob_item_rdy_mask := rob_item_rdy_mask.asUInt
+    io.rob_item_rdy_mask := Mux(~io.rob_state, rob_item_rdy_mask.asUInt, 0.U)
     io.rat_write_en := rat_write_en
     io.rat_write_addr := rat_write_addr
     io.rat_write_data := rat_write_data

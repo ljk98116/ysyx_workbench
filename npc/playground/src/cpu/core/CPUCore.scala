@@ -123,11 +123,15 @@ class CPUCore(memfile: String) extends Module
     /* freeregbuffer -> renamestage1 */
     for(i <- 0 until base.FETCH_WIDTH){
         rename1.io.freereg_vec_i(i) := freeregbuf_seq(i).io.freereg_o
+        rename1.io.freereg_rd_able(i) := freeregbuf_seq(i).io.rd_able
+        decode.io.freereg_rd_able(i)  := freeregbuf_seq(i).io.rd_able
+        fetch.io.freereg_rd_able(i) := freeregbuf_seq(i).io.rd_able
+        pc_reg.io.freereg_rd_able(i) := freeregbuf_seq(i).io.rd_able
     }
 
     /* rename1 -> freeregbuffer */
     for(i <- 0 until base.FETCH_WIDTH){
-        freeregbuf_seq(i).io.rat_write_en_rename := rename1.io.inst_valid_mask_o(i)
+        freeregbuf_seq(i).io.rat_write_en_rename := rename1.io.DecodeRes_o(i).HasRd
     }
 
     /* decode -> renamestage1 */

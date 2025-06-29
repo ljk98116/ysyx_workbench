@@ -72,7 +72,7 @@ object Imm{
         return Fill(20, inst(31)) ## inst(30, 25) ## inst(11, 7)
     }
     def ImmSB(inst : UInt): UInt = {
-        return Fill(19, inst(31)) ## inst(7) ## inst(30, 25) ## inst(11, 8) ## false.B
+        return Fill(20, inst(31)) ## inst(7) ## inst(30, 25) ## inst(11, 8) ## false.B
     }
     def ImmUJ(inst : UInt): UInt = {
         return Fill(12, inst(31)) ## inst(19, 12) ## inst(20) ## inst(30, 21) ## false.B

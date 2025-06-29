@@ -24,7 +24,7 @@ class RetireRAT extends Module
     for(i <- 0 until (1 << base.AREG_WIDTH))
     {
         for(j <- 0 until base.FETCH_WIDTH){
-            when(io.rat_wen(j) & io.rat_waddr(j) === i.U){
+            when(io.rat_wen(j) & (io.rat_waddr(j) === i.U)){
                 rat_mapping(i) := io.rat_wdata(j)
             }
         }

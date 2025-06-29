@@ -6,6 +6,7 @@ import cpu.config._
 
 /* rob_state为1则ROB正在刷掉流水线 */
 /* 刷新流水线时的恢复,需要将异常指令后ROB内所有指令的占用的物理寄存器释放 */
+/* 不可读时需要暂停rename1以及之前的流水级 */
 class FreeRegBuffer(id : Int) extends Module
 {
     val io = IO(new Bundle{
@@ -18,6 +19,8 @@ class FreeRegBuffer(id : Int) extends Module
         /* output */
         val rat_write_en_rename = Input(Bool())
         val freereg_o = Output(UInt(base.PREG_WIDTH.W))
+        val rd_able = Output(Bool())
+        val wr_able = Output(Bool())
     })
 
     val regnum = 1 << base.AREG_WIDTH
@@ -34,10 +37,10 @@ class FreeRegBuffer(id : Int) extends Module
     var wr_able = WireInit(false.B)
 
     rd_able := head =/= tail
-    wr_able := tail + 1.U =/= head
+    wr_able := (tail + 1.U) =/= head
 
     for(i <- 0 until regnum){
-        when(io.rob_state & (i.U === head - 1.U) & wr_able){
+        when(io.rob_state & (i.U === (head - 1.U)) & wr_able & io.flush_freereg_valid){
             FreeRegIds(i) := io.freereg_i
         }.elsewhen(io.rat_write_en_retire & wr_able & (i.U === tail)){
             FreeRegIds(i) := io.freereg_i
@@ -59,4 +62,6 @@ class FreeRegBuffer(id : Int) extends Module
     )
     /* connect */
     io.freereg_o := freereg_o
+    io.rd_able  := rd_able
+    io.wr_able := wr_able
 }

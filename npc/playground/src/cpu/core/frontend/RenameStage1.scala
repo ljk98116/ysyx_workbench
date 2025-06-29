@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 
 import cpu.config._
+import cpu.core.utils.PriorityDecoder
 
 /* 制造读使能，准备读取RAT */
 /* 分析相关性，准备下一周期修改RAT */
@@ -11,6 +12,7 @@ import cpu.config._
 class RenameStage1 extends Module
 {
     val io = IO(new Bundle {
+        val freereg_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))
         val rat_flush_en = Input(Bool())
         val rob_state = Input(Bool())
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
@@ -37,6 +39,9 @@ class RenameStage1 extends Module
         val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
     })
 
+    var stall = WireInit(false.B)
+
+    stall := ~io.rob_state & io.freereg_rd_able.asUInt.andR
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
@@ -54,22 +59,22 @@ class RenameStage1 extends Module
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.pc_vec_i,pc_vec_reg), 
+        Mux(stall, io.pc_vec_i,pc_vec_reg), 
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
     inst_valid_mask_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.inst_valid_mask_i, inst_valid_mask_reg),
+        Mux(stall, io.inst_valid_mask_i, inst_valid_mask_reg),
         0.U
     )
     DecodeRes_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.DecodeRes_i, DecodeRes_reg),
+        Mux(stall, io.DecodeRes_i, DecodeRes_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(0.U.asTypeOf(new DecodeRes)))
     )
     inst_valid_cnt_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.inst_valid_cnt_i, inst_valid_cnt_reg),
+        Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg),
         0.U
     )
 
@@ -178,13 +183,15 @@ class RenameStage1 extends Module
     }
 
     /* connect */
-    io.pc_vec_o := pc_vec_reg
-    io.inst_valid_mask_o := inst_valid_mask_reg
-    io.DecodeRes_o := DecodeRes_reg
-    io.rat_wen_o := rat_wen
-    io.rat_waddr_o := rat_waddr
-    io.rat_wdata_o := rat_wdata
-    io.rat_ren_o := rat_ren.asUInt
-    io.rat_raddr_o := rat_raddr
-    io.inst_valid_cnt_o := inst_valid_cnt_reg
+    io.pc_vec_o := Mux(stall, pc_vec_reg, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
+    io.inst_valid_mask_o := Mux(stall, inst_valid_mask_reg, (0.U)(base.FETCH_WIDTH.W))
+    io.DecodeRes_o := Mux(stall, DecodeRes_reg, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new DecodeRes))))
+    io.rat_wen_o := Mux(stall, rat_wen, (0.U)(base.FETCH_WIDTH.W))
+    io.rat_waddr_o := Mux(stall, rat_waddr, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.AREG_WIDTH.W))))
+    io.rat_wdata_o := Mux(stall, rat_wdata, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))))
+    io.rat_ren_o := Mux(stall, rat_ren.asUInt, 0.U)
+    io.rat_raddr_o := Mux(stall, rat_raddr, VecInit(
+        Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.AREG_WIDTH.W))
+    ))
+    io.inst_valid_cnt_o := Mux(stall, inst_valid_cnt_reg, (0.U)(base.FETCH_WIDTH.W))
 }

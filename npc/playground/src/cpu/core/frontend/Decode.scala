@@ -9,6 +9,7 @@ class Decode extends Module
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
         val rob_state = Input(Bool())
+        val freereg_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.DATA_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
@@ -27,17 +28,17 @@ class Decode extends Module
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.pc_vec_i, pc_vec_reg),
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.pc_vec_i, pc_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
     inst_valid_mask_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.inst_valid_mask_i, inst_valid_mask_reg), 
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.inst_valid_mask_i, inst_valid_mask_reg), 
         0.U
     )
     inst_valid_cnt_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
         0.U
     )
 
@@ -52,7 +53,7 @@ class Decode extends Module
 
     /* 根据opcode译码 */
     for(i <- 0 until base.FETCH_WIDTH){
-        when(inst_valid_mask_reg(i) & ~io.rat_flush_en){
+        when(inst_valid_mask_reg(i) & ~io.rat_flush_en & io.freereg_rd_able.asUInt.andR){
             switch(io.inst_vec_i(i)(6, 0)){
                 /* type I */
                 is(

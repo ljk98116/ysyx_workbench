@@ -56,24 +56,22 @@ class ROB extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
     io.robr_able := head =/= tail
-    io.robw_able := tail + 1.U =/= head
+    io.robw_able := (tail + 1.U) =/= head
 
     var rob_input_valid = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        for(j <- 0 until bankcap){
-            when(io.rat_flush_en){
-                ROBBankRegs(i)(j) := 0.U.asTypeOf(new ROBItem)
-                ROBIDLocMem(io.rob_item_i(i).id) := 0.U
-            }
+        when(io.rat_flush_en | io.rob_state){
+            ROBBankRegs(i)(head) := 0.U.asTypeOf(new ROBItem)
+            ROBIDLocMem(io.rob_item_i(i).id) := 0.U
         }
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
         rob_input_valid(i) := io.rob_item_i(i).valid
-        rob_item_o(i) := ROBBankRegs(i)(head)
+        rob_item_o(i) := Mux(io.robr_able, ROBBankRegs(i)(head), 0.U.asTypeOf(new ROBItem))
     }
 
     for(i <- 0 until base.ALU_NUM){
@@ -99,14 +97,17 @@ class ROB extends Module
         when(io.robw_able & ~io.rat_flush_en & io.rob_item_i(i).valid){
             ROBBankRegs(i)(tail) := io.rob_item_i(i)
             ROBIDLocMem(io.rob_item_i(i).id) := tail
+        }.otherwise{//避免尾部没有覆盖
+            ROBBankRegs(i)(tail) := 0.U.asTypeOf(new ROBItem)
+            ROBIDLocMem(io.rob_item_i(i).id) := 0.U           
         }
     }
 
     /* Retire出现异常，normal->flush */
     /* head + 1.U == tail, flush->normal */
-    when(rob_state === normal & io.rat_flush_en){
+    when((rob_state === normal) & io.rat_flush_en){
         next_rob_state := flush
-    }.elsewhen(rob_state === flush & head + 1.U === tail){
+    }.elsewhen((rob_state === flush) & (head + 1.U) === tail){
         next_rob_state := normal
     }.otherwise{
         next_rob_state := rob_state
@@ -114,13 +115,13 @@ class ROB extends Module
 
     rob_state := next_rob_state
 
-    when(io.robw_able & rob_input_valid.asUInt.orR & rob_state === normal & ~io.rat_flush_en){
+    when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state === normal) & ~io.rat_flush_en){
         tail := tail + 1.U
     }
 
     when(
-        (io.robr_able & io.retire_rdy_mask.andR & rob_state === normal & ~io.rat_flush_en) |
-        (io.robw_able & rob_state === flush & head =/= tail)
+        (io.robr_able & io.retire_rdy_mask.andR & (rob_state === normal) & ~io.rat_flush_en) |
+        (io.robw_able & (rob_state === flush) & (head =/= tail))
     ){
         head := head + 1.U
     }
