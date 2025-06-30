@@ -71,7 +71,15 @@ class ROB extends Module
 
     for(i <- 0 until base.FETCH_WIDTH){
         rob_input_valid(i) := io.rob_item_i(i).valid
-        rob_item_o(i) := Mux(io.robr_able, ROBBankRegs(i)(head), 0.U.asTypeOf(new ROBItem))
+        rob_item_o(i) := Mux(
+            io.robr_able & ~rob_state.asBool, 
+            ROBBankRegs(i)(head), 
+            Mux(
+                io.robr_able & rob_state.asBool,
+                ROBBankRegs(i)(tail - 1.U),
+                0.U.asTypeOf(new ROBItem)
+            )
+        )
     }
 
     for(i <- 0 until base.ALU_NUM){
@@ -117,11 +125,12 @@ class ROB extends Module
 
     when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state === normal) & ~io.rat_flush_en){
         tail := tail + 1.U
+    }.elsewhen((io.robr_able & (rob_state === flush) & (head =/= tail))){
+        tail := tail - 1.U
     }
 
     when(
-        (io.robr_able & io.retire_rdy_mask.andR & (rob_state === normal) & ~io.rat_flush_en) |
-        (io.robw_able & (rob_state === flush) & (head =/= tail))
+        (io.robr_able & io.retire_rdy_mask.andR & (rob_state === normal))
     ){
         head := head + 1.U
     }
