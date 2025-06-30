@@ -24,7 +24,7 @@ class RenameStage2 extends Module
 
         val rat_ren_i = Input(UInt((base.FETCH_WIDTH * 3).W))
         val rat_raddr_i = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
-        val rat_rdata_i = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.PREG_WIDTH.W)))
+        val rat_rdata_i = Input(Vec(base.FETCH_WIDTH * 3, UInt((base.PREG_WIDTH + 1).W)))
 
         /* RAT读写使能 */
         val rat_wen_o = Output(UInt(base.FETCH_WIDTH.W))
@@ -202,7 +202,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs1_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(3 * i)
+                        io.rat_rdata_i(3 * i)(base.PREG_WIDTH - 1, 0)
                     )
                 )
             )
@@ -215,7 +215,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs2_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(3 * i + 1)
+                        io.rat_rdata_i(3 * i + 1)(base.PREG_WIDTH - 1, 0)
                     )
                 )
             )

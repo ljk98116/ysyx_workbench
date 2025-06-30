@@ -15,7 +15,7 @@ class RenameRAT extends Module
         /* 读取rs1, rs2以及以前的rd */
         val rat_ren = Input(UInt((base.FETCH_WIDTH * 3).W))
         val rat_raddr = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
-        val rat_rdata = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.PREG_WIDTH.W)))
+        val rat_rdata = Output(Vec(base.FETCH_WIDTH * 3, UInt((base.PREG_WIDTH + 1).W)))
 
         /* retire stage */
         val rat_flush_en = Input(Bool())
@@ -23,12 +23,12 @@ class RenameRAT extends Module
     })
 
     var rat_mapping = RegInit(VecInit(
-        Seq.tabulate(1 << base.AREG_WIDTH)((i) => (i.U)(base.PREG_WIDTH.W))
+        Seq.tabulate(1 << base.AREG_WIDTH)((i) => ((1 << base.PREG_WIDTH).U)((base.PREG_WIDTH + 1).W))
     ))
 
     var rat_rdata = WireInit(
         VecInit(
-            Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.PREG_WIDTH.W))
+            Seq.fill(base.FETCH_WIDTH * 3)((0.U)((base.PREG_WIDTH + 1).W))
         )
     )
 

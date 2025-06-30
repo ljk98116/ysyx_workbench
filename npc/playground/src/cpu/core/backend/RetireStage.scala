@@ -168,10 +168,12 @@ class RetireStage extends Module
         if(i > 0){
             free_reg_id_valid(i) := 
                 commit_item_rdy_mask.asUInt.andR & 
-                (~exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_state &io.rob_items_i(i).HasRd
+                (~exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_state &io.rob_items_i(i).HasRd & 
+                ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)
         }
         else{
-            free_reg_id_valid(i) := commit_item_rdy_mask.asUInt.andR & ~io.rob_state & io.rob_items_i(i).HasRd
+            free_reg_id_valid(i) := commit_item_rdy_mask.asUInt.andR & ~io.rob_state & io.rob_items_i(i).HasRd & 
+                ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)
         }
         free_reg_id_wdata(i) := Mux(~io.rob_state, io.rob_items_i(i).oldpd, io.rob_items_i(i).pd)
         flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
