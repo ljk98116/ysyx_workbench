@@ -72,10 +72,9 @@ class RetireStage extends Module
     2.该位置无效但前置位置可提交
     3.该位置前面有异常
     */
-    rob_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
+    rob_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy 
     commit_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
     rob_item_rdy_mask(1) := 
-        (~io.rob_items_i(1).valid & rob_item_rdy_mask(0)) |
         (        
             ~io.rob_items_i(0).hasException & io.rob_items_i(1).valid &
             (
@@ -88,7 +87,6 @@ class RetireStage extends Module
         (io.rob_items_i(1).valid & (io.rob_items_i(0).hasException))
         
     rob_item_rdy_mask(2) :=
-        (~io.rob_items_i(2).valid & rob_item_rdy_mask(1))  |
         (
             ~io.rob_items_i(1).hasException & ~io.rob_items_i(0).hasException & io.rob_items_i(2).valid &
             (
@@ -100,7 +98,6 @@ class RetireStage extends Module
         (~io.rob_items_i(2).valid & commit_item_rdy_mask(1)) |
         (io.rob_items_i(2).valid & (io.rob_items_i(1).hasException | io.rob_items_i(0).hasException))
     rob_item_rdy_mask(3) :=
-        (~io.rob_items_i(3).valid & rob_item_rdy_mask(2)) |
         (
             ~io.rob_items_i(2).hasException & ~io.rob_items_i(1).hasException & 
             ~io.rob_items_i(0).hasException & io.rob_items_i(3).valid &
@@ -170,13 +167,15 @@ class RetireStage extends Module
                 commit_item_rdy_mask.asUInt.andR & 
                 (~exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_state &io.rob_items_i(i).HasRd & 
                 ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)
+            flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd | exception_mask_mid.asUInt(i-1, 0).orR
+            free_reg_id_wdata(i) := Mux(~io.rob_state & ~exception_mask_mid.asUInt(i-1, 0).orR, io.rob_items_i(i).oldpd, io.rob_items_i(i).pd)
         }
         else{
             free_reg_id_valid(i) := commit_item_rdy_mask.asUInt.andR & ~io.rob_state & io.rob_items_i(i).HasRd & 
                 ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)
+            flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
+            free_reg_id_wdata(i) := Mux(~io.rob_state, io.rob_items_i(i).oldpd, io.rob_items_i(i).pd)
         }
-        free_reg_id_wdata(i) := Mux(~io.rob_state, io.rob_items_i(i).oldpd, io.rob_items_i(i).pd)
-        flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
     }
 
     /* Free rob id buffer */
