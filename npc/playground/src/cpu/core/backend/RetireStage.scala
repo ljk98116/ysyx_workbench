@@ -74,7 +74,7 @@ class RetireStage extends Module
     */
     rob_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy 
     commit_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
-    rob_item_rdy_mask(1) := 
+    rob_item_rdy_mask(1) := (~io.rob_items_i(1).valid & rob_item_rdy_mask(0)) |
         (        
             ~io.rob_items_i(0).hasException & io.rob_items_i(1).valid &
             (
@@ -86,7 +86,7 @@ class RetireStage extends Module
         (~io.rob_items_i(1).valid & commit_item_rdy_mask(0)) |
         (io.rob_items_i(1).valid & (io.rob_items_i(0).hasException))
         
-    rob_item_rdy_mask(2) :=
+    rob_item_rdy_mask(2) := (~io.rob_items_i(2).valid & rob_item_rdy_mask(1)) |
         (
             ~io.rob_items_i(1).hasException & ~io.rob_items_i(0).hasException & io.rob_items_i(2).valid &
             (
@@ -97,7 +97,7 @@ class RetireStage extends Module
         (io.rob_items_i(2).valid & io.rob_items_i(2).rdy) |
         (~io.rob_items_i(2).valid & commit_item_rdy_mask(1)) |
         (io.rob_items_i(2).valid & (io.rob_items_i(1).hasException | io.rob_items_i(0).hasException))
-    rob_item_rdy_mask(3) :=
+    rob_item_rdy_mask(3) := (~io.rob_items_i(3).valid & rob_item_rdy_mask(2)) |
         (
             ~io.rob_items_i(2).hasException & ~io.rob_items_i(1).hasException & 
             ~io.rob_items_i(0).hasException & io.rob_items_i(3).valid &

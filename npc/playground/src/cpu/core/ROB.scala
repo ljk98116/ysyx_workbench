@@ -63,8 +63,8 @@ class ROB extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.rat_flush_en | io.rob_state){
-            ROBBankRegs(i)(head) := 0.U.asTypeOf(new ROBItem)
+        when(io.rob_state){
+            ROBBankRegs(i)(tail - 1.U) := 0.U.asTypeOf(new ROBItem)
             ROBIDLocMem(io.rob_item_i(i).id) := 0.U
         }
     }
