@@ -14,11 +14,11 @@ class RetireRAT extends Module
         val rat_waddr = Input(Vec(base.FETCH_WIDTH, UInt(base.AREG_WIDTH.W)))
         val rat_wdata = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
 
-        val rat_all_data = Output(Vec(1 << base.AREG_WIDTH, UInt(base.PREG_WIDTH.W)))
+        val rat_all_data = Output(Vec(1 << base.AREG_WIDTH, UInt((base.PREG_WIDTH + 1).W)))
     })
 
     var rat_mapping = RegInit(VecInit(
-        Seq.tabulate(1 << base.AREG_WIDTH)((i) => (i.U)(base.PREG_WIDTH.W))
+        Seq.tabulate(1 << base.AREG_WIDTH)((i) => ((1 << base.PREG_WIDTH).U)((base.PREG_WIDTH + 1).W))
     ))
 
     for(i <- 0 until (1 << base.AREG_WIDTH))

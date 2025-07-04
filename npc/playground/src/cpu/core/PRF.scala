@@ -62,7 +62,7 @@ class PRF extends Module
 
     for(i <- 0 until (1 << base.PREG_WIDTH)){
         for(j <- 0 until base.ALU_NUM){
-            when(io.cdb_i.alu_channel(j).phy_reg_id === i.U & ~io.rat_flush_en){
+            when((io.cdb_i.alu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en){
                 prf_valid_regs(i) := 
                     Mux(io.cdb_i.alu_channel(j).valid,
                         true.B,
@@ -73,7 +73,7 @@ class PRF extends Module
             }
         }
         for(j <- 0 until base.AGU_NUM){
-            when(io.cdb_i.agu_channel(j).phy_reg_id === i.U & ~io.rat_flush_en){
+            when((io.cdb_i.agu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en){
                 prf_valid_regs(i) := 
                     Mux(io.cdb_i.agu_channel(j).valid,
                         true.B,
@@ -81,6 +81,11 @@ class PRF extends Module
                     )                
             }.elsewhen(io.rat_flush_en){
                 prf_valid_regs(i) := true.B
+            }
+        }
+        for(j <- 0 until base.FETCH_WIDTH){
+            when((io.prf_valid_rd_waddr(j) === i.U) & io.prf_valid_rd_wen(j)){
+                prf_valid_regs(i) := io.prf_valid_rd_wdata(j)
             }
         }
     }
@@ -101,24 +106,8 @@ class PRF extends Module
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
-    for(i <- 0 until base.FETCH_WIDTH){
-        var validvec = WireInit(VecInit(
-            Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
-        ))
-        for(j <- 0 until base.ALU_NUM){
-            validvec(j) := io.prf_valid_rd_waddr(i) =/= io.cdb_i.alu_channel(j).phy_reg_id
-        }
-        for(j <- 0 until base.AGU_NUM){
-            validvec(j + base.ALU_NUM) := io.prf_valid_rd_waddr(i) =/= io.cdb_i.agu_channel(j).phy_reg_id
-        }
-        valid_en(i) := validvec.asUInt.andR & io.prf_valid_rd_wen(i)
-    }
-
-    for(i <- 0 until base.FETCH_WIDTH){
-        when(valid_en(i)){
-            prf_valid_regs(io.prf_valid_rd_waddr(i)) := io.prf_valid_rd_wdata(i)
-        }
-    }
+    /* 优先写流水线内的 */
+    
 
     for(i <- 0 until base.FETCH_WIDTH){
         prf_valid_rs1_rdata(i) := 

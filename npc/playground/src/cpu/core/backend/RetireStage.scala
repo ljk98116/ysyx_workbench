@@ -140,7 +140,12 @@ class RetireStage extends Module
     ))
     for(i <- 0 until base.FETCH_WIDTH){
         when(rob_item_rdy_mask(i)){
-            rat_write_en(i) := io.rob_items_i(i).valid & ~io.rob_state
+            rat_write_en(i) := 
+                io.rob_items_i(i).valid & 
+                ~io.rob_state & 
+                io.rob_items_i(i).HasRd & 
+                ~exception_mask_mid.asUInt(i-1, 0).orR
+
             rat_write_addr(i) := io.rob_items_i(i).rd
             rat_write_data(i) := io.rob_items_i(i).pd
         }.otherwise{
@@ -167,7 +172,7 @@ class RetireStage extends Module
                 commit_item_rdy_mask.asUInt.andR & 
                 (~exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_state &io.rob_items_i(i).HasRd & 
                 ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)
-            flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd | exception_mask_mid.asUInt(i-1, 0).orR
+            flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
             free_reg_id_wdata(i) := Mux(~io.rob_state & ~exception_mask_mid.asUInt(i-1, 0).orR, io.rob_items_i(i).oldpd, io.rob_items_i(i).pd)
         }
         else{
@@ -195,7 +200,12 @@ class RetireStage extends Module
     var commit = Module(new CommitAPI)
     commit.io.rst := reset.asBool
     commit.io.rat_write_en := 
-        rat_write_en.asUInt
+        Cat(
+            io.rob_items_i(3).valid & ~io.rob_state & ~exception_mask_mid.asUInt(2, 0).orR,
+            io.rob_items_i(2).valid & ~io.rob_state & ~exception_mask_mid.asUInt(1, 0).orR,
+            io.rob_items_i(1).valid & ~io.rob_state & ~exception_mask_mid.asUInt(0).orR,
+            io.rob_items_i(0).valid & ~io.rob_state
+        )
     
     commit.io.valid := commit_item_rdy_mask.asUInt.andR & ~io.rob_state
     commit.io.rat_write_addr_0 := rat_write_addr(0)
