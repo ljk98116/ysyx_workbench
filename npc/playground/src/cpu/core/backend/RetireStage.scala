@@ -34,6 +34,7 @@ class RetireStage extends Module
 
         /* 是否覆盖前端RAT */
         val rat_flush_en = Output(Bool())
+        val exception_mask_front = Output(Vec(base.FETCH_WIDTH, Bool()))
     })
 
     /* 屏蔽位 */
@@ -42,10 +43,6 @@ class RetireStage extends Module
     ))
 
     var exception_mask_mid = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)(false.B)
-    ))
-
-    var exception_mask = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
@@ -74,37 +71,54 @@ class RetireStage extends Module
     */
     rob_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy 
     commit_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
-    rob_item_rdy_mask(1) := (~io.rob_items_i(1).valid & rob_item_rdy_mask(0)) |
+    rob_item_rdy_mask(1) := 
+        (
+            (io.rob_items_i(0).hasException | ~io.rob_items_i(1).valid) & 
+            rob_item_rdy_mask(0)
+        ) |
         (        
-            ~io.rob_items_i(0).hasException & io.rob_items_i(1).valid &
-            (
-                io.rob_items_i(1).rdy
-            )
+            (~io.rob_items_i(0).hasException & io.rob_items_i(1).valid & io.rob_items_i(1).rdy)
         )
     commit_item_rdy_mask(1) := 
         (io.rob_items_i(1).valid & io.rob_items_i(1).rdy) | 
         (~io.rob_items_i(1).valid & commit_item_rdy_mask(0)) |
         (io.rob_items_i(1).valid & (io.rob_items_i(0).hasException))
         
-    rob_item_rdy_mask(2) := (~io.rob_items_i(2).valid & rob_item_rdy_mask(1)) |
+    rob_item_rdy_mask(2) := 
         (
-            ~io.rob_items_i(1).hasException & ~io.rob_items_i(0).hasException & io.rob_items_i(2).valid &
             (
-                io.rob_items_i(2).rdy
-            )
+                ~io.rob_items_i(2).valid | 
+                io.rob_items_i(1).hasException | 
+                io.rob_items_i(0).hasException
+            ) & rob_item_rdy_mask(1)
+        ) |
+        (
+            ~io.rob_items_i(1).hasException & 
+            ~io.rob_items_i(0).hasException & 
+            io.rob_items_i(2).valid & io.rob_items_i(2).rdy
         )
     commit_item_rdy_mask(2) := 
         (io.rob_items_i(2).valid & io.rob_items_i(2).rdy) |
         (~io.rob_items_i(2).valid & commit_item_rdy_mask(1)) |
         (io.rob_items_i(2).valid & (io.rob_items_i(1).hasException | io.rob_items_i(0).hasException))
-    rob_item_rdy_mask(3) := (~io.rob_items_i(3).valid & rob_item_rdy_mask(2)) |
+    rob_item_rdy_mask(3) := 
         (
-            ~io.rob_items_i(2).hasException & ~io.rob_items_i(1).hasException & 
-            ~io.rob_items_i(0).hasException & io.rob_items_i(3).valid &
             (
-                io.rob_items_i(3).rdy
-            )
+                ~io.rob_items_i(3).valid | 
+                io.rob_items_i(2).hasException | 
+                io.rob_items_i(1).hasException | 
+                io.rob_items_i(0).hasException
+            ) & 
+            rob_item_rdy_mask(2)
+        ) |
+        (
+            ~io.rob_items_i(2).hasException & 
+            ~io.rob_items_i(1).hasException & 
+            ~io.rob_items_i(0).hasException & 
+            io.rob_items_i(3).valid & 
+            io.rob_items_i(3).rdy
         )
+        
     commit_item_rdy_mask(3) := 
         (io.rob_items_i(3).valid & io.rob_items_i(3).rdy) | 
         (~io.rob_items_i(3).valid & commit_item_rdy_mask(2)) |
@@ -156,12 +170,15 @@ class RetireStage extends Module
     }
 
     /* Free reg id buffer */
+    /* normal状态下提交寄存器 */
+    /* 前置无异常，看oldpd是否有效，有异常则不用 */
     var free_reg_id_valid = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
     var free_reg_id_wdata = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
     ))
+    /* flush状态下提交寄存器 */
     var flush_free_reg_valid = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
@@ -170,10 +187,20 @@ class RetireStage extends Module
         if(i > 0){
             free_reg_id_valid(i) := 
                 commit_item_rdy_mask.asUInt.andR & 
-                (~exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_state &io.rob_items_i(i).HasRd & 
-                ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)
-            flush_free_reg_valid(i) := io.rob_state & io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
-            free_reg_id_wdata(i) := Mux(~io.rob_state & ~exception_mask_mid.asUInt(i-1, 0).orR, io.rob_items_i(i).oldpd, io.rob_items_i(i).pd)
+                ~io.rob_state & io.rob_items_i(i).HasRd & 
+                (
+                    (~exception_mask_mid.asUInt(i-1, 0).orR & ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)) |
+                    exception_mask_mid.asUInt(i-1, 0).orR
+                )
+            flush_free_reg_valid(i) := 
+                (io.rob_state | exception_mask_mid.asUInt(i-1, 0).orR) & 
+                io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
+                
+            free_reg_id_wdata(i) := Mux(
+                ~io.rob_state & ~exception_mask_mid.asUInt(i-1, 0).orR, 
+                io.rob_items_i(i).oldpd, 
+                io.rob_items_i(i).pd
+            )
         }
         else{
             free_reg_id_valid(i) := commit_item_rdy_mask.asUInt.andR & ~io.rob_state & io.rob_items_i(i).HasRd & 
@@ -241,4 +268,11 @@ class RetireStage extends Module
 
     io.free_rob_id_valid := free_rob_id_valid
     io.free_rob_id_wdata := free_rob_id_wdata
+    for(i <- 0 until base.FETCH_WIDTH){
+        if(i > 0){
+            io.exception_mask_front(i) := exception_mask_mid.asUInt(i-1, 0).orR
+        }else{
+            io.exception_mask_front(i) := false.B
+        }
+    }
 }

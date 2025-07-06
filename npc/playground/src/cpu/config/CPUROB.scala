@@ -37,4 +37,6 @@ class ROBItem extends Bundle
     var ExceptionType = UInt(8.W)
     var targetBrAddr = UInt(base.ADDR_WIDTH.W)
     var reg_wb_data = UInt(base.DATA_WIDTH.W)
+    /* 如果是load指令，对应的前置store指令 */
+    var storeIdx = UInt(base.ROBID_WIDTH.W)
 }

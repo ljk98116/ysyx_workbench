@@ -4,9 +4,11 @@ import chisel3._
 import chisel3.util._
 
 import cpu.config._
+import cpu.core.utils._
 
 /* use stage2 to read/write RAT */
 /* deal read result and construct ROB Item */
+/* load hold last store idx to judge load forwarding */
 class RenameStage2 extends Module
 {
     val io = IO(new Bundle{
@@ -81,6 +83,8 @@ class RenameStage2 extends Module
     ))
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
+    /* 缓存上一个store指令的ROBID */
+    var last_store_idx = RegInit((1 << base.ROBID_WIDTH).U((base.ROBID_WIDTH + 1).W))
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
@@ -182,6 +186,7 @@ class RenameStage2 extends Module
         /* 暂时所有分支指令均冲刷流水线 */
         rob_item_o(i).hasException := false.B
         rob_item_o(i).ExceptionType := ExceptionType.NORMAL.U
+
         /* 前置最近指令是否有相同的rd，用前置指令的pd */
         /* 找最近指令的pd */
         var waw_mask = WireInit(VecInit(Seq.fill(base.FETCH_WIDTH)(false.B)))
@@ -237,6 +242,17 @@ class RenameStage2 extends Module
         prf_valid_rd_waddr(i) := rat_wdata_reg(i)
         prf_valid_rd_wdata(i) := false.B
     }
+
+    var store_idx = WireInit((base.FETCH_WIDTH.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+    val prio_dec = Module(new PriorityDecoder(base.FETCH_WIDTH))
+    prio_dec.io.in := Cat(DecodeRes_reg(3).IsStore, DecodeRes_reg(2).IsStore,DecodeRes_reg(1).IsStore,DecodeRes_reg(0).IsStore)
+    store_idx := Mux(
+        Cat(DecodeRes_reg(3).IsStore, DecodeRes_reg(2).IsStore,DecodeRes_reg(1).IsStore,DecodeRes_reg(0).IsStore) === 0.U,
+        base.FETCH_WIDTH.U,
+        prio_dec.io.out
+    )
+    last_store_idx := Mux(store_idx =/= base.FETCH_WIDTH.U, io.rob_item_o(store_idx(base.FETCH_WIDTH - 1, 0)).id, last_store_idx)
+
     /* connect */
     io.rat_ren_o := rat_ren_reg
     io.rat_raddr_o := rat_raddr_reg

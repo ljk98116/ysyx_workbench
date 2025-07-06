@@ -348,6 +348,7 @@ class CPUCore(memfile: String) extends Module
     retireRAT.io.rat_wen                := retire.io.rat_write_en.asUInt
     retireRAT.io.rat_waddr              := retire.io.rat_write_addr
     retireRAT.io.rat_wdata              := retire.io.rat_write_data
+    retireRAT.io.exception_mask_front_i := retire.io.exception_mask_front
     
     /* retireRAT/retire -> renameRAT */
     ReNameRAT.io.rat_flush_en           := retire.io.rat_flush_en

@@ -25,7 +25,7 @@ class FreeRegBuffer(id : Int) extends Module
 
     val regnum = 1 << base.AREG_WIDTH
     val FreeRegIds = RegInit(VecInit(
-        Seq.tabulate(1 << base.AREG_WIDTH)((i) => ((id << base.AREG_WIDTH) + i).U)
+        Seq.tabulate(1 << base.AREG_WIDTH)((i) => (((id << base.AREG_WIDTH) + i).U)(base.PREG_WIDTH.W))
     ))
     
     var head = RegInit((0.U)(base.AREG_WIDTH.W))

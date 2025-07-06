@@ -130,7 +130,7 @@ class ROB extends Module
     }
 
     when(
-        (io.robr_able & io.retire_rdy_mask.andR & ~rob_state.asBool & ~io.rat_flush_en)
+        (io.robr_able & io.retire_rdy_mask.andR & ~rob_state.asBool)
     ){
         head := head + 1.U
     }
