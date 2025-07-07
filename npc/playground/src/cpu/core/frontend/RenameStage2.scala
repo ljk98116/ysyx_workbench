@@ -159,8 +159,22 @@ class RenameStage2 extends Module
         )
     )
 
+    /* 找上一个store指令的robid */
+    var store_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
+    store_mask := Cat(
+        DecodeRes_reg(3).IsStore,
+        DecodeRes_reg(2).IsStore,
+        DecodeRes_reg(1).IsStore,
+        DecodeRes_reg(0).IsStore
+    )
+    var StoreIdxs = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((base.FETCH_WIDTH.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+    ))
     for(i <- 0 until base.FETCH_WIDTH)
     {
+        var prio_dec = Module(new PriorityDecoder(base.FETCH_WIDTH))
+        prio_dec.io.in := store_mask(i-1, 0)
+        StoreIdxs(i) := Mux(store_mask(i-1, 0).orR & inst_valid_mask_reg(i), prio_dec.io.out, base.FETCH_WIDTH.U)
         rob_item_o(i).pc := pc_vec_reg(i)
         rob_item_o(i).valid := inst_valid_mask_reg(i)
         rob_item_o(i).HasRd := DecodeRes_reg(i).HasRd
@@ -186,6 +200,11 @@ class RenameStage2 extends Module
         /* 暂时所有分支指令均冲刷流水线 */
         rob_item_o(i).hasException := false.B
         rob_item_o(i).ExceptionType := ExceptionType.NORMAL.U
+        rob_item_o(i).storeIdx := Mux(
+            inst_valid_mask_reg(i) & StoreIdxs(i) =/= base.FETCH_WIDTH.U, 
+            io.rob_freeid_vec_i(StoreIdxs(i)(log2Ceil(base.FETCH_WIDTH) - 1, 0)), 
+            last_store_idx
+        )
 
         /* 前置最近指令是否有相同的rd，用前置指令的pd */
         /* 找最近指令的pd */
@@ -243,15 +262,25 @@ class RenameStage2 extends Module
         prf_valid_rd_wdata(i) := false.B
     }
 
-    var store_idx = WireInit((base.FETCH_WIDTH.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
-    val prio_dec = Module(new PriorityDecoder(base.FETCH_WIDTH))
-    prio_dec.io.in := Cat(DecodeRes_reg(3).IsStore, DecodeRes_reg(2).IsStore,DecodeRes_reg(1).IsStore,DecodeRes_reg(0).IsStore)
-    store_idx := Mux(
-        Cat(DecodeRes_reg(3).IsStore, DecodeRes_reg(2).IsStore,DecodeRes_reg(1).IsStore,DecodeRes_reg(0).IsStore) === 0.U,
-        base.FETCH_WIDTH.U,
-        prio_dec.io.out
+    /* 获取最后一个有效的store指令ROBID */
+    var last_store_idx_mid = WireInit(VecInit(
+        Seq.fill(log2Ceil(base.FETCH_WIDTH))((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+    ))
+    last_store_idx_mid(0) := Mux(
+        rob_item_o(1).storeIdx =/= (1 << base.ROBID_WIDTH).U, 
+        rob_item_o(1).storeIdx, 
+        rob_item_o(0).storeIdx
     )
-    last_store_idx := Mux(store_idx =/= base.FETCH_WIDTH.U, io.rob_item_o(store_idx(base.FETCH_WIDTH - 1, 0)).id, last_store_idx)
+    last_store_idx_mid(1) := Mux(
+        rob_item_o(3).storeIdx =/= (1 << base.ROBID_WIDTH).U, 
+        rob_item_o(3).storeIdx, 
+        rob_item_o(2).storeIdx
+    )
+    last_store_idx := Mux(
+        last_store_idx_mid(1) =/= (1 << base.ROBID_WIDTH).U, 
+        last_store_idx_mid(1), 
+        Mux(last_store_idx_mid(0) =/= (1 << base.ROBID_WIDTH).U, last_store_idx_mid(0), last_store_idx)
+    )
 
     /* connect */
     io.rat_ren_o := rat_ren_reg

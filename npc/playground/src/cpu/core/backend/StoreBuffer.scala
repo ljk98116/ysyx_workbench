@@ -26,6 +26,7 @@ class StoreBuffer(size : Int) extends Module{
         /* MemStage2 load forwarding & mem_write_en */
         val store_buffer_ren = Input(Vec(base.AGU_NUM, Bool()))
         val store_buffer_raddr = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
+        val store_ids = Input(Vec(base.AGU_NUM, UInt((base.ROBID_WIDTH + 1).W)))
         val store_buffer_rmask = Input(Vec(base.AGU_NUM, UInt(8.W)))
         val mem_write_en = Input(Vec(base.AGU_NUM, Bool()))
         /* MemStage3输出 */
@@ -89,12 +90,14 @@ class StoreBuffer(size : Int) extends Module{
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                (((j.U < tail) & (head > tail)) | (head < tail))
+                (((j.U < tail) & (head > tail)) | (head < tail)) & 
+                io.store_ids(i) === storebuffer_item_reg(j).rob_id
             load_raw_mask_2(j) := 
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                (((j.U >= head) & (head > tail)) | (head < tail))            
+                (((j.U >= head) & (head > tail)) | (head < tail)) &
+                io.store_ids(i) === storebuffer_item_reg(j).rob_id      
         }
         load_raw_mask := Mux(load_raw_mask_1.asUInt =/= 0.U, load_raw_mask_1.asUInt, load_raw_mask_2.asUInt)
         prio_decoder_vec(i).io.in := load_raw_mask
