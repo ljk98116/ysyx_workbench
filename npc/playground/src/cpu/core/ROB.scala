@@ -115,7 +115,7 @@ class ROB extends Module
     /* head + 1.U == tail, flush->normal */
     when((rob_state === normal) & io.rat_flush_en){
         next_rob_state := flush
-    }.elsewhen((rob_state === flush) & (head + 1.U) === tail){
+    }.elsewhen((rob_state === flush) & ((head + 1.U) === tail) | (head === tail)){
         next_rob_state := normal
     }.otherwise{
         next_rob_state := rob_state

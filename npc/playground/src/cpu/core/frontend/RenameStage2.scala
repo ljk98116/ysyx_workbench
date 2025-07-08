@@ -173,8 +173,8 @@ class RenameStage2 extends Module
     for(i <- 0 until base.FETCH_WIDTH)
     {
         var prio_dec = Module(new PriorityDecoder(base.FETCH_WIDTH))
-        prio_dec.io.in := store_mask(i-1, 0)
-        StoreIdxs(i) := Mux(store_mask(i-1, 0).orR & inst_valid_mask_reg(i), prio_dec.io.out, base.FETCH_WIDTH.U)
+        prio_dec.io.in := store_mask(i, 0)
+        StoreIdxs(i) := Mux(store_mask(i, 0).orR & inst_valid_mask_reg(i), prio_dec.io.out, base.FETCH_WIDTH.U)
         rob_item_o(i).pc := pc_vec_reg(i)
         rob_item_o(i).valid := inst_valid_mask_reg(i)
         rob_item_o(i).HasRd := DecodeRes_reg(i).HasRd
@@ -201,7 +201,7 @@ class RenameStage2 extends Module
         rob_item_o(i).hasException := false.B
         rob_item_o(i).ExceptionType := ExceptionType.NORMAL.U
         rob_item_o(i).storeIdx := Mux(
-            inst_valid_mask_reg(i) & StoreIdxs(i) =/= base.FETCH_WIDTH.U, 
+            inst_valid_mask_reg(i) & (StoreIdxs(i) =/= base.FETCH_WIDTH.U), 
             io.rob_freeid_vec_i(StoreIdxs(i)(log2Ceil(base.FETCH_WIDTH) - 1, 0)), 
             last_store_idx
         )
@@ -264,7 +264,11 @@ class RenameStage2 extends Module
 
     /* 获取最后一个有效的store指令ROBID */
     var last_store_idx_mid = WireInit(VecInit(
-        Seq.fill(log2Ceil(base.FETCH_WIDTH))((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+        Seq.fill(
+            log2Ceil(base.FETCH_WIDTH)
+        )(
+            ((1 << base.ROBID_WIDTH).U)((base.ROBID_WIDTH + 1).W)
+        )
     ))
     last_store_idx_mid(0) := Mux(
         rob_item_o(1).storeIdx =/= (1 << base.ROBID_WIDTH).U, 
