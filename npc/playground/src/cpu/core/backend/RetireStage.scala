@@ -153,13 +153,12 @@ class RetireStage extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
     ))
     for(i <- 0 until base.FETCH_WIDTH){
-        when(rob_item_rdy_mask(i)){
+        when(rob_item_rdy_mask.asUInt.andR){
             rat_write_en(i) := 
                 io.rob_items_i(i).valid & 
                 ~io.rob_state & 
                 io.rob_items_i(i).HasRd & 
-                ~(exception_mask_mid.asUInt(i-1, 0).orR) &
-                io.rob_items_i(i).rdy
+                ~(exception_mask_mid.asUInt(i-1, 0).orR)
 
             rat_write_addr(i) := io.rob_items_i(i).rd
             rat_write_data(i) := io.rob_items_i(i).pd
