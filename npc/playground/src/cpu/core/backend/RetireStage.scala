@@ -158,7 +158,8 @@ class RetireStage extends Module
                 io.rob_items_i(i).valid & 
                 ~io.rob_state & 
                 io.rob_items_i(i).HasRd & 
-                ~exception_mask_mid.asUInt(i-1, 0).orR
+                ~(exception_mask_mid.asUInt(i-1, 0).orR) &
+                io.rob_items_i(i).rdy
 
             rat_write_addr(i) := io.rob_items_i(i).rd
             rat_write_data(i) := io.rob_items_i(i).pd
@@ -189,7 +190,7 @@ class RetireStage extends Module
                 commit_item_rdy_mask.asUInt.andR & 
                 ~io.rob_state & io.rob_items_i(i).HasRd & 
                 (
-                    (~exception_mask_mid.asUInt(i-1, 0).orR & ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)) |
+                    (~(exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)) |
                     exception_mask_mid.asUInt(i-1, 0).orR
                 )
             flush_free_reg_valid(i) := 
@@ -197,7 +198,7 @@ class RetireStage extends Module
                 io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
                 
             free_reg_id_wdata(i) := Mux(
-                ~io.rob_state & ~exception_mask_mid.asUInt(i-1, 0).orR, 
+                ~io.rob_state & ~(exception_mask_mid.asUInt(i-1, 0).orR), 
                 io.rob_items_i(i).oldpd, 
                 io.rob_items_i(i).pd
             )
@@ -228,9 +229,9 @@ class RetireStage extends Module
     commit.io.rst := reset.asBool
     commit.io.rat_write_en := 
         Cat(
-            io.rob_items_i(3).valid & ~io.rob_state & ~exception_mask_mid.asUInt(2, 0).orR,
-            io.rob_items_i(2).valid & ~io.rob_state & ~exception_mask_mid.asUInt(1, 0).orR,
-            io.rob_items_i(1).valid & ~io.rob_state & ~exception_mask_mid.asUInt(0).orR,
+            io.rob_items_i(3).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(2, 0).orR),
+            io.rob_items_i(2).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(1, 0).orR),
+            io.rob_items_i(1).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(0).orR),
             io.rob_items_i(0).valid & ~io.rob_state
         )
     

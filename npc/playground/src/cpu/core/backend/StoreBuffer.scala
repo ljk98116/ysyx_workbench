@@ -44,6 +44,9 @@ class StoreBuffer(size : Int) extends Module{
         Seq.fill(size)((0.U).asTypeOf(new StoreBufferItem))
     ))
 
+    var store_buffer_mapping = RegInit(VecInit(
+        Seq.fill(1 << base.ROBID_WIDTH)((size.U)((width + 1).W))
+    ))
     var head = RegInit((0.U)(width.W))
     var tail = RegInit((0.U)(width.W))
     var rob_head = RegInit((0.U)(width.W))
@@ -59,6 +62,7 @@ class StoreBuffer(size : Int) extends Module{
     /* 组合逻辑，判断load RAW相关性 */
     /* head < tail, 找最晚的匹配 */
     /* head > tail, 优先看tail，同样找最晚的匹配 */
+    /* storeid对应的store指令的位置是load forwarding查找范围的上限 */
     var prio_decoder_vec = Seq.fill(base.AGU_NUM)(
         Module(new PriorityDecoder(size))
     )
@@ -90,14 +94,14 @@ class StoreBuffer(size : Int) extends Module{
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                (((j.U < tail) & (head > tail)) | (head < tail)) & 
-                io.store_ids(i) === storebuffer_item_reg(j).rob_id
+                (((j.U < tail) & (head > tail)) | (head < tail)) &
+                ((store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U) & (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) < tail))
             load_raw_mask_2(j) := 
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                (((j.U >= head) & (head > tail)) | (head < tail)) &
-                io.store_ids(i) === storebuffer_item_reg(j).rob_id      
+                (((j.U >= head) & (head > tail)) | (head < tail)) & 
+                (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U)
         }
         load_raw_mask := Mux(load_raw_mask_1.asUInt =/= 0.U, load_raw_mask_1.asUInt, load_raw_mask_2.asUInt)
         prio_decoder_vec(i).io.in := load_raw_mask
@@ -113,14 +117,19 @@ class StoreBuffer(size : Int) extends Module{
     for(i <- 0 until size){
         when(io.rob_state){
             storebuffer_item_reg(i) := 0.U.asTypeOf(new StoreBufferItem)
+            store_buffer_mapping(storebuffer_item_reg(i).rob_id) := size.U
         }.elsewhen((i.U === tail) & io.store_buffer_item_i(0).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(0)
+            store_buffer_mapping(io.store_buffer_item_i(0).rob_id) := i.U
         }.elsewhen((i.U === (tail + 1.U)) & io.store_buffer_item_i(1).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(1)
+            store_buffer_mapping(io.store_buffer_item_i(1).rob_id) := i.U
         }.elsewhen((i.U === (tail + 2.U)) & io.store_buffer_item_i(2).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(2)
+            store_buffer_mapping(io.store_buffer_item_i(2).rob_id) := i.U
         }.elsewhen((i.U === (tail + 3.U)) & io.store_buffer_item_i(3).valid){
             storebuffer_item_reg(i) := io.store_buffer_item_i(3)
+            store_buffer_mapping(io.store_buffer_item_i(3).rob_id) := i.U
         }.otherwise{
             for(j <- 0 until base.AGU_NUM){
                 when(

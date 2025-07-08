@@ -7,7 +7,7 @@ NXDC_FILES = constr/$(TOPNAME).nxdc
 
 INC_PATH ?= $(NEMU_HOME)/include
 VERILATOR = verilator
-VERILATOR_FLAGS += --cc --exe --build -O3 -Wall --trace -j 8 --output-split 200
+VERILATOR_FLAGS += --cc --exe --build -O3 -Wall --trace -j 32 --output-split 100
 VERILATOR_FLAGS += -Wno-lint
 
 BUILD_DIR = ./build
@@ -36,7 +36,7 @@ CSRCS = $(shell find $(abspath ./csrc/$(PACKAGE)) -name "*.c" -or -name "*.cc" -
 
 # rules for verilator
 INCFLAGS = $(addprefix -I , $(INC_PATH))
-INCFLAGS += $(addprefix -I , /home/ljk/project/ysyx_workbench/npc/csrc/$(PACKAGE)/)
+INCFLAGS += $(addprefix -I , /home/ljk/Arch/ysyx_workbench/npc/csrc/$(PACKAGE)/)
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
 
 .PHONY: test verilog help reformat checkformat clean all sim

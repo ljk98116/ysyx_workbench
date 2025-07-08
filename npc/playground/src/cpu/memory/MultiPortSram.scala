@@ -29,16 +29,20 @@ if(DEBUG){
     )
     var write_apis = Seq.fill(base.AGU_NUM)(Module(new MemWriteAPI))
     for(i <- 0 until ReadPorts){
+        if(i < base.FETCH_WIDTH + 1){
+            rdata(i) := read_apis(i).io.rdata
+        }else{
+            rdata(i) := Mux(io.wen(0) & (io.waddr(0) === io.raddr(base.FETCH_WIDTH + 1)), io.wdata(0), read_apis(i).io.rdata)
+        }
         read_apis(i).io.clk := clock
         read_apis(i).io.rst := reset.asBool
         read_apis(i).io.raddr := Mux(io.ren(i), io.raddr(i), 0.U)
-        rdata(i) := read_apis(i).io.rdata
     }
     write_apis(0).io.clk := clock
     write_apis(0).io.rst := reset.asBool
-    write_apis(0).io.waddr := Mux(io.wen(0) & io.waddr(0) =/= io.waddr(1), io.waddr(0), 0.U)
-    write_apis(0).io.wdata := Mux(io.wen(0) & io.waddr(0) =/= io.waddr(1), io.wdata(0), 0.U)
-    write_apis(0).io.wmask := Mux(io.wen(0) & io.waddr(0) =/= io.waddr(1), io.wmask(0), 0.U)
+    write_apis(0).io.waddr := Mux(io.wen(0) & (io.waddr(0) =/= io.waddr(1)), io.waddr(0), 0.U)
+    write_apis(0).io.wdata := Mux(io.wen(0) & (io.waddr(0) =/= io.waddr(1)), io.wdata(0), 0.U)
+    write_apis(0).io.wmask := Mux(io.wen(0) & (io.waddr(0) =/= io.waddr(1)), io.wmask(0), 0.U)
     write_apis(1).io.clk := clock
     write_apis(1).io.rst := reset.asBool
     write_apis(1).io.waddr := Mux(io.wen(1), io.waddr(1), 0.U)
