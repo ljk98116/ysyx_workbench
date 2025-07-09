@@ -50,6 +50,6 @@ class PCReg extends Module
     pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, nextpc, pc_reg))
 
     io.pc_o := pc_reg
-    io.inst_valid_mask_o := Mux(~io.rat_flush_en & io.freereg_rd_able.asUInt.andR, inst_valid_mask, 0.U)
-    io.inst_valid_cnt_o  := Mux(~io.rat_flush_en & io.freereg_rd_able.asUInt.andR, inst_valid_cnt, 0.U)
+    io.inst_valid_mask_o := Mux(~io.rat_flush_en, inst_valid_mask, 0.U)
+    io.inst_valid_cnt_o  := Mux(~io.rat_flush_en, inst_valid_cnt, 0.U)
 }

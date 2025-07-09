@@ -49,12 +49,12 @@ class Fetch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
     ))
     var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_mask_o := Mux(~io.rat_flush_en & ~io.rob_state & io.freereg_rd_able.asUInt.andR, inst_valid_mask, 0.U)
+    inst_valid_mask_o := Mux(~io.rat_flush_en & ~io.rob_state, inst_valid_mask, 0.U)
     pc_vec_o(0) := Mux(~io.rat_flush_en, pc, 0.U)
     pc_vec_o(1) := Mux(~io.rat_flush_en & inst_valid_mask(1), pc + 4.U, 0.U)
     pc_vec_o(2) := Mux(~io.rat_flush_en & inst_valid_mask(2), pc + 8.U, 0.U)
     pc_vec_o(3) := Mux(~io.rat_flush_en & inst_valid_mask(3), pc + 12.U, 0.U)
-    inst_valid_cnt_o := Mux(~io.rat_flush_en & io.freereg_rd_able.asUInt.andR, inst_valid_cnt, 0.U)
+    inst_valid_cnt_o := Mux(~io.rat_flush_en, inst_valid_cnt, 0.U)
     /* connect */
     io.inst_valid_mask_o := inst_valid_mask_o
     io.pc_vec_o := pc_vec_o

@@ -53,7 +53,7 @@ class Decode extends Module
 
     /* 根据opcode译码 */
     for(i <- 0 until base.FETCH_WIDTH){
-        when(inst_valid_mask_reg(i) & ~io.rat_flush_en & io.freereg_rd_able.asUInt.andR){
+        when(inst_valid_mask_reg(i) & ~io.rat_flush_en){
             switch(io.inst_vec_i(i)(6, 0)){
                 /* type I */
                 is(
