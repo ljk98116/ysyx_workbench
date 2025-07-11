@@ -46,16 +46,18 @@ class RetireStage extends Module
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
-    /* mask为false，则对应指令为store/load指令或者存在异常,后面的指令不能提交 */
+    /* mask为false，则对应指令为store指令或者存在异常,后面的指令不能提交 */
     for(i <- 0 until base.FETCH_WIDTH){
         store_mask_mid(i) := io.rob_items_i(i).isStore
         exception_mask_mid(i) := io.rob_items_i(i).hasException
     }    
 
     /* 前面的指令有异常，后面的指令不能写RAT */
-    /* store/load指令必须在ROB顶端才可以处理(其中该指令前面的指令都可以提交) */
+    /* store指令必须在ROB顶端才可以处理(其中该指令前面的指令都可以提交) */
     /* 准备好的非访存指令可以提交, 访存指令在前置指令就绪时可以提交 */
     /* 前置指令无异常时才可提交 */
+
+    /* ROB buffer的head是否可以增加 */
     var rob_item_rdy_mask = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
@@ -152,10 +154,10 @@ class RetireStage extends Module
     var rat_write_data = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
     ))
+    /* 写入retireRAT */
     for(i <- 0 until base.FETCH_WIDTH){
         when(rob_item_rdy_mask.asUInt.andR){
             rat_write_en(i) := 
-                io.rob_items_i(i).valid & 
                 ~io.rob_state & 
                 io.rob_items_i(i).HasRd & 
                 ~(exception_mask_mid.asUInt(i-1, 0).orR)
@@ -186,7 +188,7 @@ class RetireStage extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         if(i > 0){
             free_reg_id_valid(i) := 
-                commit_item_rdy_mask.asUInt.andR & 
+                rob_item_rdy_mask.asUInt.andR & 
                 ~io.rob_state & io.rob_items_i(i).HasRd & 
                 (
                     (~(exception_mask_mid.asUInt(i-1, 0).orR) & ~io.rob_items_i(i).oldpd(base.PREG_WIDTH)) |
@@ -241,7 +243,6 @@ class RetireStage extends Module
     commit.io.rat_write_addr_3 := rat_write_addr(3)
     commit.io.rat_write_data_0 := rat_write_data(0)
     commit.io.rat_write_data_1 := rat_write_data(1)
-
     commit.io.rat_write_data_2 := rat_write_data(2)
     commit.io.rat_write_data_3 := rat_write_data(3)
     commit.io.reg_write_data_0 := io.rob_items_i(0).reg_wb_data

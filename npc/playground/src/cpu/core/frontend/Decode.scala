@@ -51,10 +51,30 @@ class Decode extends Module
         Seq.fill(base.FETCH_WIDTH)(0.U.asTypeOf(new DecodeRes))
     ))
 
+    /* 暂停处理状态机 */
+    /* 暂停状态使用暂存的指令 */
+    var inst_state = RegInit(false.B)
+    var inst_vec_stall_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.DATA_WIDTH.W))
+    ))
+    var inst_vec_used = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.DATA_WIDTH.W))
+    ))
+    /* 收到暂停信号的那一刻更新 */
+    inst_vec_stall_reg := Mux(
+        ~(~io.rob_state & io.freereg_rd_able.asUInt.andR) & ~inst_state,  
+        io.inst_vec_i,
+        inst_vec_stall_reg
+    )
+    /* 收到暂停信号，变化状态 */
+    inst_state := ~(~io.rob_state & io.freereg_rd_able.asUInt.andR)
+    /* 处于暂停状态,使用锁存的值,否则使用输入值 */
+    inst_vec_used := Mux(inst_state, inst_vec_stall_reg, io.inst_vec_i)
+
     /* 根据opcode译码 */
     for(i <- 0 until base.FETCH_WIDTH){
         when(inst_valid_mask_reg(i) & ~io.rat_flush_en){
-            switch(io.inst_vec_i(i)(6, 0)){
+            switch(inst_vec_used(i)(6, 0)){
                 /* type I */
                 is(
                     Opcode.ADDI,
@@ -64,25 +84,25 @@ class Decode extends Module
                     //Opcode.SLTIU
                     Opcode.LW
                 ){
-                    decoderes(i).Imm    := Imm.ImmI(io.inst_vec_i(i))
-                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
-                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
-                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
+                    decoderes(i).Imm    := Imm.ImmI(inst_vec_used(i))
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rd     := inst_vec_used(i)(11, 7)
+                    decoderes(i).rs1    := inst_vec_used(i)(19, 15)
+                    decoderes(i).funct3 := inst_vec_used(i)(14, 12)
                     decoderes(i).Type   := InstType.TYPEI
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := false.B
                     decoderes(i).HasRd  := true.B
-                    decoderes(i).IsLoad := io.inst_vec_i(i)(6, 0) === Opcode.LW
+                    decoderes(i).IsLoad := inst_vec_used(i)(6, 0) === Opcode.LW
                 }
                 is(
                     Opcode.JALR
                 ){
-                    decoderes(i).Imm    := Imm.ImmI(io.inst_vec_i(i))
-                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
-                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
-                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
+                    decoderes(i).Imm    := Imm.ImmI(inst_vec_used(i))
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rd     := inst_vec_used(i)(11, 7)
+                    decoderes(i).rs1    := inst_vec_used(i)(19, 15)
+                    decoderes(i).funct3 := inst_vec_used(i)(14, 12)
                     decoderes(i).Type   := InstType.TYPEI
                     decoderes(i).IsBranch := true.B
                     decoderes(i).HasRs1 := true.B
@@ -94,9 +114,9 @@ class Decode extends Module
                     Opcode.AUIPC,
                     Opcode.LUI
                 ){
-                    decoderes(i).Imm    := Imm.ImmU(io.inst_vec_i(i))
-                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
+                    decoderes(i).Imm    := Imm.ImmU(inst_vec_used(i))
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rd     := inst_vec_used(i)(11, 7)
                     decoderes(i).Type   := InstType.TYPEU
                     decoderes(i).HasRs1 := false.B
                     decoderes(i).HasRs2 := false.B
@@ -106,9 +126,9 @@ class Decode extends Module
                 is(
                     Opcode.JAL
                 ){
-                    decoderes(i).Imm    := Imm.ImmUJ(io.inst_vec_i(i))
-                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
+                    decoderes(i).Imm    := Imm.ImmUJ(inst_vec_used(i))
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rd     := inst_vec_used(i)(11, 7)
                     decoderes(i).Type   := InstType.TYPEUJ
                     decoderes(i).IsBranch := true.B
                     decoderes(i).HasRs1 := false.B
@@ -119,11 +139,11 @@ class Decode extends Module
                 is(
                     Opcode.SW
                 ){
-                    decoderes(i).Imm    := Imm.ImmS(io.inst_vec_i(i))
-                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
-                    decoderes(i).rs2    := io.inst_vec_i(i)(24, 20)
-                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)    
+                    decoderes(i).Imm    := Imm.ImmS(inst_vec_used(i))
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rs1    := inst_vec_used(i)(19, 15)
+                    decoderes(i).rs2    := inst_vec_used(i)(24, 20)
+                    decoderes(i).funct3 := inst_vec_used(i)(14, 12)    
                     decoderes(i).Type   := InstType.TYPES        
                     decoderes(i).IsStore := true.B 
                     decoderes(i).HasRs1 := true.B
@@ -135,12 +155,12 @@ class Decode extends Module
                     Opcode.ADD
                     //Opcode.SUB
                 ){
-                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
-                    decoderes(i).rs2    := io.inst_vec_i(i)(24, 20)
-                    decoderes(i).rd     := io.inst_vec_i(i)(11, 7)
-                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
-                    decoderes(i).funct7 := io.inst_vec_i(i)(31, 25)    
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rs1    := inst_vec_used(i)(19, 15)
+                    decoderes(i).rs2    := inst_vec_used(i)(24, 20)
+                    decoderes(i).rd     := inst_vec_used(i)(11, 7)
+                    decoderes(i).funct3 := inst_vec_used(i)(14, 12)
+                    decoderes(i).funct7 := inst_vec_used(i)(31, 25)    
                     decoderes(i).Type   := InstType.TYPER        
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := true.B
@@ -151,12 +171,12 @@ class Decode extends Module
                     Opcode.BEQ,
                     // Opcode.BNE
                 ){
-                    decoderes(i).Imm    := Imm.ImmSB(io.inst_vec_i(i))
-                    decoderes(i).Opcode := io.inst_vec_i(i)(6, 0)
-                    decoderes(i).rs1    := io.inst_vec_i(i)(19, 15)
-                    decoderes(i).rs2    := io.inst_vec_i(i)(24, 20)
+                    decoderes(i).Imm    := Imm.ImmSB(inst_vec_used(i))
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rs1    := inst_vec_used(i)(19, 15)
+                    decoderes(i).rs2    := inst_vec_used(i)(24, 20)
                     decoderes(i).Type   := InstType.TYPESB
-                    decoderes(i).funct3 := io.inst_vec_i(i)(14, 12)
+                    decoderes(i).funct3 := inst_vec_used(i)(14, 12)
                     decoderes(i).IsBranch := true.B
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := true.B

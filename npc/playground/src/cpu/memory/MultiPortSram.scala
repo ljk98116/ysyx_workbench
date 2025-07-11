@@ -29,10 +29,18 @@ if(DEBUG){
     )
     var write_apis = Seq.fill(base.AGU_NUM)(Module(new MemWriteAPI))
     for(i <- 0 until ReadPorts){
-        if(i < base.FETCH_WIDTH + 1){
+        if(i < base.FETCH_WIDTH){
             rdata(i) := read_apis(i).io.rdata
         }else{
-            rdata(i) := Mux(io.wen(0) & (io.waddr(0) === io.raddr(base.FETCH_WIDTH + 1)), io.wdata(0), read_apis(i).io.rdata)
+            rdata(i) := Mux(
+                io.wen(1) & (io.waddr(1) === io.raddr(i)), 
+                io.wdata(1), 
+                Mux(
+                    io.wen(0) & (io.waddr(0) === io.raddr(i)), 
+                    io.wdata(0),
+                    read_apis(i).io.rdata                     
+                )
+            )
         }
         read_apis(i).io.clk := clock
         read_apis(i).io.rst := reset.asBool

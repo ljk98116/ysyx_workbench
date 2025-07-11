@@ -111,6 +111,7 @@ void difftest_step() {
       nemu_state.state = NEMU_END;
       nemu_state.halt_pc = ref_r.pc;
     }
+    Log("ref pc: 0x%x", ref_r.pc);
     checkregs(&ref_r);
     last_ref_pc = ref_r.pc;
   }

@@ -44,6 +44,8 @@ class FreeRegBuffer(id : Int) extends Module
             FreeRegIds(i) := io.freereg_i
         }.elsewhen(io.rat_write_en_retire & wr_able & (i.U === tail)){
             FreeRegIds(i) := io.freereg_i
+        }.elsewhen(rd_able & io.rat_write_en_rename & ~io.rob_state & (i.U === head)){
+            FreeRegIds(i) := 0.U
         }
     }
 

@@ -26,7 +26,7 @@ class RetireRAT extends Module
     for(i <- 0 until (1 << base.AREG_WIDTH))
     {
         for(j <- 0 until base.FETCH_WIDTH){
-            when(io.rat_wen(j) & (io.rat_waddr(j) === i.U)){
+            when(io.rat_wen(j) & (io.rat_waddr(j) === i.U) & ~io.exception_mask_front_i(j)){
                 rat_mapping(i) := io.rat_wdata(j)
             }
         }
@@ -35,8 +35,5 @@ class RetireRAT extends Module
     /* connect */
     for(i <- 0 until 1 << base.AREG_WIDTH){
         io.rat_all_data(i) := rat_mapping(i)
-    }
-    for(i <- 0 until base.FETCH_WIDTH){
-        io.rat_all_data(io.rat_waddr(i)) := Mux(io.rat_flush_en & ~io.exception_mask_front_i(i), io.rat_wdata(i), rat_mapping(io.rat_waddr(i))) 
     }
 }
