@@ -13,6 +13,7 @@ class RenameStage2 extends Module
 {
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
+        val flush_store_idx = Input(UInt((base.ROBID_WIDTH + 1).W))
         val rob_state = Input(Bool())
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
@@ -218,6 +219,8 @@ class RenameStage2 extends Module
         target_idx := prio_decoder.io.out
         rob_item_o(i).oldpd := Mux(waw_mask.asUInt.orR, rat_wdata_reg(target_idx(log2Ceil(base.FETCH_WIDTH) - 1, 0)), io.rat_rdata_i(3 * i + 2))
         rob_item_o(i).reg_wb_data := 0.U
+        rob_item_o(i).rdy1 := rob_item_o(i).ps1(base.PREG_WIDTH)
+        rob_item_o(i).rdy2 := rob_item_o(i).ps2(base.PREG_WIDTH)
         when(DecodeRes_reg(i).HasRs1){
             rob_item_o(i).ps1 := Mux(rs1_match_reg(i)(2), 
                 rat_wdata_reg(2),
@@ -226,7 +229,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs1_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(3 * i)(base.PREG_WIDTH - 1, 0)
+                        io.rat_rdata_i(3 * i)
                     )
                 )
             )
@@ -239,7 +242,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs2_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(3 * i + 1)(base.PREG_WIDTH - 1, 0)
+                        io.rat_rdata_i(3 * i + 1)
                     )
                 )
             )
@@ -280,10 +283,15 @@ class RenameStage2 extends Module
         rob_item_o(3).storeIdx, 
         rob_item_o(2).storeIdx
     )
+
     last_store_idx := Mux(
-        last_store_idx_mid(1) =/= (1 << base.ROBID_WIDTH).U, 
-        last_store_idx_mid(1), 
-        Mux(last_store_idx_mid(0) =/= (1 << base.ROBID_WIDTH).U, last_store_idx_mid(0), last_store_idx)
+        io.rat_flush_en,
+        io.flush_store_idx,
+        Mux(
+            last_store_idx_mid(1) =/= (1 << base.ROBID_WIDTH).U, 
+            last_store_idx_mid(1), 
+            Mux(last_store_idx_mid(0) =/= (1 << base.ROBID_WIDTH).U, last_store_idx_mid(0), last_store_idx)
+        )   
     )
 
     /* connect */

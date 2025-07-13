@@ -110,8 +110,8 @@ class Dispatch extends Module
             rdy1_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & io.cdb_i.agu_channel(j).valid
             rdy2_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & io.cdb_i.agu_channel(j).valid
         }
-        rob_items(i).rdy1 := rdy1_vec.asUInt.orR
-        rob_items(i).rdy2 := rdy2_vec.asUInt.orR      
+        rob_items(i).rdy1 := rdy1_vec.asUInt.orR | rob_item_reg(i).rdy1
+        rob_items(i).rdy2 := rdy2_vec.asUInt.orR | rob_item_reg(i).rdy2     
     }
 
     var is_alu_vec = WireInit(VecInit(

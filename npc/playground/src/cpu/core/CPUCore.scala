@@ -383,14 +383,20 @@ class CPUCore(memfile: String) extends Module
     decode.io.rat_flush_en                         := retire.io.rat_flush_en
     rename1.io.rat_flush_en                        := retire.io.rat_flush_en
     rename2.io.rat_flush_en                        := retire.io.rat_flush_en
+    rename2.io.flush_store_idx                     := retire.io.retire_store_idx
+
     dispatch.io.rat_flush_en                       := retire.io.rat_flush_en
+
     issue.io.rat_flush_en                          := retire.io.rat_flush_en
+    issue.io.flush_store_idx                       := retire.io.retire_store_idx
+
     regread.io.rat_flush_en                        := retire.io.rat_flush_en
     memstage1.io.rat_flush_en                      := retire.io.rat_flush_en
     memstage2.io.rat_flush_en                      := retire.io.rat_flush_en
     memstage3.io.rat_flush_en                      := retire.io.rat_flush_en
     prf.io.rat_flush_en                            := retire.io.rat_flush_en
     retireRAT.io.rat_flush_en                      := retire.io.rat_flush_en
+    
     /* rob_state -> pc/fetch/decode/rename1/rename2/dispatch/issue/regread/alu/agu/mem1/mem2/mem3 */
     pc_reg.io.rob_state                         := rob_buffer.io.rob_state
     fetch.io.rob_state                          := rob_buffer.io.rob_state

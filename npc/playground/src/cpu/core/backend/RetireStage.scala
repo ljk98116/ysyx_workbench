@@ -35,6 +35,7 @@ class RetireStage extends Module
         /* 是否覆盖前端RAT */
         val rat_flush_en = Output(Bool())
         val exception_mask_front = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val retire_store_idx = Output(UInt((base.ROBID_WIDTH + 1).W))
     })
 
     /* 屏蔽位 */
@@ -45,6 +46,9 @@ class RetireStage extends Module
     var exception_mask_mid = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
+
+    /* 上一次提交的store指令ROBID */
+    var retire_store_idx = RegInit(((1 << base.ROBID_WIDTH).U)((base.ROBID_WIDTH + 1).W))
 
     /* mask为false，则对应指令为store指令或者存在异常,后面的指令不能提交 */
     for(i <- 0 until base.FETCH_WIDTH){
@@ -276,4 +280,39 @@ class RetireStage extends Module
             io.exception_mask_front(i) := false.B
         }
     }
+
+    var retire_store_idx_wmask = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        retire_store_idx_wmask(i) := ~io.exception_mask_front(i) & store_mask_mid(i)
+    }
+
+    val prio_decoder = Module(new PriorityDecoder(base.FETCH_WIDTH))
+    prio_decoder.io.in := retire_store_idx_wmask.asUInt
+    var retire_store_idx_widx = WireInit((base.FETCH_WIDTH.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+    retire_store_idx_widx := Mux(
+        retire_store_idx_wmask.asUInt.orR, 
+        prio_decoder.io.out,
+        base.FETCH_WIDTH.U
+    )
+    retire_store_idx := Mux(
+        retire_store_idx_widx(log2Ceil(base.FETCH_WIDTH)),
+        retire_store_idx,
+        Mux(
+            retire_store_idx_widx(1),
+            Mux(
+                retire_store_idx_widx(0),
+                io.rob_items_i(3).storeIdx,
+                io.rob_items_i(2).storeIdx
+            ),
+            Mux(
+                retire_store_idx_widx(0),
+                io.rob_items_i(1).storeIdx,
+                io.rob_items_i(0).storeIdx
+            )            
+        )
+    )
+    io.retire_store_idx := retire_store_idx
 }

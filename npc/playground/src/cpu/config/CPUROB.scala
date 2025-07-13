@@ -23,8 +23,8 @@ class ROBItem extends Bundle
     var HasRd = Bool()
     /* rob id */
     var id = UInt(base.ROBID_WIDTH.W)
-    var ps1 = UInt(base.PREG_WIDTH.W)
-    var ps2 = UInt(base.PREG_WIDTH.W)
+    var ps1 = UInt((base.PREG_WIDTH + 1).W)
+    var ps2 = UInt((base.PREG_WIDTH + 1).W)
     var pd = UInt(base.PREG_WIDTH.W)
     var oldpd = UInt((base.PREG_WIDTH + 1).W)
     var rdy1 = Bool()
