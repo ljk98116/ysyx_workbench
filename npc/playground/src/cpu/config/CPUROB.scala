@@ -35,6 +35,8 @@ class ROBItem extends Bundle
     var isLoad = Bool()
     var hasException = Bool()
     var ExceptionType = UInt(8.W)
+    /* 分支指令是否跳转 */
+    var isTaken = Bool()
     var targetBrAddr = UInt(base.ADDR_WIDTH.W)
     var reg_wb_data = UInt(base.DATA_WIDTH.W)
     /* 如果是load指令，对应的前置store指令 */
