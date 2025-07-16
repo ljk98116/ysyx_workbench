@@ -12,10 +12,18 @@ class PCReg extends Module
         val rat_flush_en = Input(Bool())
         val rob_state = Input(Bool())
         val rat_flush_pc = Input(UInt(base.ADDR_WIDTH.W))
-        val retire_br_taken_vec = Input(Vec(base.FETCH_WIDTH, Bool()))
+        /* 是否分支指令 */
         val retire_br_mask = Input(Vec(base.FETCH_WIDTH, Bool()))
+        /* 是否跳转 */
+        val retire_br_taken_vec = Input(Vec(base.FETCH_WIDTH, Bool()))
+        /* 是否发生预测错误 */
+        val retire_br_pred_vec = Input(Vec(base.FETCH_WIDTH, Bool()))
+        /* BHT表序号 */
+        val retire_bht_idx = Input(Vec(base.FETCH_WIDTH, UInt(8.W)))
         /* output */
-        val pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val global_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val local_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val bht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
         val pc_o = Output(UInt(base.ADDR_WIDTH.W))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
@@ -25,7 +33,10 @@ class PCReg extends Module
     var inst_valid_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
     var inst_valid_cnt = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     var nextpc = WireInit((0.U)(base.ADDR_WIDTH.W))
-
+    /* BHT Table */
+    var bht_table_reg = RegInit(VecInit(
+        Seq.fill(1 << base.BHTID_WIDTH)((0.U)(base.BHRID_WIDTH))
+    ))
     switch(pc_reg(3, 0))
     {
         is(0.U){
@@ -141,11 +152,42 @@ class PCReg extends Module
 
     /* 更新GHR */
     GHR := (GHR << GHR_step) | retire_br_taken_vec_mid
-    var pht_idx_vec_o = WireInit(VecInit(
+    var global_pht_idx_vec_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
+    /* PC hash mapping */
+    for(i <- 0 until base.FETCH_WIDTH){
+        global_pht_idx_vec_o(i) := pc_reg(20, 8) ^ GHR
+    }
+
+    /* BHT也使用PC ^ GHR寻址，避免BHR别名问题 */
+    /* 
+        BHR的PHT使用(PC ^ GHR) | BHR寻址, 取PC和GHR的最新的8次分支结果拼接BHR的结果，
+        避免纯BHR寻址的别名情况 
+    */
+    var local_pht_idx_vec_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+    var bht_idx_vec_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W))
+    ))
+    for(i <- 0 until base.FETCH_WIDTH){
+        local_pht_idx_vec_o(i) := Cat(
+            pc_reg(20, 13) ^ GHR(7,0), 
+            bht_table_reg(pc_reg(20, 13) ^ GHR(7,0))
+        )
+    }
+    /* 更新BHR */
+    for(i <- 0 until base.FETCH_WIDTH){
+        bht_table_reg(io.retire_bht_idx(i)) := Mux(
+            io.retire_br_mask(i), 
+            (bht_table_reg(io.retire_bht_idx(i)) << 1) | io.retire_br_taken_vec(i)
+            bht_table_reg(io.retire_bht_idx(i))
+        )
+    }
 
     io.pc_o := pc_reg
     io.inst_valid_mask_o := Mux(~io.rat_flush_en, inst_valid_mask, 0.U)
     io.inst_valid_cnt_o  := Mux(~io.rat_flush_en, inst_valid_cnt, 0.U)
+    io.pht_idx_vec_o := pht_idx_vec_o
 }
