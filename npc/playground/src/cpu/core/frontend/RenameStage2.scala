@@ -18,6 +18,20 @@ class RenameStage2 extends Module
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
         val DecodeRes_i = Input(Vec(base.FETCH_WIDTH, new DecodeRes))
+        /* 分支预测结果 */
+        /* 使用全局/局部历史预测 */
+        val gbranch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val lbranch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        /* 分支预测方向 */
+        val branch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+
+        /* 当前全局、局部历史PHT索引/BHT索引 */
+        val global_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val local_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val bht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+
+        val btb_hit_vec_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val btb_pred_addr_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
 
         /* RAT读写使能 */
         val rat_wen_i = Input(UInt(base.FETCH_WIDTH.W))
@@ -85,6 +99,13 @@ class RenameStage2 extends Module
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     /* 缓存上一个store指令的ROBID */
     var last_store_idx = RegInit((1 << base.ROBID_WIDTH).U((base.ROBID_WIDTH + 1).W))
+    var btb_hit_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
+    var btb_pred_addr_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
+    ))
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
@@ -141,6 +162,67 @@ class RenameStage2 extends Module
         Mux(~io.rob_state, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
         0.U
     )
+    /* 分支预测结果 */
+    var gbranch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var lbranch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var branch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))    
+    var global_pht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+    var local_pht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+    var bht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W))
+    ))
+    /* 分支预测结果 */
+    gbranch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.gbranch_pre_res_i, gbranch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    lbranch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.lbranch_pre_res_i, lbranch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    branch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.branch_pre_res_i, branch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    global_pht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
+    )
+    local_pht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
+    )
+    bht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.bht_idx_vec_i, bht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))
+    )    
+    btb_hit_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.btb_hit_vec_i, btb_hit_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+
+    btb_pred_addr_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state, io.btb_pred_addr_i, btb_pred_addr_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
+    )    
 
     /* wires */
     var rob_item_o = WireInit(
@@ -195,8 +277,8 @@ class RenameStage2 extends Module
         rob_item_o(i).rs2      := DecodeRes_reg(i).rs2
         rob_item_o(i).rd       := DecodeRes_reg(i).rd
         rob_item_o(i).rdy      := false.B
-        rob_item_o(i).rdy2     := false.B
-        rob_item_o(i).rdy1     := false.B
+        rob_item_o(i).rdy1     := DecodeRes_reg(i).rs1 === 0.U
+        rob_item_o(i).rdy2     := DecodeRes_reg(i).rs2 === 0.U
         /* 暂时所有分支指令均冲刷流水线 */
         rob_item_o(i).hasException := false.B
         rob_item_o(i).ExceptionType := ExceptionType.NORMAL.U
@@ -205,7 +287,17 @@ class RenameStage2 extends Module
             io.rob_freeid_vec_i(StoreIdxs(i)(log2Ceil(base.FETCH_WIDTH) - 1, 0)), 
             last_store_idx
         )
-
+        rob_item_o(i).gbranch_res := gbranch_pre_res_reg(i)
+        rob_item_o(i).lbranch_res := lbranch_pre_res_reg(i)
+        rob_item_o(i).branch_res := branch_pre_res_reg(i)
+        rob_item_o(i).global_pht_idx := global_pht_idx_vec_reg(i)
+        rob_item_o(i).local_pht_idx := local_pht_idx_vec_reg(i)
+        rob_item_o(i).bht_idx := bht_idx_vec_reg(i)
+        rob_item_o(i).branch_pred_addr := Mux(
+            btb_hit_vec_reg(i) & branch_pre_res_reg(i),
+            btb_pred_addr_reg(i),
+            pc_vec_reg(i) + 4.U
+        )
         /* 前置最近指令是否有相同的rd，用前置指令的pd */
         /* 找最近指令的pd */
         var waw_mask = WireInit(VecInit(Seq.fill(base.FETCH_WIDTH)(false.B)))
@@ -257,7 +349,7 @@ class RenameStage2 extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        prf_valid_rd_wen(i) := DecodeRes_reg(i).HasRd
+        prf_valid_rd_wen(i) := DecodeRes_reg(i).HasRd & (DecodeRes_reg(i).rd =/= 0.U)
         prf_valid_rd_waddr(i) := rat_wdata_reg(i)
         prf_valid_rd_wdata(i) := false.B
     }

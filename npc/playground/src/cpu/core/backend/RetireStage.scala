@@ -30,6 +30,14 @@ class RetireStage extends Module
         val free_rob_id_wdata = Output(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
 
         /* target branch addr */
+        val global_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val local_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val bht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+
+        val retire_br_mask_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val retire_br_taken_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val retire_gbranch_res = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val retire_lbranch_res = Output(Vec(base.FETCH_WIDTH, Bool()))
         val rat_flush_pc = Output(UInt(base.ADDR_WIDTH.W))
 
         /* 是否覆盖前端RAT */
@@ -46,10 +54,16 @@ class RetireStage extends Module
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
+    var branch_mask_mid = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
     /* mask为false，则对应指令为store指令或者存在异常,后面的指令不能提交 */
     for(i <- 0 until base.FETCH_WIDTH){
         store_mask_mid(i) := io.rob_items_i(i).isStore
         exception_mask_mid(i) := io.rob_items_i(i).hasException
+        branch_mask_mid(i) := io.rob_items_i(i).isBranch & 
+            (io.rob_items_i(i).branch_pred_addr =/= (io.rob_items_i(i).pc + 4.U))
     }    
 
     /* 前面的指令有异常，后面的指令不能写RAT */
@@ -75,7 +89,7 @@ class RetireStage extends Module
     commit_item_rdy_mask(0) := io.rob_items_i(0).valid & io.rob_items_i(0).rdy
     rob_item_rdy_mask(1) := 
         (
-            (io.rob_items_i(0).hasException | ~io.rob_items_i(1).valid) & 
+            (io.rob_items_i(0).hasException | ~io.rob_items_i(1).valid | branch_mask_mid(0)) & 
             rob_item_rdy_mask(0)
         ) |
         (        
@@ -91,7 +105,9 @@ class RetireStage extends Module
             (
                 ~io.rob_items_i(2).valid | 
                 io.rob_items_i(1).hasException | 
-                io.rob_items_i(0).hasException
+                io.rob_items_i(0).hasException |
+                branch_mask_mid(1) | 
+                branch_mask_mid(0)
             ) & rob_item_rdy_mask(1)
         ) |
         (
@@ -109,7 +125,10 @@ class RetireStage extends Module
                 ~io.rob_items_i(3).valid | 
                 io.rob_items_i(2).hasException | 
                 io.rob_items_i(1).hasException | 
-                io.rob_items_i(0).hasException
+                io.rob_items_i(0).hasException |
+                branch_mask_mid(2) |
+                branch_mask_mid(1) | 
+                branch_mask_mid(0)
             ) & 
             rob_item_rdy_mask(2)
         ) |
@@ -160,7 +179,7 @@ class RetireStage extends Module
             rat_write_en(i) := 
                 ~io.rob_state & 
                 io.rob_items_i(i).HasRd & 
-                ~(exception_mask_mid.asUInt(i-1, 0).orR)
+                ~(exception_mask_mid.asUInt(i-1, 0).orR | branch_mask_mid.asUInt(i-1, 0).orR)
 
             rat_write_addr(i) := io.rob_items_i(i).rd
             rat_write_data(i) := io.rob_items_i(i).pd
@@ -228,11 +247,12 @@ class RetireStage extends Module
     /* debug */
     var commit = Module(new CommitAPI)
     commit.io.rst := reset.asBool
+    /* 前置分支指令是否有效且跳转 */
     commit.io.rat_write_en := 
         Cat(
-            io.rob_items_i(3).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(2, 0).orR),
-            io.rob_items_i(2).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(1, 0).orR),
-            io.rob_items_i(1).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(0).orR),
+            io.rob_items_i(3).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(2, 0).orR | branch_mask_mid.asUInt(2, 0).orR),
+            io.rob_items_i(2).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(1, 0).orR | branch_mask_mid.asUInt(1, 0).orR),
+            io.rob_items_i(1).valid & ~io.rob_state & ~(exception_mask_mid.asUInt(0).orR | branch_mask_mid.asUInt(0).orR),
             io.rob_items_i(0).valid & ~io.rob_state
         )
     
@@ -275,5 +295,33 @@ class RetireStage extends Module
         }else{
             io.exception_mask_front(i) := false.B
         }
+    }
+
+    /* 分支预测 */
+    /* 写入有效时，该指令为分支指令预测正确或者错误，而且前置指令没有异常且没有分支指令 */
+    for(i <- 0 until base.FETCH_WIDTH){
+        io.global_pht_idx_vec_o(i) := io.rob_items_i(i).global_pht_idx
+        io.local_pht_idx_vec_o(i) := io.rob_items_i(i).local_pht_idx
+        io.bht_idx_vec_o(i) := io.rob_items_i(i).bht_idx
+        io.retire_br_taken_o(i) := (io.rob_items_i(i).targetBrAddr =/= (io.rob_items_i(i).pc + 4.U))
+        io.retire_gbranch_res(i) := io.rob_items_i(i).gbranch_res
+        io.retire_lbranch_res(i) := io.rob_items_i(i).lbranch_res
+        if(i > 0){
+            io.retire_br_mask_o(i) := 
+                io.rob_items_i(i).isBranch & (
+                    io.rob_items_i(i).ExceptionType === ExceptionType.BRANCH_PREDICTION_ERROR.U | 
+                    ~io.rob_items_i(i).hasException
+                ) & 
+                ~exception_mask_mid.asUInt(i-1, 0).orR &
+                ~branch_mask_mid.asUInt(i-1, 0).orR
+        }
+        else{
+            io.retire_br_mask_o(i) := 
+                io.rob_items_i(i).isBranch & (
+                    io.rob_items_i(i).ExceptionType === ExceptionType.BRANCH_PREDICTION_ERROR.U | 
+                    ~io.rob_items_i(i).hasException
+                )           
+        }
+        
     }
 }

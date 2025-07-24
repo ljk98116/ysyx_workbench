@@ -38,7 +38,18 @@ class ROBItem extends Bundle
     /* 分支指令是否跳转 */
     var isTaken = Bool()
     var targetBrAddr = UInt(base.ADDR_WIDTH.W)
+    /* used for debug */
     var reg_wb_data = UInt(base.DATA_WIDTH.W)
     /* 如果是load指令，对应的前置store指令 */
     var storeIdx = UInt((base.ROBID_WIDTH + 1).W)
+    /* 分支预测 */
+    var gbranch_res = Bool()
+    var lbranch_res = Bool()
+    var branch_res = Bool()
+    var global_pht_idx = UInt(base.PHTID_WIDTH.W)
+    var local_pht_idx = UInt(base.PHTID_WIDTH.W)
+    var bht_idx = UInt(base.BHTID_WIDTH.W)
+    /* 直接跳转，在译码时计算 */
+    /* 间接跳转，在执行时计算 */
+    var branch_pred_addr = UInt(base.ADDR_WIDTH.W)
 }

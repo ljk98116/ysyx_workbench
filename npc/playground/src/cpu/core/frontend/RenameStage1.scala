@@ -20,6 +20,30 @@ class RenameStage1 extends Module
         val DecodeRes_i = Input(Vec(base.FETCH_WIDTH, new DecodeRes))
         val freereg_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
+        val btb_hit_vec_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val btb_pred_addr_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+
+        /* 分支预测结果 */
+        /* 使用全局/局部历史预测 */
+        val gbranch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val lbranch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        /* 分支预测方向 */
+        val branch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+
+        /* 当前全局、局部历史PHT索引/BHT索引 */
+        val global_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val local_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val bht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+
+        /* 使用全局/局部历史预测 */
+        val gbranch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val lbranch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        /* 分支预测方向 */
+        val branch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        /* PHT索引，BHT索引 */
+        val global_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val local_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val bht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
 
         val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
@@ -37,6 +61,9 @@ class RenameStage1 extends Module
 
         val rat_ren_o = Output(UInt((base.FETCH_WIDTH * 3).W))
         val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
+
+        val btb_hit_vec_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W))) 
     })
 
     var stall = WireInit(false.B)
@@ -56,12 +83,40 @@ class RenameStage1 extends Module
     )
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
+    /* 分支预测结果 */
+    var gbranch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var lbranch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var branch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))    
+    var global_pht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+    var local_pht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+    var bht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W))
+    ))
+
+    var btb_hit_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
+    var btb_pred_addr_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
+    ))
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
         Mux(stall, io.pc_vec_i,pc_vec_reg), 
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
+
     inst_valid_mask_reg := Mux(
         ~io.rat_flush_en, 
         Mux(stall, io.inst_valid_mask_i, inst_valid_mask_reg),
@@ -77,6 +132,49 @@ class RenameStage1 extends Module
         Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg),
         0.U
     )
+    /* 分支预测结果 */
+    gbranch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.gbranch_pre_res_i, gbranch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    lbranch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.lbranch_pre_res_i, lbranch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    branch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.branch_pre_res_i, branch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    global_pht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
+    )
+    local_pht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
+    )
+    bht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.bht_idx_vec_i, bht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))
+    )
+
+    btb_hit_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.btb_hit_vec_i, btb_hit_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+
+    btb_pred_addr_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.btb_pred_addr_i, btb_pred_addr_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
+    )    
 
     /* rs1/rs2 是否哪一个最近的前置rd相等，给出掩码 */
     var rs1_match = WireInit(
@@ -194,4 +292,13 @@ class RenameStage1 extends Module
         Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.AREG_WIDTH.W))
     ))
     io.inst_valid_cnt_o := Mux(stall, inst_valid_cnt_reg, (0.U)(base.FETCH_WIDTH.W))
+    
+    io.gbranch_pre_res_o := gbranch_pre_res_reg
+    io.lbranch_pre_res_o := lbranch_pre_res_reg
+    io.branch_pre_res_o := branch_pre_res_reg
+    io.global_pht_idx_vec_o := global_pht_idx_vec_reg
+    io.local_pht_idx_vec_o := local_pht_idx_vec_reg
+    io.bht_idx_vec_o := bht_idx_vec_reg
+    io.btb_hit_vec_o := btb_hit_vec_reg
+    io.btb_pred_addr_o := btb_pred_addr_reg
 }

@@ -12,12 +12,13 @@ class PCReg extends Module
         val rat_flush_en = Input(Bool())
         val rob_state = Input(Bool())
         val rat_flush_pc = Input(UInt(base.ADDR_WIDTH.W))
+        /* fetch stage */
+        val branch_pred_en = Input(Bool())
+        val branch_pred_addr = Input(UInt(base.ADDR_WIDTH.W))
         /* 是否分支指令 */
         val retire_br_mask = Input(Vec(base.FETCH_WIDTH, Bool()))
         /* 是否跳转 */
         val retire_br_taken_vec = Input(Vec(base.FETCH_WIDTH, Bool()))
-        /* 是否发生预测错误 */
-        val retire_br_pred_vec = Input(Vec(base.FETCH_WIDTH, Bool()))
         /* BHT表序号 */
         val retire_bht_idx = Input(Vec(base.FETCH_WIDTH, UInt(8.W)))
         /* output */
@@ -35,33 +36,38 @@ class PCReg extends Module
     var nextpc = WireInit((0.U)(base.ADDR_WIDTH.W))
     /* BHT Table */
     var bht_table_reg = RegInit(VecInit(
-        Seq.fill(1 << base.BHTID_WIDTH)((0.U)(base.BHRID_WIDTH))
+        Seq.fill(1 << base.BHTID_WIDTH)((0.U)(base.BHRID_WIDTH.W))
     ))
-    switch(pc_reg(3, 0))
+    switch(io.pc_o(3, 0))
     {
         is(0.U){
             inst_valid_mask := "b1111".U
             inst_valid_cnt  := 4.U
-            nextpc := pc_reg + 16.U
+            nextpc := io.pc_o + 16.U
         }
         is(4.U){
             inst_valid_mask := "b0111".U
             inst_valid_cnt  := 3.U
-            nextpc := pc_reg + 12.U
+            nextpc := io.pc_o + 12.U
         }
         is(8.U){
             inst_valid_mask := "b0011".U
             inst_valid_cnt  := 2.U
-            nextpc := pc_reg + 8.U
+            nextpc := io.pc_o + 8.U
         }
         is(12.U){
             inst_valid_mask := "b0001".U
             inst_valid_cnt  := 1.U
-            nextpc := pc_reg + 4.U
+            nextpc := io.pc_o + 4.U
         }
     }
 
-    pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, nextpc, pc_reg))
+    pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, 
+        Mux(
+            ~io.rob_state & io.freereg_rd_able.asUInt.andR, 
+            nextpc, 
+            pc_reg
+        ))
 
     /* 分支预测使用 */
     /* 分支全局历史移位寄存器 */
@@ -84,7 +90,7 @@ class PCReg extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         retire_br_taken_vec_mid(i) := false.B
     }
-    switch(io.retire_br_mask){
+    switch(io.retire_br_mask.asUInt){
         is("b0000".U){}
         is("b0001".U){
             retire_br_taken_vec_mid(0) := io.retire_br_taken_vec(0)
@@ -151,7 +157,7 @@ class PCReg extends Module
     }
 
     /* 更新GHR */
-    GHR := (GHR << GHR_step) | retire_br_taken_vec_mid
+    GHR := (GHR << GHR_step) | retire_br_taken_vec_mid.asUInt
     var global_pht_idx_vec_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
@@ -181,13 +187,15 @@ class PCReg extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         bht_table_reg(io.retire_bht_idx(i)) := Mux(
             io.retire_br_mask(i), 
-            (bht_table_reg(io.retire_bht_idx(i)) << 1) | io.retire_br_taken_vec(i)
+            (bht_table_reg(io.retire_bht_idx(i)) << 1) | io.retire_br_taken_vec(i), 
             bht_table_reg(io.retire_bht_idx(i))
         )
     }
-
-    io.pc_o := pc_reg
+    /* 有分支使能，输出分支指令目标PC */
+    io.pc_o := Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg)
     io.inst_valid_mask_o := Mux(~io.rat_flush_en, inst_valid_mask, 0.U)
     io.inst_valid_cnt_o  := Mux(~io.rat_flush_en, inst_valid_cnt, 0.U)
-    io.pht_idx_vec_o := pht_idx_vec_o
+    io.global_pht_idx_vec_o := global_pht_idx_vec_o
+    io.local_pht_idx_vec_o := local_pht_idx_vec_o
+    io.bht_idx_vec_o := bht_idx_vec_o
 }

@@ -22,3 +22,10 @@ object ExceptionType {
     val BRANCH_PREDICTION_ERROR = "hFF"
 
 }
+
+object BRANCH_TYPE{
+    val DIRECT_JUMP = "b00"
+    val INDIRECT_JUMP = "b01"
+    val CALL_JUMP = "b10"
+    val RET_JUMP = "b11"
+}

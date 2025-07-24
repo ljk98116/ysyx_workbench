@@ -15,16 +15,70 @@ class Decode extends Module
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
+        /* 分支预测结果 */
+        /* 使用全局/局部历史预测 */
+        val gbranch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val lbranch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        /* 分支预测方向 */
+        val branch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val btb_hit_vec_i = Input(Vec(base.FETCH_WIDTH, Bool()))
+        val btb_pred_addr_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+
+        /* 当前全局、局部历史PHT索引/BHT索引 */
+        val global_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val local_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val bht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+
         val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
         val DecodeRes_o = Output(Vec(base.FETCH_WIDTH, new DecodeRes()))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
+
+        /* 使用全局/局部历史预测 */
+        val gbranch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val lbranch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        /* 分支预测方向 */
+        val branch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        /* PHT索引，BHT索引 */
+        val global_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val local_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+        val bht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+
+        val decode_br_mask = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val decode_br_addr = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+
+        val btb_hit_vec_o = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))       
     })
 
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
     var inst_valid_mask_reg = RegInit((0.U)(base.FETCH_WIDTH.W))
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
+    var gbranch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var lbranch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var branch_pre_res_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))    
+    var global_pht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+    var local_pht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+    var bht_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W))
+    ))
+    var btb_hit_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var btb_pred_addr_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
+    ))
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
@@ -41,10 +95,60 @@ class Decode extends Module
         Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
         0.U
     )
+    gbranch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.gbranch_pre_res_i, gbranch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    lbranch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.lbranch_pre_res_i, lbranch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    branch_pre_res_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.branch_pre_res_i, branch_pre_res_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+    global_pht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
+    )
+    local_pht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
+    )
+    bht_idx_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.bht_idx_vec_i, bht_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))
+    )
+
+    btb_hit_vec_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.btb_hit_vec_i, btb_hit_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
+    )
+
+    btb_pred_addr_reg := Mux(
+        ~io.rat_flush_en,
+        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.btb_pred_addr_i, btb_pred_addr_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
+    )
 
     io.pc_vec_o := pc_vec_reg
     io.inst_valid_mask_o := inst_valid_mask_reg
     io.inst_valid_cnt_o := inst_valid_cnt_reg
+    io.gbranch_pre_res_o := gbranch_pre_res_reg
+    io.lbranch_pre_res_o := lbranch_pre_res_reg
+    io.branch_pre_res_o := branch_pre_res_reg
+    io.global_pht_idx_vec_o := global_pht_idx_vec_reg
+    io.local_pht_idx_vec_o := local_pht_idx_vec_reg
+    io.bht_idx_vec_o := bht_idx_vec_reg
+    io.btb_hit_vec_o := btb_hit_vec_reg
+    io.btb_pred_addr_o := btb_pred_addr_reg
 
     /* Decode */
     var decoderes = WireInit(VecInit(
@@ -71,8 +175,16 @@ class Decode extends Module
     /* 处于暂停状态,使用锁存的值,否则使用输入值 */
     inst_vec_used := Mux(inst_state, inst_vec_stall_reg, io.inst_vec_i)
 
+    var decode_br_mask = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var decode_br_addr = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
+    ))
     /* 根据opcode译码 */
     for(i <- 0 until base.FETCH_WIDTH){
+        decode_br_mask(i) := false.B
+        decode_br_addr(i) := 0.U
         when(inst_valid_mask_reg(i) & ~io.rat_flush_en){
             switch(inst_vec_used(i)(6, 0)){
                 /* type I */
@@ -107,7 +219,7 @@ class Decode extends Module
                     decoderes(i).IsBranch := true.B
                     decoderes(i).HasRs1 := true.B
                     decoderes(i).HasRs2 := false.B
-                    decoderes(i).HasRd  := true.B                   
+                    decoderes(i).HasRd  := true.B                
                 }
                 /* type U */
                 is(
@@ -134,6 +246,8 @@ class Decode extends Module
                     decoderes(i).HasRs1 := false.B
                     decoderes(i).HasRs2 := false.B
                     decoderes(i).HasRd  := true.B
+                    decode_br_mask(i)   := true.B
+                    decode_br_addr(i)   := pc_vec_reg(i) + Imm.ImmUJ(inst_vec_used(i))
                 }
                 /* type S */
                 is(
@@ -187,4 +301,6 @@ class Decode extends Module
     }
 
     io.DecodeRes_o := decoderes
+    io.decode_br_mask := decode_br_mask
+    io.decode_br_addr := decode_br_addr
 }

@@ -26,6 +26,12 @@ class CPUCore(memfile: String) extends Module
     /* fetch stage */
     val fetch = Module(new Fetch)
 
+    /* PHT */
+    val pht = Module(new PHTReg)
+
+    /* BTB */
+    val btb = Module(new BTB)
+
     /* decode stage */
     val decode = Module(new Decode)
 
@@ -98,6 +104,27 @@ class CPUCore(memfile: String) extends Module
     fetch.io.pc_i                   := pc_reg.io.pc_o
     fetch.io.inst_valid_mask_i      := pc_reg.io.inst_valid_mask_o
     fetch.io.inst_valid_cnt_i       := pc_reg.io.inst_valid_cnt_o
+    fetch.io.global_pht_idx_vec_i   := pc_reg.io.global_pht_idx_vec_o
+    fetch.io.local_pht_idx_vec_i    := pc_reg.io.local_pht_idx_vec_o
+    fetch.io.bht_idx_vec_i          := pc_reg.io.bht_idx_vec_o
+
+    /* fetch -> pc */
+    pc_reg.io.branch_pred_en        := fetch.io.branch_en_pred
+    pc_reg.io.branch_pred_addr      := fetch.io.branch_addr_pred
+
+    /* fetch -> PHT */
+    pht.io.global_pht_idx_vec_i     := fetch.io.global_pht_idx_vec_o
+    pht.io.local_pht_idx_vec_i      := fetch.io.local_pht_idx_vec_o
+
+    /* PHT -> fetch */
+    fetch.io.branch_pre_res_i       := pht.io.branch_pre_res_o
+
+    /* fetch -> BTB */
+    btb.io.pc_i                     := fetch.io.pc_vec_o
+
+    /* BTB -> fetch */
+    fetch.io.btb_hit_vec_i          := btb.io.btb_hit_vec_o
+    fetch.io.btb_pred_addr_i        := btb.io.btb_pred_addr_o
 
     /* fetch -> memory */
     for(i <- 0 until base.FETCH_WIDTH){
@@ -109,6 +136,22 @@ class CPUCore(memfile: String) extends Module
     decode.io.pc_vec_i              := fetch.io.pc_vec_o
     decode.io.inst_valid_mask_i     := fetch.io.inst_valid_mask_o
     decode.io.inst_valid_cnt_i      := fetch.io.inst_valid_cnt_o
+
+    decode.io.bht_idx_vec_i         := fetch.io.bht_idx_vec_o
+    decode.io.global_pht_idx_vec_i  := fetch.io.global_pht_idx_vec_o
+    decode.io.local_pht_idx_vec_i   := fetch.io.local_pht_idx_vec_o
+    decode.io.gbranch_pre_res_i     := pht.io.gbranch_pre_res_o
+    decode.io.lbranch_pre_res_i     := pht.io.lbranch_pre_res_o
+    decode.io.branch_pre_res_i      := pht.io.branch_pre_res_o
+
+    /* decode -> btb */
+    btb.io.decode_br_mask_i         := decode.io.decode_br_mask
+    btb.io.decode_pc_i              := decode.io.pc_vec_o
+    btb.io.decode_br_addr           := decode.io.decode_br_addr
+
+    /* btb -> decode */
+    decode.io.btb_hit_vec_i         := btb.io.btb_hit_vec_o
+    decode.io.btb_pred_addr_i       := btb.io.btb_pred_addr_o
 
     /* memory -> decode */
     for(i <- 0 until base.FETCH_WIDTH){
@@ -140,6 +183,15 @@ class CPUCore(memfile: String) extends Module
     rename1.io.DecodeRes_i          := decode.io.DecodeRes_o
     rename1.io.inst_valid_cnt_i     := decode.io.inst_valid_cnt_o
 
+    rename1.io.bht_idx_vec_i        := decode.io.bht_idx_vec_o
+    rename1.io.global_pht_idx_vec_i := decode.io.global_pht_idx_vec_o
+    rename1.io.local_pht_idx_vec_i  := decode.io.local_pht_idx_vec_o
+    rename1.io.gbranch_pre_res_i    := decode.io.gbranch_pre_res_o
+    rename1.io.lbranch_pre_res_i    := decode.io.lbranch_pre_res_o
+    rename1.io.branch_pre_res_i     := decode.io.branch_pre_res_o
+    rename1.io.btb_hit_vec_i        := decode.io.btb_hit_vec_o
+    rename1.io.btb_pred_addr_i      := decode.io.btb_pred_addr_o
+
     /* robidbuffer -> rename2 */
     for(i <- 0 until base.FETCH_WIDTH){
         rename2.io.rob_freeid_vec_i(i)  := robidbuf_seq(i).io.free_robid_o
@@ -158,6 +210,15 @@ class CPUCore(memfile: String) extends Module
     rename2.io.rat_wdata_i          := rename1.io.rat_wdata_o
     rename2.io.rs1_match            := rename1.io.rs1_match
     rename2.io.rs2_match            := rename1.io.rs2_match
+
+    rename2.io.bht_idx_vec_i        := rename1.io.bht_idx_vec_o
+    rename2.io.global_pht_idx_vec_i := rename1.io.global_pht_idx_vec_o
+    rename2.io.local_pht_idx_vec_i  := rename1.io.local_pht_idx_vec_o
+    rename2.io.gbranch_pre_res_i    := rename1.io.gbranch_pre_res_o
+    rename2.io.lbranch_pre_res_i    := rename1.io.lbranch_pre_res_o
+    rename2.io.branch_pre_res_i     := rename1.io.branch_pre_res_o
+    rename2.io.btb_hit_vec_i        := rename1.io.btb_hit_vec_o
+    rename2.io.btb_pred_addr_i      := rename1.io.btb_pred_addr_o
 
     /* rename2 -> RenameRAT */
     ReNameRAT.io.rat_ren            := rename2.io.rat_ren_o
@@ -245,6 +306,13 @@ class CPUCore(memfile: String) extends Module
         cdb.alu_channel(i).branch_target_addr := alu_vec(i).io.branch_target_addr
         cdb.alu_channel(i).has_exception := alu_vec(i).io.has_exception
         cdb.alu_channel(i).exception_type := alu_vec(i).io.exception_type
+    }
+
+    /* ALU -> btb */
+    for(i <- 0 until base.ALU_NUM){
+        btb.io.ex_br_mask_i(i) := alu_vec(i).io.branch_en
+        btb.io.ex_pc_i(i) := alu_vec(i).io.pc_o
+        btb.io.ex_br_addr(i) := alu_vec(i).io.branch_target_addr
     }
 
     /* CDB -> PRF */
@@ -391,6 +459,21 @@ class CPUCore(memfile: String) extends Module
     memstage3.io.rat_flush_en                      := retire.io.rat_flush_en
     prf.io.rat_flush_en                            := retire.io.rat_flush_en
     retireRAT.io.rat_flush_en                      := retire.io.rat_flush_en
+
+    /* retire -> PHT */
+    pht.io.retire_br_mask := retire.io.retire_br_mask_o
+    pht.io.retire_br_taken_vec := retire.io.retire_br_taken_o
+    pht.io.retire_gpht_idx := retire.io.global_pht_idx_vec_o
+    pht.io.retire_lpht_idx := retire.io.local_pht_idx_vec_o
+    pht.io.retire_gbranch_pre_res_i := retire.io.retire_gbranch_res
+    pht.io.retire_lbranch_pre_res_i := retire.io.retire_lbranch_res
+
+    /* retire -> pcreg */
+    pc_reg.io.retire_bht_idx := retire.io.bht_idx_vec_o
+    pc_reg.io.retire_br_mask := retire.io.retire_br_mask_o
+    pc_reg.io.retire_br_taken_vec := retire.io.retire_br_taken_o
+    
+
     /* rob_state -> pc/fetch/decode/rename1/rename2/dispatch/issue/regread/alu/agu/mem1/mem2/mem3 */
     pc_reg.io.rob_state                         := rob_buffer.io.rob_state
     fetch.io.rob_state                          := rob_buffer.io.rob_state
@@ -403,7 +486,10 @@ class CPUCore(memfile: String) extends Module
     memstage1.io.rob_state                      := rob_buffer.io.rob_state
     memstage2.io.rob_state                      := rob_buffer.io.rob_state
     memstage3.io.rob_state                      := rob_buffer.io.rob_state
-    retire.io.rob_state                         := rob_buffer.io.rob_state    
+    retire.io.rob_state                         := rob_buffer.io.rob_state  
+    pht.io.rob_state                            := rob_buffer.io.rob_state
+    btb.io.rob_state                            := rob_buffer.io.rob_state
+      
     for(i <- 0 until base.ALU_NUM){
         alu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
         alu_vec(i).io.rob_state    := rob_buffer.io.rob_state
