@@ -23,6 +23,10 @@ class Dispatch extends Module
         val alu_items_vec_o = Output(Vec(base.ALU_NUM, new ROBItem))
         val agu_items_vec_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val agu_items_cnt_o = Output(UInt((log2Ceil(FETCH_WIDTH) + 1).W))
+
+        val rs1_match = Input(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
+        val rs2_match = Input(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
+
         /* 总线接口 */
         val cdb_i = Input(new CDB)
         /* PRF接口 */
@@ -32,6 +36,11 @@ class Dispatch extends Module
         val prf_valid_rs2_raddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
         val prf_valid_rs1_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
         val prf_valid_rs2_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
+
+        /* PRF寄存器状态设置 */
+        val prf_valid_rd_wen = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val prf_valid_rd_waddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
+        val prf_valid_rd_wdata = Output(Vec(base.FETCH_WIDTH, Bool()))
 
         /* store buffer write */
         val store_buffer_write_en = Output(Vec(base.FETCH_WIDTH, Bool()))
@@ -80,6 +89,40 @@ class Dispatch extends Module
         prf_valid_rs2_raddr(i) := rob_item_reg(i).ps2
     }    
 
+    var prf_valid_rd_wen = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var prf_valid_rd_waddr = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
+    ))
+    var prf_valid_rd_wdata = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        prf_valid_rd_wen(i) := rob_item_reg(i).HasRd & (rob_item_reg(i).rd =/= 0.U)
+        prf_valid_rd_waddr(i) := rob_item_reg(i).pd
+        prf_valid_rd_wdata(i) := false.B
+    }
+
+    var rs1_match_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+    ))
+    var rs2_match_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+    ))
+
+    rs1_match_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.rs1_match, rs1_match_reg), 
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W)))
+    )
+    rs2_match_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(~io.rob_state, io.rs2_match, rs2_match_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W)))
+    )    
+
     /* 使用总线信号以及物理寄存器状态更新ROB项依赖状态 */
     var rob_items = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
@@ -99,7 +142,8 @@ class Dispatch extends Module
         ))
         var rdy2_vec = WireInit(VecInit(
             Seq.fill(base.ALU_NUM + base.AGU_NUM + 1)(false.B)
-        ))
+        ))        
+        /* 注意写入PRF的依赖, 前面不能出现写入 */
         rdy1_vec(base.ALU_NUM + base.AGU_NUM) := io.prf_valid_rs1_rdata(i)
         rdy2_vec(base.ALU_NUM + base.AGU_NUM) := io.prf_valid_rs2_rdata(i)
         for(j <- 0 until base.ALU_NUM){
@@ -110,8 +154,8 @@ class Dispatch extends Module
             rdy1_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & io.cdb_i.agu_channel(j).valid
             rdy2_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & io.cdb_i.agu_channel(j).valid
         }
-        rob_items(i).rdy1 := rdy1_vec.asUInt.orR
-        rob_items(i).rdy2 := rdy2_vec.asUInt.orR      
+        rob_items(i).rdy1 := rdy1_vec.asUInt.orR & ~(rs1_match_reg(i).orR)
+        rob_items(i).rdy2 := rdy2_vec.asUInt.orR & ~(rs2_match_reg(i).orR)     
     }
 
     var is_alu_vec = WireInit(VecInit(
@@ -355,6 +399,10 @@ class Dispatch extends Module
     io.prf_valid_rs1_raddr := prf_valid_rs1_raddr
     io.prf_valid_rs2_ren := prf_valid_rs2_ren
     io.prf_valid_rs2_raddr := prf_valid_rs2_raddr
+
+    io.prf_valid_rd_wen := prf_valid_rd_wen
+    io.prf_valid_rd_waddr := prf_valid_rd_waddr
+    io.prf_valid_rd_wdata := prf_valid_rd_wdata
 
     io.rob_item_o := rob_items_o
     io.inst_valid_cnt_o := inst_valid_cnt_o

@@ -50,11 +50,6 @@ class RenameStage2 extends Module
         val rat_ren_o = Output(UInt((base.FETCH_WIDTH * 3).W))
         val rat_raddr_o = Output(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
 
-        /* PRF寄存器状态设置 */
-        val prf_valid_rd_wen = Output(Vec(base.FETCH_WIDTH, Bool()))
-        val prf_valid_rd_waddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
-        val prf_valid_rd_wdata = Output(Vec(base.FETCH_WIDTH, Bool()))
-
         /* RAW相关性信息 */
         val rs1_match = Input(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
         val rs2_match = Input(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
@@ -63,6 +58,9 @@ class RenameStage2 extends Module
         val rob_freeid_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
+
+        val rs1_match_o = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
+        val rs2_match_o = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
     })
 
     /* pipeline */
@@ -338,22 +336,6 @@ class RenameStage2 extends Module
         }
     }
 
-    var prf_valid_rd_wen = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)(false.B)
-    ))
-    var prf_valid_rd_waddr = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
-    ))
-    var prf_valid_rd_wdata = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)(false.B)
-    ))
-
-    for(i <- 0 until base.FETCH_WIDTH){
-        prf_valid_rd_wen(i) := DecodeRes_reg(i).HasRd & (DecodeRes_reg(i).rd =/= 0.U)
-        prf_valid_rd_waddr(i) := rat_wdata_reg(i)
-        prf_valid_rd_wdata(i) := false.B
-    }
-
     /* 获取最后一个有效的store指令ROBID */
     var last_store_idx_mid = WireInit(VecInit(
         Seq.fill(
@@ -385,10 +367,9 @@ class RenameStage2 extends Module
     io.rat_waddr_o := rat_waddr_reg
     io.rat_wdata_o := rat_wdata_reg
 
-    io.prf_valid_rd_wen := prf_valid_rd_wen
-    io.prf_valid_rd_waddr := prf_valid_rd_waddr
-    io.prf_valid_rd_wdata := prf_valid_rd_wdata
-
     io.rob_item_o := rob_item_o
     io.inst_valid_cnt_o := inst_valid_cnt_reg
+
+    io.rs1_match_o := rs1_match_reg
+    io.rs2_match_o := rs2_match_reg
 }

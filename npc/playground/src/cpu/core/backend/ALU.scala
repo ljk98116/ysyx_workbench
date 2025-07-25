@@ -119,11 +119,11 @@ class ALU extends Module
         is(Opcode.JAL){
             result := rob_item_reg.pc + 4.U
             branch_target_addr := rob_item_reg.pc + rob_item_reg.Imm
-            has_exception := ~rob_item_reg.branch_res & (
+            has_exception := ~rob_item_reg.branch_res | (
                 rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
             )
             exception_type := Mux(
-                ~rob_item_reg.branch_res & (
+                ~rob_item_reg.branch_res | (
                     rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
                 ),
                 ExceptionType.BRANCH_PREDICTION_ERROR.U,
@@ -135,11 +135,11 @@ class ALU extends Module
         is(Opcode.JALR){
             result := rob_item_reg.pc + 4.U
             branch_target_addr := rs1_data_reg + rob_item_reg.Imm
-            has_exception := ~rob_item_reg.branch_res & (
+            has_exception := ~rob_item_reg.branch_res | (
                 rob_item_reg.branch_pred_addr =/= (rs1_data_reg + rob_item_reg.Imm)
             )
             exception_type := Mux(
-                ~rob_item_reg.branch_res & (
+                ~rob_item_reg.branch_res | (
                     rob_item_reg.branch_pred_addr =/= (rs1_data_reg + rob_item_reg.Imm)
                 ),
                 ExceptionType.BRANCH_PREDICTION_ERROR.U,
@@ -160,11 +160,11 @@ class ALU extends Module
                         rob_item_reg.pc + rob_item_reg.Imm,
                         rob_item_reg.pc + 4.U
                     )
-                    has_exception := (rob_item_reg.branch_res ^ (rs1_data_reg === rs2_data_reg)) & (
+                    has_exception := (rob_item_reg.branch_res ^ (rs1_data_reg === rs2_data_reg)) | (
                         rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
                     )
                     exception_type := Mux(
-                        (rob_item_reg.branch_res ^ (rs1_data_reg === rs2_data_reg)) & (
+                        (rob_item_reg.branch_res ^ (rs1_data_reg === rs2_data_reg)) | (
                             rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
                         ),
                         ExceptionType.BRANCH_PREDICTION_ERROR.U,
@@ -177,11 +177,11 @@ class ALU extends Module
                         rob_item_reg.pc + rob_item_reg.Imm,
                         rob_item_reg.pc + 4.U
                     )
-                    has_exception := (rob_item_reg.branch_res ^ (rs1_data_reg =/= rs2_data_reg)) & (
+                    has_exception := (rob_item_reg.branch_res ^ (rs1_data_reg =/= rs2_data_reg)) | (
                         rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
                     )
                     exception_type := Mux(
-                        (rob_item_reg.branch_res ^ (rs1_data_reg =/= rs2_data_reg)) & (
+                        (rob_item_reg.branch_res ^ (rs1_data_reg =/= rs2_data_reg)) | (
                             rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
                         ),
                         ExceptionType.BRANCH_PREDICTION_ERROR.U,

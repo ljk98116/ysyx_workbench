@@ -226,22 +226,22 @@ class CPUCore(memfile: String) extends Module
     ReNameRAT.io.rat_wen            := rename2.io.rat_wen_o
     ReNameRAT.io.rat_waddr          := rename2.io.rat_waddr_o
     ReNameRAT.io.rat_wdata          := rename2.io.rat_wdata_o
-
-    /* rename2 -> prf */
-    prf.io.prf_valid_rd_wen         := rename2.io.prf_valid_rd_wen
-    prf.io.prf_valid_rd_waddr       := rename2.io.prf_valid_rd_waddr
-    prf.io.prf_valid_rd_wdata       := rename2.io.prf_valid_rd_wdata
     
     /* ReNameRAT -> rename2 */
     rename2.io.rat_rdata_i          := ReNameRAT.io.rat_rdata
 
     /* rename2 -> dispatch */
     dispatch.io.rob_item_i          := rename2.io.rob_item_o
+    dispatch.io.rs1_match           := rename2.io.rs1_match_o
+    dispatch.io.rs2_match           := rename2.io.rs2_match_o
+
     dontTouch(dispatch.io.rob_item_i)
     dontTouch(dispatch.io.rob_item_o)
 
     dispatch.io.inst_valid_cnt_i    := rename2.io.inst_valid_cnt_o
     dispatch.io.cdb_i               := cdb
+
+    /* prf -> dispatch */
     dispatch.io.prf_valid_rs1_rdata := prf.io.prf_valid_rs1_rdata
     dispatch.io.prf_valid_rs2_rdata := prf.io.prf_valid_rs2_rdata
 
@@ -254,6 +254,9 @@ class CPUCore(memfile: String) extends Module
     prf.io.prf_valid_rs1_raddr      := dispatch.io.prf_valid_rs1_raddr
     prf.io.prf_valid_rs2_ren        := dispatch.io.prf_valid_rs2_ren
     prf.io.prf_valid_rs2_raddr      := dispatch.io.prf_valid_rs2_raddr
+    prf.io.prf_valid_rd_wen         := dispatch.io.prf_valid_rd_wen
+    prf.io.prf_valid_rd_waddr       := dispatch.io.prf_valid_rd_waddr
+    prf.io.prf_valid_rd_wdata       := dispatch.io.prf_valid_rd_wdata
 
     /* dispatch -> IssueStage */
     // dontTouch(dispatch.io.alu_items_vec_o)
