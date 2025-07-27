@@ -68,7 +68,7 @@ class CPUCore(memfile: String) extends Module
     var issue = Module(new IssueStage)
 
     /* regread stage */
-    var regread = Module(new RegReadStage)
+    // var regread = Module(new RegReadStage)
 
     /* exec stage */
     var alu_vec = Seq.fill(base.ALU_NUM)(
@@ -273,30 +273,30 @@ class CPUCore(memfile: String) extends Module
     issue.io.cdb_i                  := cdb
 
     /* IssueStage -> RegReadStage */
-    regread.io.alu_fu_items_i       := issue.io.alu_fu_items_o
-    regread.io.agu_fu_items_i       := issue.io.agu_fu_items_o
+    // regread.io.alu_fu_items_i       := issue.io.alu_fu_items_o
+    // regread.io.agu_fu_items_i       := issue.io.agu_fu_items_o
 
-    /* RegReadStage -> PRF */
-    prf.io.prf_rs1_data_ren         := regread.io.prf_rs1_data_ren
-    prf.io.prf_rs1_data_raddr       := regread.io.prf_rs1_data_raddr
-    prf.io.prf_rs2_data_ren         := regread.io.prf_rs2_data_ren
-    prf.io.prf_rs2_data_raddr       := regread.io.prf_rs2_data_raddr
+    /* IssueStage -> PRF */
+    prf.io.prf_rs1_data_ren         := issue.io.prf_rs1_data_ren
+    prf.io.prf_rs1_data_raddr       := issue.io.prf_rs1_data_raddr
+    prf.io.prf_rs2_data_ren         := issue.io.prf_rs2_data_ren
+    prf.io.prf_rs2_data_raddr       := issue.io.prf_rs2_data_raddr
 
-    /* PRF -> RegReadStage */
-    regread.io.prf_rs1_data_rdata   := prf.io.prf_rs1_data_rdata
-    regread.io.prf_rs2_data_rdata   := prf.io.prf_rs2_data_rdata
+    /* PRF -> IssueStage */
+    issue.io.prf_rs1_data_rdata   := prf.io.prf_rs1_data_rdata
+    issue.io.prf_rs2_data_rdata   := prf.io.prf_rs2_data_rdata
 
     /* RegRead -> FU */
     for(i <- 0 until base.ALU_NUM){
-        alu_vec(i).io.rob_item_i    := regread.io.alu_fu_items_o(i)
-        alu_vec(i).io.rs1_data_i    := regread.io.alu_channel_rs1_rdata(i)
-        alu_vec(i).io.rs2_data_i    := regread.io.alu_channel_rs2_rdata(i)
+        alu_vec(i).io.rob_item_i    := issue.io.alu_fu_items_o(i)
+        alu_vec(i).io.rs1_data_i    := issue.io.alu_channel_rs1_rdata(i)
+        alu_vec(i).io.rs2_data_i    := issue.io.alu_channel_rs2_rdata(i)
     }
 
     for(i <- 0 until base.AGU_NUM){
-        agu_vec(i).io.rob_item_i    := regread.io.agu_fu_items_o(i)
-        agu_vec(i).io.rs1_data_i    := regread.io.agu_channel_rs1_rdata(i)
-        agu_vec(i).io.rs2_data_i    := regread.io.agu_channel_rs2_rdata(i)
+        agu_vec(i).io.rob_item_i    := issue.io.agu_fu_items_o(i)
+        agu_vec(i).io.rs1_data_i    := issue.io.agu_channel_rs1_rdata(i)
+        agu_vec(i).io.rs2_data_i    := issue.io.agu_channel_rs2_rdata(i)
     }
 
     /* FU -> CDB */
@@ -454,7 +454,7 @@ class CPUCore(memfile: String) extends Module
     decode.io.rat_flush_en                         := retire.io.rat_flush_en
     rename1.io.rat_flush_en                        := retire.io.rat_flush_en
     issue.io.rat_flush_en                          := retire.io.rat_flush_en
-    regread.io.rat_flush_en                        := retire.io.rat_flush_en
+    // regread.io.rat_flush_en                        := retire.io.rat_flush_en
     memstage1.io.rat_flush_en                      := retire.io.rat_flush_en
     memstage2.io.rat_flush_en                      := retire.io.rat_flush_en
     memstage3.io.rat_flush_en                      := retire.io.rat_flush_en
@@ -483,7 +483,7 @@ class CPUCore(memfile: String) extends Module
     rename2.io.rob_state                        := rob_buffer.io.rob_state
     dispatch.io.rob_state                       := rob_buffer.io.rob_state
     issue.io.rob_state                          := rob_buffer.io.rob_state
-    regread.io.rob_state                        := rob_buffer.io.rob_state
+    // regread.io.rob_state                        := rob_buffer.io.rob_state
     memstage1.io.rob_state                      := rob_buffer.io.rob_state
     memstage2.io.rob_state                      := rob_buffer.io.rob_state
     memstage3.io.rob_state                      := rob_buffer.io.rob_state

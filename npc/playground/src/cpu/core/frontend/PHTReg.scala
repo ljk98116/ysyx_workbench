@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 
 import cpu.config._
+import cpu.config.base.PHTID_WIDTH
 
 /* fetch阶段读取PCReg段写入，读取在下一周期给出结果，会缓存读信号 */
 /* 使用chisel Mem, 同时读取出饱和计数器值 */
@@ -44,7 +45,14 @@ class PHTReg extends Module{
     var branch_pre_res_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
-    
+    for(i <- 0 until 1 << base.PHTID_WIDTH){
+        when(reset.asBool){
+            gPHTReg.write(i.U, "b11".U)
+            lPHTReg.write(i.U, "b11".U)
+            cPHTReg.write(i.U, "b11".U)
+        }
+    }
+
     /* 更新gPHT */
     for(i <- 0 until base.FETCH_WIDTH){
         var gPHTReg_val = WireInit((0.U)(2.W))

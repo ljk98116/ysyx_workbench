@@ -60,6 +60,16 @@ class ALUReserveStation(size: Int) extends Module {
     val io = IO(new Bundle {
         val rat_flush_en = Input(Bool())
         val rob_state = Input(UInt(2.W))
+        /* PRF 读使能 */
+        val prf_rs1_data_ren = Output(Bool())
+        val prf_rs2_data_ren = Output(Bool())
+        val prf_rs1_data_raddr = Output(UInt(base.PREG_WIDTH.W))
+        val prf_rs2_data_raddr = Output(UInt(base.PREG_WIDTH.W))
+        val prf_rs1_data_rdata = Input(UInt(base.DATA_WIDTH.W))
+        val prf_rs2_data_rdata = Input(UInt(base.DATA_WIDTH.W))
+        /* 输出对应channel的操作数 */
+        val alu_channel_rs1_rdata = Output(UInt(base.DATA_WIDTH.W))
+        val alu_channel_rs2_rdata = Output(UInt(base.DATA_WIDTH.W))
         var rob_item_i = Input(new ROBItem)
         /* 总线状态 */
         var cdb_i = Input(new CDB)
@@ -68,8 +78,18 @@ class ALUReserveStation(size: Int) extends Module {
         var read_able = Bool()
     })
 
+    /* 寄存器读取 */
+
     /* free id阵列 */
     val freeIdBuffer = Module(new ReserveFreeIdBuffer(size))
+
+    /* payload ram */
+    var ps1_payLoad_RAM = RegInit(VecInit(
+        Seq.fill(size)((0.U)(base.DATA_WIDTH.W))
+    ))
+    var ps2_payLoad_RAM = RegInit(VecInit(
+        Seq.fill(size)((0.U)(base.DATA_WIDTH.W))
+    ))
 
     /* connect */
     /* 写入发射队列的指令数目 */
@@ -191,4 +211,10 @@ class ALUReserveStation(size: Int) extends Module {
             }
         }
     }
+    io.prf_rs1_data_ren := io.rob_item_o.HasRs1 & (io.rob_item_o.rs1 =/= 0.U)
+    io.prf_rs2_data_ren := io.rob_item_o.HasRs2 & (io.rob_item_o.rs2 =/= 0.U)
+    io.prf_rs1_data_raddr := io.rob_item_o.ps1
+    io.prf_rs2_data_raddr := io.rob_item_o.ps2
+    io.alu_channel_rs1_rdata := io.prf_rs1_data_rdata
+    io.alu_channel_rs2_rdata := io.prf_rs2_data_rdata
 }

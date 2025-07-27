@@ -4,6 +4,9 @@ import chisel3._
 import chisel3.util._
 import cpu.config._
 
+/* 13 bit bhr ^ pc[15:3] IPC:0.303324 branch_pred_rate: 68.47% */
+/* 8 bit bhr 拼接pc(10, 3) IPC: 0.303324 branch_pred_rate: 68.47% */
+/* GHR与PC异或寻址PHT IPC:  branch_pred_rate: */
 class PCReg extends Module
 {
     val io = IO(new Bundle{
