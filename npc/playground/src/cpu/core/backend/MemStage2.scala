@@ -9,7 +9,7 @@ class MemStage2 extends Module{
     val width = log2Ceil(base.STORE_BUF_SZ)
     val io = IO(new Bundle {
         val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
         val mem_read_en_i = Input(Vec(base.AGU_NUM, Bool()))
         val mem_read_addr_i = Input(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
@@ -76,17 +76,17 @@ class MemStage2 extends Module{
 
     mem_read_en_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.mem_read_en_i, mem_read_en_reg),
+        Mux((io.rob_state === 0.U), io.mem_read_en_i, mem_read_en_reg),
         VecInit(Seq.fill(base.AGU_NUM)(false.B))
     )
     mem_read_addr_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.mem_read_addr_i, mem_read_addr_reg), 
+        Mux((io.rob_state === 0.U), io.mem_read_addr_i, mem_read_addr_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
     )
     mem_read_mask_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.mem_read_mask_i, mem_read_mask_reg), 
+        Mux((io.rob_state === 0.U), io.mem_read_mask_i, mem_read_mask_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W)))
     )
     mem_write_en_reg := io.mem_write_en_i
@@ -96,22 +96,22 @@ class MemStage2 extends Module{
 
     storebuffer_ren_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.storebuffer_ren_i, storebuffer_ren_reg),
+        Mux((io.rob_state === 0.U), io.storebuffer_ren_i, storebuffer_ren_reg),
         VecInit(Seq.fill(base.AGU_NUM)(false.B))        
     )
     storebuffer_raddr_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.storebuffer_raddr_i, storebuffer_raddr_reg), 
+        Mux((io.rob_state === 0.U), io.storebuffer_raddr_i, storebuffer_raddr_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
     )
     storebuffer_rmask_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.storebuffer_rmask_i, storebuffer_rmask_reg), 
+        Mux((io.rob_state === 0.U), io.storebuffer_rmask_i, storebuffer_rmask_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W)))
     )    
     rob_item_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rob_item_i, rob_item_reg),
+        Mux((io.rob_state === 0.U), io.rob_item_i, rob_item_reg),
         VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem)))
     )
 

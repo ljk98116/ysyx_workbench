@@ -453,8 +453,6 @@ class CPUCore(memfile: String) extends Module
     fetch.io.rat_flush_en                          := retire.io.rat_flush_en
     decode.io.rat_flush_en                         := retire.io.rat_flush_en
     rename1.io.rat_flush_en                        := retire.io.rat_flush_en
-    rename2.io.rat_flush_en                        := retire.io.rat_flush_en
-    dispatch.io.rat_flush_en                       := retire.io.rat_flush_en
     issue.io.rat_flush_en                          := retire.io.rat_flush_en
     regread.io.rat_flush_en                        := retire.io.rat_flush_en
     memstage1.io.rat_flush_en                      := retire.io.rat_flush_en

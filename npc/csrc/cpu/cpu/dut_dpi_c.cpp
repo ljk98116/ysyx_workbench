@@ -75,14 +75,37 @@ void npc_commit(
     cpu.pc[3] = pc3;
 }
 
-/* 更新rename段重命名表*/
-void npc_update_renameRAT(){
 
-}
-
-/* 更新retire段重命名表*/
-void npc_update_retireRAT(){
-
+void npc_update_branch_predict(    
+    char is_branch,
+    char branch_pred_err
+){
+    if(is_branch == 0) return;
+    if(is_branch & 0x1){
+        ++total_branch_cnt;
+    }
+    if(is_branch & 0x2){
+        ++total_branch_cnt;
+    }
+    if(is_branch & 0x4){
+        ++total_branch_cnt;
+    }
+    if(is_branch & 0x8){
+        ++total_branch_cnt;
+    }
+    if(branch_pred_err & 0x1){
+        ++branch_err_cnt;
+    }
+    if(branch_pred_err & 0x2){
+        ++branch_err_cnt;
+    }    
+    if(branch_pred_err & 0x4){
+        ++branch_err_cnt;
+    }
+    if(branch_pred_err & 0x8){
+        ++branch_err_cnt;
+    }
+    Log("npc branch_cnt: %d, branch_err_cnt: %d", total_branch_cnt, branch_err_cnt);
 }
 
 #ifdef __cplusplus

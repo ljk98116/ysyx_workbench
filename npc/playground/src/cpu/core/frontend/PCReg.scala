@@ -10,7 +10,7 @@ class PCReg extends Module
         /* retire stage */
         val freereg_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))
         val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val rat_flush_pc = Input(UInt(base.ADDR_WIDTH.W))
         /* fetch stage */
         val branch_pred_en = Input(Bool())
@@ -64,7 +64,7 @@ class PCReg extends Module
 
     pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, 
         Mux(
-            ~io.rob_state & io.freereg_rd_able.asUInt.andR, 
+            ((io.rob_state === 0.U)) & io.freereg_rd_able.asUInt.andR, 
             nextpc, 
             pc_reg
         ))
@@ -163,7 +163,7 @@ class PCReg extends Module
     ))
     /* PC hash mapping */
     for(i <- 0 until base.FETCH_WIDTH){
-        global_pht_idx_vec_o(i) := pc_reg(20, 8) ^ GHR
+        global_pht_idx_vec_o(i) := pc_reg(15, 3) ^ GHR
     }
 
     /* BHT也使用PC ^ GHR寻址，避免BHR别名问题 */
@@ -179,8 +179,8 @@ class PCReg extends Module
     ))
     for(i <- 0 until base.FETCH_WIDTH){
         local_pht_idx_vec_o(i) := Cat(
-            pc_reg(20, 13) ^ GHR(7,0), 
-            bht_table_reg(pc_reg(20, 13) ^ GHR(7,0))
+            pc_reg(10, 3), 
+            bht_table_reg(pc_reg(10, 3))
         )
     }
     /* 更新BHR */

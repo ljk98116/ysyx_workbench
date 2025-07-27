@@ -15,6 +15,9 @@ uint8_t retire_RAT[32];
 uint8_t rename_RAT[32];
 uint8_t commit_num;
 uint32_t cycle;
+uint32_t total_branch_cnt;
+uint32_t branch_err_cnt;
+
 bool ref_stop;
 
 static TOP_NAME dut;
@@ -37,6 +40,7 @@ static void statistic() {
 #define NUMBERIC_FMT MUXDEF(CONFIG_TARGET_AM, "%", "%'") PRIu64
   Log("host time spent = " NUMBERIC_FMT " us", g_timer);
   Log("total guest instructions = " NUMBERIC_FMT, g_nr_guest_inst);
+  Log("total branch predict success rate: %.2lf %", 100.0 - 100.0 * (double)branch_err_cnt / (double)(total_branch_cnt));
   if (g_timer > 0) Log("simulation frequency = " NUMBERIC_FMT " inst/s", g_nr_guest_inst * 1000000 / g_timer);
   else Log("Finish running in less than 1 us and can not calculate the simulation frequency");
 }

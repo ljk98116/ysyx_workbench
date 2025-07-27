@@ -12,7 +12,7 @@ import cpu.core.utils._
 class StoreBuffer(size : Int) extends Module{
     var width = log2Ceil(size)
     val io = IO(new Bundle{
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         /* Dispatch */
         val store_buffer_write_en = Input(Vec(base.FETCH_WIDTH, Bool()))
         val store_buffer_item_i = Input(Vec(base.FETCH_WIDTH, new StoreBufferItem))
@@ -115,7 +115,7 @@ class StoreBuffer(size : Int) extends Module{
     
     /* 时序逻辑 */
     for(i <- 0 until size){
-        when(io.rob_state){
+        when(io.rob_state =/= "b00".U){
             storebuffer_item_reg(i) := 0.U.asTypeOf(new StoreBufferItem)
             store_buffer_mapping(storebuffer_item_reg(i).rob_id) := size.U
         }.elsewhen((i.U === tail) & io.store_buffer_item_i(0).valid){
@@ -154,12 +154,12 @@ class StoreBuffer(size : Int) extends Module{
     }
 
     tail := Mux(
-        io.rob_state, 
+        io.rob_state =/= "b00".U, 
         0.U, 
         Mux(io.wr_able, tail + io.store_buffer_write_cnt, tail)
     )
     rob_head := Mux(
-        io.rob_state,
+        io.rob_state =/= "b00".U,
         0.U,
         Mux(
             storebuffer_item_reg(rob_head).rob_rdy & storebuffer_item_reg(rob_head).rdy &
@@ -169,7 +169,7 @@ class StoreBuffer(size : Int) extends Module{
         )
     )
     head := Mux(
-        io.rob_state,
+        io.rob_state =/= "b00".U,
         0.U,
         Mux(
             (head + 1.U) =/= tail & io.mem_write_en.asUInt === "b11".U, 

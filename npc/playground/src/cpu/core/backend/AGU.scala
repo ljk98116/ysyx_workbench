@@ -10,7 +10,7 @@ class AGU extends Module
 {
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val rob_item_i = Input(new ROBItem)
         val rs1_data_i = Input(UInt(base.DATA_WIDTH.W))
         val rs2_data_i = Input(UInt(base.DATA_WIDTH.W))
@@ -30,17 +30,17 @@ class AGU extends Module
 
     rob_item_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rob_item_i, rob_item_reg), 
+        Mux((io.rob_state === 0.U), io.rob_item_i, rob_item_reg), 
         0.U.asTypeOf(new ROBItem)
     )
     rs1_data_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rs1_data_i, rs1_data_reg), 
+        Mux((io.rob_state === 0.U), io.rs1_data_i, rs1_data_reg), 
         0.U
     )
     rs2_data_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rs2_data_i, rs2_data_reg), 
+        Mux((io.rob_state === 0.U), io.rs2_data_i, rs2_data_reg), 
         0.U
     )
 

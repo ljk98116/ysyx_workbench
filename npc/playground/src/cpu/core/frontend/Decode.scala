@@ -8,7 +8,7 @@ class Decode extends Module
 {
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val freereg_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.DATA_WIDTH.W)))
@@ -82,59 +82,59 @@ class Decode extends Module
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.pc_vec_i, pc_vec_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.pc_vec_i, pc_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
     inst_valid_mask_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.inst_valid_mask_i, inst_valid_mask_reg), 
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.inst_valid_mask_i, inst_valid_mask_reg), 
         0.U
     )
     inst_valid_cnt_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
         0.U
     )
     gbranch_pre_res_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.gbranch_pre_res_i, gbranch_pre_res_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.gbranch_pre_res_i, gbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     lbranch_pre_res_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.lbranch_pre_res_i, lbranch_pre_res_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.lbranch_pre_res_i, lbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     branch_pre_res_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.branch_pre_res_i, branch_pre_res_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.branch_pre_res_i, branch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     global_pht_idx_vec_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     local_pht_idx_vec_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     bht_idx_vec_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.bht_idx_vec_i, bht_idx_vec_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.bht_idx_vec_i, bht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))
     )
 
     btb_hit_vec_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.btb_hit_vec_i, btb_hit_vec_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.btb_hit_vec_i, btb_hit_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
 
     btb_pred_addr_reg := Mux(
         ~io.rat_flush_en,
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.btb_pred_addr_i, btb_pred_addr_reg),
+        Mux((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR, io.btb_pred_addr_i, btb_pred_addr_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
 
@@ -166,12 +166,12 @@ class Decode extends Module
     ))
     /* 收到暂停信号的那一刻更新 */
     inst_vec_stall_reg := Mux(
-        ~(~io.rob_state & io.freereg_rd_able.asUInt.andR) & ~inst_state,  
+        ~((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR) & ~inst_state,  
         io.inst_vec_i,
         inst_vec_stall_reg
     )
     /* 收到暂停信号，变化状态 */
-    inst_state := ~(~io.rob_state & io.freereg_rd_able.asUInt.andR)
+    inst_state := ~((io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR)
     /* 处于暂停状态,使用锁存的值,否则使用输入值 */
     inst_vec_used := Mux(inst_state, inst_vec_stall_reg, io.inst_vec_i)
 

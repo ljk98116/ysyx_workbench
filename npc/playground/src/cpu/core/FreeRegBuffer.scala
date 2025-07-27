@@ -11,7 +11,7 @@ class FreeRegBuffer(id : Int) extends Module
 {
     val io = IO(new Bundle{
         /* retire stage */
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val rat_write_en_retire = Input(Bool())
         val freereg_i = Input(UInt(base.PREG_WIDTH.W))
         val flush_freereg_valid = Input(Bool())
@@ -23,62 +23,45 @@ class FreeRegBuffer(id : Int) extends Module
         val wr_able = Output(Bool())
     })
 
-    var regnum = 1 << base.AREG_WIDTH
-    if(id == 0) regnum = regnum - 1
+    var regnum = (1 << base.PREG_WIDTH) >> 2
+    var width = base.PREG_WIDTH - 2
 
-    var head = RegInit((0.U)(base.AREG_WIDTH.W))
-    var tail = RegInit(((regnum - 1).U)(base.AREG_WIDTH.W))
+    var head = RegInit((0.U)(width.W))
+    var tail = RegInit(((regnum - 1).U)(width.W))
 
     var rd_able = WireInit(true.B)
     var wr_able = WireInit(false.B)
     
     var freereg_o = WireInit((0.U)(base.PREG_WIDTH.W))
-    if(id == 0){
-        val FreeRegIds = RegInit(VecInit(
-            Seq.tabulate(regnum)((i) => (((id << base.AREG_WIDTH) + i + 1).U)(base.PREG_WIDTH.W))
-        ))
-        for(i <- 0 until regnum){
-            when(io.rob_state & (i.U === (head - 1.U)) & wr_able & io.flush_freereg_valid){
-                FreeRegIds(i) := io.freereg_i
-            }.elsewhen(io.rat_write_en_retire & wr_able & (i.U === tail)){
-                FreeRegIds(i) := io.freereg_i
-            }.elsewhen(rd_able & io.rat_write_en_rename & ~io.rob_state & (i.U === head)){
-                FreeRegIds(i) := 0.U
-            }
+    val FreeRegIds = RegInit(VecInit(
+        Seq.tabulate(regnum)((i) => (((id << width) + i).U)(base.PREG_WIDTH.W))
+    ))
+    for(i <- 0 until regnum){
+        when((io.rob_state === "b11".U) & (i.U === (head - 1.U)) & wr_able & io.flush_freereg_valid){
+            FreeRegIds(i) := io.freereg_i
+        }.elsewhen(io.rat_write_en_retire & wr_able & (i.U === tail)){
+            FreeRegIds(i) := io.freereg_i
+        }.elsewhen(rd_able & io.rat_write_en_rename & (io.rob_state =/= "b11".U) & (i.U === head)){
+            FreeRegIds(i) := 0.U
         }
-
-        freereg_o := Mux(rd_able, FreeRegIds(head), 0.U)
-    }else{
-        val FreeRegIds = RegInit(VecInit(
-            Seq.tabulate(regnum)((i) => (((id << base.AREG_WIDTH) + i).U)(base.PREG_WIDTH.W))
-        ))
-        for(i <- 0 until regnum){
-            when(io.rob_state & (i.U === (head - 1.U)) & wr_able & io.flush_freereg_valid){
-                FreeRegIds(i) := io.freereg_i
-            }.elsewhen(io.rat_write_en_retire & wr_able & (i.U === tail)){
-                FreeRegIds(i) := io.freereg_i
-            }.elsewhen(rd_able & io.rat_write_en_rename & ~io.rob_state & (i.U === head)){
-                FreeRegIds(i) := 0.U
-            }
-        }
-
-        freereg_o := Mux(rd_able, FreeRegIds(head), 0.U)        
     }
 
+    freereg_o := Mux(rd_able, FreeRegIds(head), 0.U)
     rd_able := head =/= tail
     wr_able := (tail + 1.U) =/= head
 
     head := Mux(
-        rd_able & io.rat_write_en_rename & ~io.rob_state,
+        rd_able & io.rat_write_en_rename & (io.rob_state =/= "b11".U),
         head + 1.U,
-        Mux(io.rob_state & wr_able & io.flush_freereg_valid, head - 1.U, head) 
+        Mux((io.rob_state === "b11".U) & wr_able & io.flush_freereg_valid, head - 1.U, head) 
     )
 
     tail := Mux(
-        wr_able & io.rat_write_en_retire & ~io.rob_state,
+        wr_able & io.rat_write_en_retire & (io.rob_state =/= "b11".U),
         tail + 1.U,
         tail
     )
+
     /* connect */
     io.freereg_o := freereg_o
     io.rd_able  := rd_able

@@ -12,7 +12,7 @@ class PHTReg extends Module{
     val io = IO(new Bundle{
         /* retire段全局、局部历史PHT索引 */
         /* 是否前置无异常指令的分支指令 */
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val retire_br_mask = Input(Vec(base.FETCH_WIDTH, Bool()))
         /* 是否跳转 */
         val retire_br_taken_vec = Input(Vec(base.FETCH_WIDTH, Bool()))
@@ -49,7 +49,7 @@ class PHTReg extends Module{
     for(i <- 0 until base.FETCH_WIDTH){
         var gPHTReg_val = WireInit((0.U)(2.W))
         gPHTReg_val := gPHTReg.read(io.global_pht_idx_vec_i(i))
-        when(~io.rob_state & io.retire_br_mask(i)){
+        when((io.rob_state =/= "b11".U) & io.retire_br_mask(i)){
             gPHTReg.write(io.retire_gpht_idx(i), Mux(
                 io.retire_br_taken_vec(i),
                 Mux(gPHTReg_val =/= "b11".U, gPHTReg_val + 1.U, gPHTReg_val),
@@ -62,7 +62,7 @@ class PHTReg extends Module{
     for(i <- 0 until base.FETCH_WIDTH){
         var lPHTReg_val = WireInit((0.U)(2.W))
         lPHTReg_val := lPHTReg.read(io.retire_lpht_idx(i))
-        when(~io.rob_state & io.retire_br_mask(i)){
+        when((io.rob_state =/= "b11".U) & io.retire_br_mask(i)){
             lPHTReg.write(io.retire_lpht_idx(i), Mux(
                 io.retire_br_taken_vec(i),
                 Mux(lPHTReg_val =/= "b11".U, lPHTReg_val + 1.U, lPHTReg_val),
@@ -76,7 +76,7 @@ class PHTReg extends Module{
     for(i <- 0 until base.FETCH_WIDTH){
         var cPHTReg_val = WireInit((0.U)(2.W))
         cPHTReg_val := cPHTReg.read(io.retire_lpht_idx(i))
-        when(~io.rob_state & io.retire_br_mask(i)){
+        when((io.rob_state =/= "b11".U) & io.retire_br_mask(i)){
             cPHTReg.write(io.retire_lpht_idx(i), Mux(
                 ~(io.retire_gbranch_pre_res_i(i) ^ io.retire_lbranch_pre_res_i(i)),
                 cPHTReg_val,

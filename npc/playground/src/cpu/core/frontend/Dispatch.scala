@@ -16,8 +16,7 @@ class Dispatch extends Module
 {
     val agu_step = base.FETCH_WIDTH / base.AGU_NUM
     var io = IO(new Bundle {
-        val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
         val alu_items_vec_o = Output(Vec(base.ALU_NUM, new ROBItem))
@@ -55,18 +54,10 @@ class Dispatch extends Module
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    rob_item_reg := Mux(
-        ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rob_item_i, rob_item_reg), 
-        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem)))
-    )
+    rob_item_reg := Mux((io.rob_state =/= "b11".U), io.rob_item_i, rob_item_reg)
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_cnt_reg := Mux(
-        ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.inst_valid_cnt_i, inst_valid_cnt_reg),
-        0.U
-    )
+    inst_valid_cnt_reg := Mux((io.rob_state =/= "b11".U), io.inst_valid_cnt_i, inst_valid_cnt_reg)
 
     /* 物理寄存器有效状态使能 */
     var prf_valid_rs1_ren = WireInit(VecInit(
@@ -112,16 +103,8 @@ class Dispatch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
     ))
 
-    rs1_match_reg := Mux(
-        ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rs1_match, rs1_match_reg), 
-        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W)))
-    )
-    rs2_match_reg := Mux(
-        ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rs2_match, rs2_match_reg),
-        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W)))
-    )    
+    rs1_match_reg := Mux((io.rob_state =/= "b11".U), io.rs1_match, rs1_match_reg)
+    rs2_match_reg := Mux((io.rob_state =/= "b11".U), io.rs2_match, rs2_match_reg)    
 
     /* 使用总线信号以及物理寄存器状态更新ROB项依赖状态 */
     var rob_items = WireInit(VecInit(

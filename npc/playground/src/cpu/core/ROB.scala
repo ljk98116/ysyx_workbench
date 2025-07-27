@@ -14,7 +14,7 @@ class ROB extends Module
     val io = IO(new Bundle {
         var rat_flush_en = Input(Bool())
         var retire_rdy_mask = Input(UInt(base.FETCH_WIDTH.W))
-        var rob_state = Output(Bool())
+        var rob_state = Output(UInt(2.W))
         val rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         /* 输出头部的4条指令,用来提交或者恢复现场 */
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
@@ -39,7 +39,7 @@ class ROB extends Module
             VecInit(Seq.fill(bankcap)(0.U.asTypeOf(new ROBItem)))
         ))
     )
-    val normal::flush::Nil = Enum(2)
+    val normal::wait1::wait2::flush::Nil = Enum(4)
     var rob_state = RegInit(normal)
     var next_rob_state = WireInit(normal)
 
@@ -63,7 +63,7 @@ class ROB extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.rob_state){
+        when(io.rob_state === flush){
             ROBBankRegs(i)(tail - 1.U) := 0.U.asTypeOf(new ROBItem)
             ROBIDLocMem(io.rob_item_i(i).id) := 0.U
         }
@@ -72,10 +72,10 @@ class ROB extends Module
     for(i <- 0 until base.FETCH_WIDTH){
         rob_input_valid(i) := io.rob_item_i(i).valid
         rob_item_o(i) := Mux(
-            io.robr_able & ~rob_state.asBool, 
+            io.robr_able & rob_state =/= flush, 
             ROBBankRegs(i)(head), 
             Mux(
-                io.robr_able & rob_state.asBool,
+                io.robr_able & (rob_state === flush),
                 ROBBankRegs(i)(tail - 1.U),
                 0.U.asTypeOf(new ROBItem)
             )
@@ -83,7 +83,7 @@ class ROB extends Module
     }
 
     for(i <- 0 until base.ALU_NUM){
-        when(io.cdb_i.alu_channel(i).valid & ~io.rob_state & ~io.rat_flush_en){
+        when(io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en){
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).rdy := true.B
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).targetBrAddr := io.cdb_i.alu_channel(i).branch_target_addr
@@ -92,17 +92,17 @@ class ROB extends Module
         }
     }
     for(i <- 0 until base.AGU_NUM){
-        when(io.cdb_i.agu_channel(i).valid & ~io.rob_state & ~io.rat_flush_en){
+        when(io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en){
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).rdy := true.B
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
         }
-        when(io.agu_valid(i) & io.agu_ls_flag(i) & ~io.rob_state & ~io.rat_flush_en){
+        when(io.agu_valid(i) & io.agu_ls_flag(i) & (io.rob_state =/= "b11".U) & ~io.rat_flush_en){
             ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))).rdy := true.B           
         }
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.robw_able & ~io.rat_flush_en & io.rob_item_i(i).valid){
+        when(io.robw_able & io.rob_item_i(i).valid){
             ROBBankRegs(i)(tail) := io.rob_item_i(i)
             ROBIDLocMem(io.rob_item_i(i).id) := tail
         }.otherwise{//避免尾部没有覆盖
@@ -114,6 +114,10 @@ class ROB extends Module
     /* Retire出现异常，normal->flush */
     /* head + 1.U == tail, flush->normal */
     when((rob_state === normal) & io.rat_flush_en){
+        next_rob_state := wait1
+    }.elsewhen(rob_state === wait1){
+        next_rob_state := wait2
+    }.elsewhen(rob_state === wait2){
         next_rob_state := flush
     }.elsewhen((rob_state === flush) & ((head + 1.U) === tail) | (head === tail)){
         next_rob_state := normal
@@ -123,14 +127,14 @@ class ROB extends Module
 
     rob_state := next_rob_state
 
-    when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state === normal) & ~io.rat_flush_en){
+    when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state =/= flush)){
         tail := tail + 1.U
     }.elsewhen((io.robr_able & (rob_state === flush) & (head =/= tail))){
         tail := tail - 1.U
     }
 
     when(
-        (io.robr_able & io.retire_rdy_mask.andR & ~rob_state.asBool)
+        (io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush))
     ){
         head := head + 1.U
     }

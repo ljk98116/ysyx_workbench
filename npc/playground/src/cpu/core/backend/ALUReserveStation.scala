@@ -59,6 +59,7 @@ class ReserveFreeIdBuffer(size : Int) extends Module
 class ALUReserveStation(size: Int) extends Module {
     val io = IO(new Bundle {
         val rat_flush_en = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         var rob_item_i = Input(new ROBItem)
         /* 总线状态 */
         var cdb_i = Input(new CDB)
@@ -150,7 +151,7 @@ class ALUReserveStation(size: Int) extends Module {
     /* update age matrix, age[i]为0表示当前ID比其他位置都年轻*/
     /* 新分配的reg更新年龄矩阵 */
     for(i <- 0 until size){
-        when(~io.rat_flush_en & (i.U === freeIdBuffer.io.free_id_o) & io.rob_item_i.valid){
+        when(~io.rat_flush_en & (io.rob_state === 0.U) & (i.U === freeIdBuffer.io.free_id_o) & io.rob_item_i.valid){
             rob_item_reg(i) := rob_item_i_update
             /* 有效的项比新写入的项要老 */
             for(j <- 0 until size){

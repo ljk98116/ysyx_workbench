@@ -20,4 +20,6 @@ extern uint8_t rename_RAT[32];
 extern uint8_t commit_num;
 extern uint32_t cycle;
 extern bool ref_stop;
+extern uint32_t total_branch_cnt;
+extern uint32_t branch_err_cnt;
 }

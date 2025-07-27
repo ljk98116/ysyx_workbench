@@ -16,7 +16,7 @@ class MemStage1 extends Module
     val width = log2Ceil(base.STORE_BUF_SZ)
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
         val agu_result_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val agu_rw_mask_i = Input(Vec(base.AGU_NUM, UInt(8.W)))
@@ -62,22 +62,22 @@ class MemStage1 extends Module
 
     rob_item_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.rob_item_i, rob_item_reg), 
+        Mux((io.rob_state === 0.U), io.rob_item_i, rob_item_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem)))
     )
     agu_result_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.agu_result_i, agu_result_reg), 
+        Mux((io.rob_state === 0.U), io.agu_result_i, agu_result_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
     )
     agu_rw_mask_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.agu_rw_mask_i, agu_rw_mask_reg), 
+        Mux((io.rob_state === 0.U), io.agu_rw_mask_i, agu_rw_mask_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W)))
     )
     agu_mem_wdata_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state, io.agu_mem_wdata, agu_mem_wdata_reg),
+        Mux((io.rob_state === 0.U), io.agu_mem_wdata, agu_mem_wdata_reg),
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
     )
 

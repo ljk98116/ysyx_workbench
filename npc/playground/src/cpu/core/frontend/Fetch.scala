@@ -14,7 +14,7 @@ class Fetch extends Module
         val pc_i = Input(UInt(base.ADDR_WIDTH.W))
         val freereg_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))
         val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
@@ -47,21 +47,21 @@ class Fetch extends Module
     var inst_valid_mask = RegInit((0.U)(base.FETCH_WIDTH.W))
     inst_valid_mask := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.inst_valid_mask_i, inst_valid_mask), 
+        Mux((io.rob_state === "b00".U) & io.freereg_rd_able.asUInt.andR, io.inst_valid_mask_i, inst_valid_mask), 
         0.U(base.FETCH_WIDTH.W)
     )
 
     var pc = RegInit((0.U)(base.ADDR_WIDTH.W))
     pc := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.pc_i, pc),
+        Mux((io.rob_state === "b00".U) & io.freereg_rd_able.asUInt.andR, io.pc_i, pc),
         (0.U)(base.ADDR_WIDTH.W)
     )
 
     var inst_valid_cnt = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     inst_valid_cnt := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.inst_valid_cnt_i, inst_valid_cnt),
+        Mux((io.rob_state === "b00".U) & io.freereg_rd_able.asUInt.andR, io.inst_valid_cnt_i, inst_valid_cnt),
         (0.U)(log2Ceil(base.FETCH_WIDTH + 1).W)
     )
 
@@ -70,14 +70,14 @@ class Fetch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
     ))
     var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_mask_o := Mux(~io.rat_flush_en & ~io.rob_state, inst_valid_mask, 0.U)
+    inst_valid_mask_o := Mux(~io.rat_flush_en & (io.rob_state === "b00".U), inst_valid_mask, 0.U)
 
     var global_pht_idx_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
     global_pht_idx_vec_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
+        Mux((io.rob_state === "b00".U) & io.freereg_rd_able.asUInt.andR, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
 
@@ -86,7 +86,7 @@ class Fetch extends Module
     ))
     local_pht_idx_vec_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
+        Mux((io.rob_state === "b00".U) & io.freereg_rd_able.asUInt.andR, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
 
@@ -95,7 +95,7 @@ class Fetch extends Module
     ))
     bht_idx_vec_reg := Mux(
         ~io.rat_flush_en, 
-        Mux(~io.rob_state & io.freereg_rd_able.asUInt.andR, io.bht_idx_vec_i, bht_idx_vec_reg),
+        Mux((io.rob_state === "b00".U) & io.freereg_rd_able.asUInt.andR, io.bht_idx_vec_i, bht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))        
     )
 

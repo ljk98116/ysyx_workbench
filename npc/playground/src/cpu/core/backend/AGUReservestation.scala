@@ -13,6 +13,7 @@ class AGUReservestation(size : Int) extends Module
     val width = log2Ceil(size)
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         var rob_item_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         var valid_cnt_i = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
         /* 总线状态 */
@@ -41,14 +42,14 @@ class AGUReservestation(size : Int) extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.write_able & ~io.rat_flush_en & io.rob_item_i(i).valid){
+        when(io.write_able & ~io.rat_flush_en & io.rob_item_i(i).valid & (io.rob_state === 0.U)){
             rob_item_reg(tail + i.U) := io.rob_item_i(i)
         }
     }
 
     /* 更新 */
     for(j <- 0 until size){
-        when(~io.rat_flush_en & (j.U >= head) & (j.U < tail)){
+        when(~io.rat_flush_en & rob_item_reg(j).valid){
             var issue_able_rs1_vec = WireInit(VecInit(
                 Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
             ))
@@ -96,7 +97,7 @@ class AGUReservestation(size : Int) extends Module
             Mux(issue_able0, head + 1.U, head)
         )
     )
-    tail := Mux(io.write_able & ~io.rat_flush_en, tail + io.valid_cnt_i, Mux(~io.rat_flush_en, tail, 0.U))
+    tail := Mux(io.write_able & ~io.rat_flush_en & (io.rob_state === 0.U), tail + io.valid_cnt_i, Mux(~io.rat_flush_en, tail, 0.U))
 
     /* connect */
     io.rob_item_o := rob_item_o

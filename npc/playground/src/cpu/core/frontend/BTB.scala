@@ -10,7 +10,7 @@ import cpu.config._
 /* EX段写入间接跳转的地址 */
 class BTB extends Module{
     val io = IO(new Bundle{
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val decode_br_mask_i = Input(Vec(base.FETCH_WIDTH, Bool()))
         val decode_pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
@@ -33,7 +33,7 @@ class BTB extends Module{
 
     for(i <- 0 until base.FETCH_WIDTH){
         io.btb_pred_addr_o(i) := Mux(
-            (io.pc_i(i)(17, 10) === BTBItem_o(i).BIA) & BTBItem_o(i).V,
+            (io.pc_i(i)(22, 15) === BTBItem_o(i).BIA) & BTBItem_o(i).V,
             BTBItem_o(i).BTA,
             io.pc_i(i) + 4.U
         )
@@ -42,24 +42,24 @@ class BTB extends Module{
 
     for(i <- 0 until base.FETCH_WIDTH){
         var btb_writeItem = WireInit((0.U).asTypeOf(new BTBItem))
-        var index = WireInit((0.U)(8.W))
-        when(io.ex_br_mask_i(i) & ~io.rob_state){
+        var index = WireInit((0.U)(13.W))
+        when(io.ex_br_mask_i(i) & (io.rob_state =/= "b11".U)){
             btb_writeItem.V := true.B
-            btb_writeItem.BIA := io.ex_pc_i(i)(17, 10)
+            btb_writeItem.BIA := io.ex_pc_i(i)(22, 15)
             btb_writeItem.BTA := io.ex_br_addr(i)
-            index := io.ex_pc_i(i)(9, 2)
+            index := io.ex_pc_i(i)(14, 2)
         }
         BTB_Mem.write(index, btb_writeItem)
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
         var btb_writeItem = WireInit((0.U).asTypeOf(new BTBItem))
-        var index = WireInit((0.U)(8.W))
-        when(io.decode_br_mask_i(i) & ~io.rob_state){
+        var index = WireInit((0.U)(13.W))
+        when(io.decode_br_mask_i(i) & (io.rob_state =/= "b11".U)){
             btb_writeItem.V := true.B
-            btb_writeItem.BIA := io.decode_pc_i(i)(17, 10)
+            btb_writeItem.BIA := io.decode_pc_i(i)(22, 15)
             btb_writeItem.BTA := io.decode_br_addr(i)
-            index := io.decode_pc_i(i)(9, 2)
+            index := io.decode_pc_i(i)(14, 2)
         }
         BTB_Mem.write(index, btb_writeItem)
     }

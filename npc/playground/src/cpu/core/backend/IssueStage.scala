@@ -12,7 +12,7 @@ class IssueStage extends Module
 
     var io = IO(new Bundle {
         val rat_flush_en = Input(Bool())
-        val rob_state = Input(Bool())
+        val rob_state = Input(UInt(2.W))
         val alu_items_vec_i = Input(Vec(base.ALU_NUM, new ROBItem))
         val agu_items_vec_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
         val agu_items_cnt_i = Input(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
@@ -35,6 +35,7 @@ class IssueStage extends Module
         alu_reserve_stations(i).io.cdb_i := io.cdb_i
         alu_reserve_stations(i).io.rob_item_i := io.alu_items_vec_i(i)
         alu_reserve_stations(i).io.rat_flush_en := io.rat_flush_en
+        alu_reserve_stations(i).io.rob_state := io.rob_state
     }
     var alu_fu_items_o = WireInit(VecInit(
         Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))
@@ -58,6 +59,7 @@ class IssueStage extends Module
     agu_reserve_station.io.rob_item_i := io.agu_items_vec_i
     agu_reserve_station.io.valid_cnt_i := io.agu_items_cnt_i
     agu_reserve_station.io.rat_flush_en := io.rat_flush_en
+    agu_reserve_station.io.rob_state := io.rob_state
 
     var agu_fu_items_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))

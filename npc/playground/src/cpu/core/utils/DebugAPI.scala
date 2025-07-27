@@ -30,3 +30,11 @@ class CommitAPI extends BlackBox with HasBlackBoxPath{
     })
     addPath("./playground/src/resources/CommitAPI.v")
 }
+
+class BranchPredAPI extends BlackBox with HasBlackBoxPath{
+    val io = IO(new Bundle{
+        val is_branch = Input(UInt(8.W))
+        val branch_pred_err = Input(UInt(8.W))
+    })
+    addPath("./playground/src/resources/BranchPredAPI.v")
+}
