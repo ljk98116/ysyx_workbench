@@ -59,9 +59,7 @@ class ALU extends Module
 
     areg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.rd, 0.U)
     preg_wr_addr := Mux(rob_item_reg.HasRd, rob_item_reg.pd, 0.U)
-    valid_o := rob_item_reg.valid & (
-        rob_item_reg.HasRd | rob_item_reg.HasRs1
-    )
+    valid_o := rob_item_reg.valid
     rob_id_o := rob_item_reg.id
 
     result := 0.U
@@ -72,14 +70,43 @@ class ALU extends Module
     io.pc_o := rob_item_reg.pc
     switch(rob_item_reg.Opcode){
         is(Opcode.ADD){
-            switch(rob_item_reg.funct7){
-                is(Funct7.ADD){
-                    result := rs1_data_reg + rs2_data_reg
+            switch(rob_item_reg.funct3){
+                is(
+                    Funct3.ADD
+                    // Funct3.SUB
+                ){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.ADD){
+                            result := rs1_data_reg + rs2_data_reg
+                        }
+                        is(Funct7.SUB){
+                            result := rs1_data_reg - rs2_data_reg
+                        }
+                    }                    
                 }
-                is(Funct7.SUB){
-                    result := rs1_data_reg - rs2_data_reg
+                is(Funct3.SLTU){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.SLTU){
+                            result := Mux(rs1_data_reg < rs2_data_reg, 1.U, 0.U)
+                        }
+                    }
+                }
+                is(Funct3.XOR){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.XOR){
+                            result := rs1_data_reg ^ rs2_data_reg
+                        }
+                    }
+                }
+                is(Funct3.OR){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.OR){
+                            result := rs1_data_reg | rs2_data_reg
+                        }
+                    }
                 }
             }
+
         }
         is(Opcode.AUIPC){
             result := rob_item_reg.pc + rob_item_reg.Imm

@@ -157,13 +157,25 @@ class ALUReserveStation(size: Int) extends Module {
         Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
     ))
     for(i <- 0 until base.ALU_NUM){
-        rdy1_vec(i) := (io.cdb_i.alu_channel(i).phy_reg_id === io.rob_item_i.ps1) & io.cdb_i.alu_channel(i).valid
-        rdy2_vec(i) := (io.cdb_i.alu_channel(i).phy_reg_id === io.rob_item_i.ps2) & io.cdb_i.alu_channel(i).valid
+        rdy1_vec(i) := 
+            (io.cdb_i.alu_channel(i).phy_reg_id === io.rob_item_i.ps1) & 
+            io.cdb_i.alu_channel(i).valid &
+            (io.cdb_i.alu_channel(i).arch_reg_id === io.rob_item_i.rs1)
+        rdy2_vec(i) := 
+            (io.cdb_i.alu_channel(i).phy_reg_id === io.rob_item_i.ps2) & 
+            io.cdb_i.alu_channel(i).valid &
+            (io.cdb_i.alu_channel(i).arch_reg_id === io.rob_item_i.rs2)
     }
 
     for(i <- 0 until base.AGU_NUM){
-        rdy1_vec(i + base.ALU_NUM) := (io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps1) & io.cdb_i.agu_channel(i).valid
-        rdy2_vec(i + base.ALU_NUM) := (io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps2) & io.cdb_i.agu_channel(i).valid 
+        rdy1_vec(i + base.ALU_NUM) := 
+            (io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps1) & 
+            io.cdb_i.agu_channel(i).valid &
+            (io.cdb_i.agu_channel(i).arch_reg_id === io.rob_item_i.rs1)
+        rdy2_vec(i + base.ALU_NUM) := 
+            (io.cdb_i.agu_channel(i).phy_reg_id === io.rob_item_i.ps2) & 
+            io.cdb_i.agu_channel(i).valid &
+            (io.cdb_i.agu_channel(i).arch_reg_id === io.rob_item_i.rs2)
     }    
     rob_item_i_update.rdy1 := rdy1_vec.asUInt.orR | io.rob_item_i.rdy1
     rob_item_i_update.rdy2 := rdy2_vec.asUInt.orR | io.rob_item_i.rdy2
@@ -189,12 +201,25 @@ class ALUReserveStation(size: Int) extends Module {
                 Seq.fill(base.ALU_NUM + base.AGU_NUM)(false.B)
             ))
             for(j <- 0 until base.ALU_NUM){
-                rdy1_vec(j) := (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & io.cdb_i.alu_channel(j).valid
-                rdy2_vec(j) := (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & io.cdb_i.alu_channel(j).valid
+                rdy1_vec(j) := 
+                    (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & 
+                    io.cdb_i.alu_channel(j).valid &
+                    (io.cdb_i.alu_channel(j).arch_reg_id === rob_item_reg(i).rs1)
+
+                rdy2_vec(j) := 
+                    (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & 
+                    io.cdb_i.alu_channel(j).valid &
+                    (io.cdb_i.alu_channel(j).arch_reg_id === rob_item_reg(i).rs2)
             }
             for(j <- 0 until base.AGU_NUM){
-                rdy1_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & io.cdb_i.agu_channel(j).valid
-                rdy2_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & io.cdb_i.agu_channel(j).valid
+                rdy1_vec(j + base.ALU_NUM) := 
+                    (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & 
+                    io.cdb_i.agu_channel(j).valid &
+                    (io.cdb_i.agu_channel(j).arch_reg_id === rob_item_reg(i).rs1)
+                rdy2_vec(j + base.ALU_NUM) := 
+                    (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & 
+                    io.cdb_i.agu_channel(j).valid &
+                    (io.cdb_i.agu_channel(j).arch_reg_id === rob_item_reg(i).rs2)
             }
             rob_item_reg(i).rdy1 := rdy1_vec.asUInt.orR | rob_item_reg(i).rdy1
             rob_item_reg(i).rdy2 := rdy2_vec.asUInt.orR | rob_item_reg(i).rdy2

@@ -10,6 +10,7 @@ object Opcode
 
     val ADDI    = "b0010011".U
     val SLTIU   = "b0010011".U
+    
     val SLLI    = "b0010011".U
     val SRLI    = "b0010011".U
     val SRAI    = "b0010011".U
@@ -21,6 +22,9 @@ object Opcode
 
     val ADD     = "b0110011".U
     val SUB     = "b0110011".U
+    val SLTU    = "b0110011".U
+    val XOR     = "b0110011".U
+    val OR      = "b0110011".U
 
     val BEQ     = "b1100011".U
     val BNE     = "b1100011".U
@@ -31,14 +35,24 @@ object Funct3
     val JALR    = "b000".U
     val ADDI    = "b000".U
     val ADD     = "b000".U
+    val SUB     = "b000".U
+    val BEQ     = "b000".U
+
+    val SLLI    = "b001".U
+    val BNE     = "b001".U
+
     val SW      = "b010".U
     val LW      = "b010".U
-    val SLLI    = "b001".U
+    
+    val SLTIU   = "b011".U
+    val SLTU    = "b011".U
+
+    val XOR     = "b100".U
+    
     val SRLI    = "b101".U
     val SRAI    = "b101".U
-    val BEQ     = "b000".U
-    val BNE     = "b001".U
-    val SLTIU   = "b011".U
+
+    val OR      = "b110".U
 }
 
 object Funct7
@@ -48,6 +62,9 @@ object Funct7
     val SLLI    = "b0000000".U
     val SRLI    = "b0000000".U
     val SRAI    = "b0100000".U
+    val SLTU    = "b0000000".U
+    val XOR     = "b0000000".U
+    val OR      = "b0000000".U
 }
 
 /* 符号扩展 */

@@ -68,12 +68,24 @@ class AGUReservestation(size : Int) extends Module
                 Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
             ))
             for(i <- 0 until base.ALU_NUM){
-                issue_able_rs1_vec(i) := rob_item_reg(j).ps1 === io.cdb_i.alu_channel(i).phy_reg_id
-                issue_able_rs2_vec(i) := rob_item_reg(j).ps2 === io.cdb_i.alu_channel(i).phy_reg_id
+                issue_able_rs1_vec(i) := 
+                    (rob_item_reg(j).ps1 === io.cdb_i.alu_channel(i).phy_reg_id) &
+                    io.cdb_i.alu_channel(i).valid &
+                    (io.cdb_i.alu_channel(i).arch_reg_id === rob_item_reg(j).rs1)
+                issue_able_rs2_vec(i) := 
+                    (rob_item_reg(j).ps2 === io.cdb_i.alu_channel(i).phy_reg_id) &
+                    io.cdb_i.alu_channel(i).valid &
+                    (io.cdb_i.alu_channel(i).arch_reg_id === rob_item_reg(j).rs2)
             }
             for(i <- 0 until base.AGU_NUM){
-                issue_able_rs1_vec(i + base.ALU_NUM) := rob_item_reg(j).ps1 === io.cdb_i.agu_channel(i).phy_reg_id
-                issue_able_rs2_vec(i + base.ALU_NUM) := rob_item_reg(j).ps2 === io.cdb_i.agu_channel(i).phy_reg_id
+                issue_able_rs1_vec(i + base.ALU_NUM) := 
+                    (rob_item_reg(j).ps1 === io.cdb_i.agu_channel(i).phy_reg_id) &
+                    io.cdb_i.agu_channel(i).valid &
+                    (io.cdb_i.agu_channel(i).arch_reg_id === rob_item_reg(j).rs1)
+                issue_able_rs2_vec(i + base.ALU_NUM) := 
+                    (rob_item_reg(j).ps2 === io.cdb_i.agu_channel(i).phy_reg_id) &
+                    io.cdb_i.agu_channel(i).valid &
+                    (io.cdb_i.agu_channel(i).arch_reg_id === rob_item_reg(j).rs2)
             }
             rob_item_reg(j).rdy1 := issue_able_rs1_vec.asUInt.orR | rob_item_reg(j).rdy1 
             rob_item_reg(j).rdy2 := issue_able_rs2_vec.asUInt.orR | rob_item_reg(j).rdy2

@@ -268,6 +268,7 @@ class Decode extends Module
                 is(
                     Opcode.ADD
                     //Opcode.SUB
+                    //Opcode.SLTU
                 ){
                     decoderes(i).Opcode := inst_vec_used(i)(6, 0)
                     decoderes(i).rs1    := inst_vec_used(i)(19, 15)

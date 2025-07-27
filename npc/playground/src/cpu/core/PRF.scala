@@ -64,7 +64,7 @@ class PRF extends Module
         for(j <- 0 until base.ALU_NUM){
             when((io.cdb_i.alu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en){
                 prf_valid_regs(i) := 
-                    Mux(io.cdb_i.alu_channel(j).valid,
+                    Mux(io.cdb_i.alu_channel(j).valid & (io.cdb_i.alu_channel(j).arch_reg_id =/= 0.U),
                         true.B,
                         prf_valid_regs(i)
                     )
@@ -75,7 +75,7 @@ class PRF extends Module
         for(j <- 0 until base.AGU_NUM){
             when((io.cdb_i.agu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en){
                 prf_valid_regs(i) := 
-                    Mux(io.cdb_i.agu_channel(j).valid,
+                    Mux(io.cdb_i.agu_channel(j).valid & (io.cdb_i.agu_channel(j).arch_reg_id =/= 0.U),
                         true.B,
                         prf_valid_regs(i)
                     )                
@@ -91,13 +91,13 @@ class PRF extends Module
     }
 
     for(i <- 0 until base.ALU_NUM){
-        when(io.cdb_i.alu_channel(i).valid & io.cdb_i.alu_channel(i).arch_reg_id =/= 0.U){
+        when(io.cdb_i.alu_channel(i).valid & (io.cdb_i.alu_channel(i).arch_reg_id =/= 0.U)){
             prf_regs(io.cdb_i.alu_channel(i).phy_reg_id) := io.cdb_i.alu_channel(i).reg_wr_data
         }
     }
 
     for(i <- 0 until base.AGU_NUM){
-        when(io.cdb_i.agu_channel(i).valid & io.cdb_i.agu_channel(i).arch_reg_id =/= 0.U){
+        when(io.cdb_i.agu_channel(i).valid & (io.cdb_i.agu_channel(i).arch_reg_id =/= 0.U)){
             prf_regs(io.cdb_i.agu_channel(i).phy_reg_id) := io.cdb_i.agu_channel(i).reg_wr_data
         }
     }    

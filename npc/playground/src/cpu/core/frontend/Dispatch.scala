@@ -130,12 +130,24 @@ class Dispatch extends Module
         rdy1_vec(base.ALU_NUM + base.AGU_NUM) := io.prf_valid_rs1_rdata(i)
         rdy2_vec(base.ALU_NUM + base.AGU_NUM) := io.prf_valid_rs2_rdata(i)
         for(j <- 0 until base.ALU_NUM){
-            rdy1_vec(j) := (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & io.cdb_i.alu_channel(j).valid
-            rdy2_vec(j) := (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & io.cdb_i.alu_channel(j).valid
+            rdy1_vec(j) := 
+                (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & 
+                io.cdb_i.alu_channel(j).valid &
+                (io.cdb_i.alu_channel(j).arch_reg_id === rob_item_reg(i).rs1)
+            rdy2_vec(j) := 
+                (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & 
+                io.cdb_i.alu_channel(j).valid &
+                (io.cdb_i.alu_channel(j).arch_reg_id === rob_item_reg(i).rs2)
         }
         for(j <- 0 until base.AGU_NUM){
-            rdy1_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & io.cdb_i.agu_channel(j).valid
-            rdy2_vec(j + base.ALU_NUM) := (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & io.cdb_i.agu_channel(j).valid
+            rdy1_vec(j + base.ALU_NUM) := 
+                (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & 
+                io.cdb_i.agu_channel(j).valid &
+                (io.cdb_i.agu_channel(j).arch_reg_id === rob_item_reg(i).rs1)
+            rdy2_vec(j + base.ALU_NUM) := 
+                (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & 
+                io.cdb_i.agu_channel(j).valid &
+                (io.cdb_i.agu_channel(j).arch_reg_id === rob_item_reg(i).rs2)
         }
         rob_items(i).rdy1 := rdy1_vec.asUInt.orR & ~(rs1_match_reg(i).orR)
         rob_items(i).rdy2 := rdy2_vec.asUInt.orR & ~(rs2_match_reg(i).orR)     
