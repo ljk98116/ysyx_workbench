@@ -42,6 +42,7 @@ class Dispatch extends Module
         val prf_valid_rd_wdata = Output(Vec(base.FETCH_WIDTH, Bool()))
 
         /* store buffer write */
+        val store_buffer_wr_able = Input(Bool())
         val store_buffer_write_en = Output(Vec(base.FETCH_WIDTH, Bool()))
         val store_buffer_item_o = Output(Vec(base.FETCH_WIDTH, new StoreBufferItem))
         val store_buffer_write_cnt = Output(UInt((log2Ceil(base.FETCH_WIDTH) + 1).W))
@@ -54,10 +55,10 @@ class Dispatch extends Module
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    rob_item_reg := Mux((io.rob_state =/= "b11".U), io.rob_item_i, rob_item_reg)
+    rob_item_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rob_item_i, rob_item_reg)
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_cnt_reg := Mux((io.rob_state =/= "b11".U), io.inst_valid_cnt_i, inst_valid_cnt_reg)
+    inst_valid_cnt_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.inst_valid_cnt_i, inst_valid_cnt_reg)
 
     /* 物理寄存器有效状态使能 */
     var prf_valid_rs1_ren = WireInit(VecInit(
@@ -387,9 +388,15 @@ class Dispatch extends Module
     }
 
     /* connect */
-    io.agu_items_cnt_o := agu_items_cnt_o
-    io.alu_items_vec_o := alu_items_vec_o
-    io.agu_items_vec_o := agu_items_vec_o
+    io.agu_items_cnt_o := Mux(io.store_buffer_wr_able, agu_items_cnt_o, 0.U)
+    io.alu_items_vec_o := Mux(io.store_buffer_wr_able, alu_items_vec_o, VecInit(
+        Seq.fill(base.FETCH_WIDTH)(
+            (0.U).asTypeOf(new ROBItem)
+        )
+    ))
+    io.agu_items_vec_o := Mux(io.store_buffer_wr_able, agu_items_vec_o, VecInit(
+        Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))
+    ))
     io.prf_valid_rs1_ren := prf_valid_rs1_ren
     io.prf_valid_rs1_raddr := prf_valid_rs1_raddr
     io.prf_valid_rs2_ren := prf_valid_rs2_ren
@@ -399,10 +406,16 @@ class Dispatch extends Module
     io.prf_valid_rd_waddr := prf_valid_rd_waddr
     io.prf_valid_rd_wdata := prf_valid_rd_wdata
 
-    io.rob_item_o := rob_items_o
-    io.inst_valid_cnt_o := inst_valid_cnt_o
+    io.rob_item_o := Mux(io.store_buffer_wr_able, rob_items_o, VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
+    ))
+    io.inst_valid_cnt_o := Mux(io.store_buffer_wr_able, inst_valid_cnt_o, 0.U)
 
-    io.store_buffer_write_en := store_flags
-    io.store_buffer_item_o   := store_buffer_item_o
-    io.store_buffer_write_cnt := store_buffer_item_cnt
+    io.store_buffer_write_en := Mux(io.store_buffer_wr_able, store_flags, VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    io.store_buffer_item_o   := Mux(io.store_buffer_wr_able, store_buffer_item_o, VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new StoreBufferItem))
+    ))
+    io.store_buffer_write_cnt := Mux(io.store_buffer_wr_able, store_buffer_item_cnt, 0.U)
 }

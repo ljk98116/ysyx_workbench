@@ -240,7 +240,9 @@ class RetireStage extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        free_rob_id_valid(i) := commit_item_rdy_mask.asUInt.andR | io.rob_state
+        free_rob_id_valid(i) := 
+            (commit_item_rdy_mask.asUInt.andR & io.rob_items_i(i).valid & (io.rob_state === 0.U)) | 
+            ((io.rob_state === "b11".U) & io.rob_items_i(i).valid)
         free_rob_id_wdata(i) := io.rob_items_i(i).id
     }    
 

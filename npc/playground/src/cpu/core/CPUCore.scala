@@ -504,4 +504,12 @@ class CPUCore(memfile: String) extends Module
     storebuffer.io.rob_items_i                 := rob_buffer.io.rob_item_o
     /* retire -> storebuffer */
     storebuffer.io.rob_state                := retire.io.rob_state
+
+    /* storebuffer -> dispatch及之前模块 */
+    dispatch.io.store_buffer_wr_able := storebuffer.io.wr_able
+    rename2.io.store_buffer_wr_able := storebuffer.io.wr_able
+    rename1.io.store_buffer_wr_able := storebuffer.io.wr_able
+    decode.io.store_buffer_wr_able := storebuffer.io.wr_able
+    fetch.io.store_buffer_wr_able := storebuffer.io.wr_able
+    pc_reg.io.store_buffer_wr_able := storebuffer.io.wr_able
 }

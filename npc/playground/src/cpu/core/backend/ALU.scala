@@ -106,7 +106,6 @@ class ALU extends Module
                     }
                 }
             }
-
         }
         is(Opcode.AUIPC){
             result := rob_item_reg.pc + rob_item_reg.Imm
@@ -214,6 +213,74 @@ class ALU extends Module
                         ExceptionType.BRANCH_PREDICTION_ERROR.U,
                         ExceptionType.NORMAL.U
                     )                   
+                }
+                is(Funct3.BLT){
+                    branch_target_addr := Mux(
+                        rs1_data_reg.asSInt < rs2_data_reg.asSInt,
+                        rob_item_reg.pc + rob_item_reg.Imm,
+                        rob_item_reg.pc + 4.U
+                    )
+                    has_exception := (rob_item_reg.branch_res ^ (rs1_data_reg.asSInt < rs2_data_reg.asSInt)) | (
+                        rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                    )
+                    exception_type := Mux(
+                        (rob_item_reg.branch_res ^ (rs1_data_reg.asSInt < rs2_data_reg.asSInt)) | (
+                            rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                        ),
+                        ExceptionType.BRANCH_PREDICTION_ERROR.U,
+                        ExceptionType.NORMAL.U
+                    )                     
+                }
+                is(Funct3.BGE){
+                    branch_target_addr := Mux(
+                        ~(rs1_data_reg.asSInt < rs2_data_reg.asSInt),
+                        rob_item_reg.pc + rob_item_reg.Imm,
+                        rob_item_reg.pc + 4.U
+                    )
+                    has_exception := (rob_item_reg.branch_res ^ (~(rs1_data_reg.asSInt < rs2_data_reg.asSInt))) | (
+                        rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                    )
+                    exception_type := Mux(
+                        (rob_item_reg.branch_res ^ (~(rs1_data_reg.asSInt < rs2_data_reg.asSInt))) | (
+                            rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                        ),
+                        ExceptionType.BRANCH_PREDICTION_ERROR.U,
+                        ExceptionType.NORMAL.U
+                    )                     
+                }
+                is(Funct3.BLTU){
+                    branch_target_addr := Mux(
+                        rs1_data_reg < rs2_data_reg,
+                        rob_item_reg.pc + rob_item_reg.Imm,
+                        rob_item_reg.pc + 4.U
+                    )
+                    has_exception := (rob_item_reg.branch_res ^ (rs1_data_reg < rs2_data_reg)) | (
+                        rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                    )
+                    exception_type := Mux(
+                        (rob_item_reg.branch_res ^ (rs1_data_reg < rs2_data_reg)) | (
+                            rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                        ),
+                        ExceptionType.BRANCH_PREDICTION_ERROR.U,
+                        ExceptionType.NORMAL.U
+                    )                    
+                }
+                is(Funct3.BGEU){
+                    branch_target_addr := Mux(
+                        ~(rs1_data_reg < rs2_data_reg),
+                        rob_item_reg.pc + rob_item_reg.Imm,
+                        rob_item_reg.pc + 4.U
+                    )
+                    has_exception := (rob_item_reg.branch_res ^ (~(rs1_data_reg < rs2_data_reg))) | (
+                        rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                    )
+                    exception_type := Mux(
+                        (rob_item_reg.branch_res ^ (~(rs1_data_reg < rs2_data_reg))) | (
+                            rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
+                        ),
+                        ExceptionType.BRANCH_PREDICTION_ERROR.U,
+                        ExceptionType.NORMAL.U
+                    )                    
                 }
             }
         }

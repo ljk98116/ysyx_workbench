@@ -15,6 +15,7 @@ class PCReg extends Module
         val rat_flush_en = Input(Bool())
         val rob_state = Input(UInt(2.W))
         val rat_flush_pc = Input(UInt(base.ADDR_WIDTH.W))
+        val store_buffer_wr_able = Input(Bool())
         /* fetch stage */
         val branch_pred_en = Input(Bool())
         val branch_pred_addr = Input(UInt(base.ADDR_WIDTH.W))
@@ -67,7 +68,7 @@ class PCReg extends Module
 
     pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, 
         Mux(
-            ((io.rob_state === 0.U)) & io.freereg_rd_able.asUInt.andR, 
+            ((io.rob_state === 0.U)) & io.freereg_rd_able.asUInt.andR & io.store_buffer_wr_able, 
             nextpc, 
             pc_reg
         ))

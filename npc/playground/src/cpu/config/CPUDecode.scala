@@ -28,6 +28,10 @@ object Opcode
 
     val BEQ     = "b1100011".U
     val BNE     = "b1100011".U
+    val BGE     = "b1100011".U
+    val BLT     = "b1100011".U
+    val BGEU    = "b1100011".U
+    val BLTU    = "b1100011".U
 }
 
 object Funct3
@@ -48,11 +52,16 @@ object Funct3
     val SLTU    = "b011".U
 
     val XOR     = "b100".U
+    val BLT     = "b100".U
     
     val SRLI    = "b101".U
     val SRAI    = "b101".U
+    val BGE     = "b101".U
 
     val OR      = "b110".U
+    val BLTU    = "b110".U
+
+    val BGEU    = "b111".U
 }
 
 object Funct7

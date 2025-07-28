@@ -172,10 +172,10 @@ class StoreBuffer(size : Int) extends Module{
         io.rob_state =/= "b00".U,
         0.U,
         Mux(
-            (head + 1.U) =/= tail & io.mem_write_en.asUInt === "b11".U, 
+            ((head + 1.U) =/= tail) & (io.mem_write_en.asUInt === "b11".U), 
             head + 2.U,
             Mux(
-                (head =/= tail) & io.mem_write_en.asUInt.orR,
+                (head =/= tail) & (io.mem_write_en.asUInt.orR),
                 head + 1.U,
                 head
             )
