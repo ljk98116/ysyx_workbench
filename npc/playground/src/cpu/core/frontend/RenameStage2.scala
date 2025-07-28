@@ -61,8 +61,13 @@ class RenameStage2 extends Module
 
         val rs1_match_o = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
         val rs2_match_o = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
+
+        /* control */
+        val issue_wr_able = Input(Bool())
     })
 
+    var stall = WireInit(false.B)
+    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
@@ -105,17 +110,17 @@ class RenameStage2 extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
     ))
 
-    pc_vec_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.pc_vec_i, pc_vec_reg)
-    inst_valid_mask_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.inst_valid_mask_i, inst_valid_mask_reg)
-    DecodeRes_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.DecodeRes_i, DecodeRes_reg)
-    rat_wen_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rat_wen_i, rat_ren_reg)
-    rat_waddr_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rat_waddr_i, rat_waddr_reg)
-    rat_wdata_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rat_wdata_i, rat_wdata_reg)
-    rat_ren_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rat_ren_i, rat_ren_reg)
-    rat_raddr_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rat_raddr_i, rat_raddr_reg)
-    rs1_match_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rs1_match, rs1_match_reg)
-    rs2_match_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rs2_match, rs2_match_reg)
-    inst_valid_cnt_reg := Mux((io.rob_state =/= "b11".U), io.inst_valid_cnt_i, inst_valid_cnt_reg)
+    pc_vec_reg := Mux(stall, io.pc_vec_i, pc_vec_reg)
+    inst_valid_mask_reg := Mux(stall, io.inst_valid_mask_i, inst_valid_mask_reg)
+    DecodeRes_reg := Mux(stall, io.DecodeRes_i, DecodeRes_reg)
+    rat_wen_reg := Mux(stall, io.rat_wen_i, rat_ren_reg)
+    rat_waddr_reg := Mux(stall, io.rat_waddr_i, rat_waddr_reg)
+    rat_wdata_reg := Mux(stall, io.rat_wdata_i, rat_wdata_reg)
+    rat_ren_reg := Mux(stall, io.rat_ren_i, rat_ren_reg)
+    rat_raddr_reg := Mux(stall, io.rat_raddr_i, rat_raddr_reg)
+    rs1_match_reg := Mux(stall, io.rs1_match, rs1_match_reg)
+    rs2_match_reg := Mux(stall, io.rs2_match, rs2_match_reg)
+    inst_valid_cnt_reg := Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg)
     /* 分支预测结果 */
     var gbranch_pre_res_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
@@ -136,15 +141,15 @@ class RenameStage2 extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W))
     ))
     /* 分支预测结果 */
-    gbranch_pre_res_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.gbranch_pre_res_i, gbranch_pre_res_reg)
-    lbranch_pre_res_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.lbranch_pre_res_i, lbranch_pre_res_reg)
-    branch_pre_res_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.branch_pre_res_i, branch_pre_res_reg)
-    global_pht_idx_vec_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.global_pht_idx_vec_i, global_pht_idx_vec_reg)
-    local_pht_idx_vec_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.local_pht_idx_vec_i, local_pht_idx_vec_reg)
-    bht_idx_vec_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.bht_idx_vec_i, bht_idx_vec_reg)  
-    btb_hit_vec_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.btb_hit_vec_i, btb_hit_vec_reg)
+    gbranch_pre_res_reg := Mux(stall, io.gbranch_pre_res_i, gbranch_pre_res_reg)
+    lbranch_pre_res_reg := Mux(stall, io.lbranch_pre_res_i, lbranch_pre_res_reg)
+    branch_pre_res_reg := Mux(stall, io.branch_pre_res_i, branch_pre_res_reg)
+    global_pht_idx_vec_reg := Mux(stall, io.global_pht_idx_vec_i, global_pht_idx_vec_reg)
+    local_pht_idx_vec_reg := Mux(stall, io.local_pht_idx_vec_i, local_pht_idx_vec_reg)
+    bht_idx_vec_reg := Mux(stall, io.bht_idx_vec_i, bht_idx_vec_reg)  
+    btb_hit_vec_reg := Mux(stall, io.btb_hit_vec_i, btb_hit_vec_reg)
 
-    btb_pred_addr_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.btb_pred_addr_i, btb_pred_addr_reg)    
+    btb_pred_addr_reg := Mux(stall, io.btb_pred_addr_i, btb_pred_addr_reg)    
 
     /* wires */
     var rob_item_o = WireInit(

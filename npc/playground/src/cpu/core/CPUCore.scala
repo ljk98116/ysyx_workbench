@@ -282,6 +282,14 @@ class CPUCore(memfile: String) extends Module
     prf.io.prf_rs2_data_ren         := issue.io.prf_rs2_data_ren
     prf.io.prf_rs2_data_raddr       := issue.io.prf_rs2_data_raddr
 
+    /* IssueStage -> 前面 */
+    pc_reg.io.issue_wr_able         := issue.io.wr_able
+    fetch.io.issue_wr_able         := issue.io.wr_able
+    decode.io.issue_wr_able         := issue.io.wr_able
+    rename1.io.issue_wr_able         := issue.io.wr_able
+    rename2.io.issue_wr_able         := issue.io.wr_able
+    dispatch.io.issue_wr_able         := issue.io.wr_able
+
     /* PRF -> IssueStage */
     issue.io.prf_rs1_data_rdata   := prf.io.prf_rs1_data_rdata
     issue.io.prf_rs2_data_rdata   := prf.io.prf_rs2_data_rdata

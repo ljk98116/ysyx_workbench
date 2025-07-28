@@ -83,19 +83,11 @@ class ALUReserveStation(size: Int) extends Module {
     /* free id阵列 */
     val freeIdBuffer = Module(new ReserveFreeIdBuffer(size))
 
-    /* payload ram */
-    var ps1_payLoad_RAM = RegInit(VecInit(
-        Seq.fill(size)((0.U)(base.DATA_WIDTH.W))
-    ))
-    var ps2_payLoad_RAM = RegInit(VecInit(
-        Seq.fill(size)((0.U)(base.DATA_WIDTH.W))
-    ))
-
     /* connect */
     /* 写入发射队列的指令数目 */
     /* 读写使能与空闲队列保持一致 */
-    io.read_able := freeIdBuffer.io.rd_able
-    io.write_able := freeIdBuffer.io.wr_able
+    io.read_able := freeIdBuffer.io.wr_able
+    io.write_able := freeIdBuffer.io.rd_able
 
     /* age matrix */
     var age_mat = RegInit(VecInit(
@@ -183,7 +175,13 @@ class ALUReserveStation(size: Int) extends Module {
     /* update age matrix, age[i]为0表示当前ID比其他位置都年轻*/
     /* 新分配的reg更新年龄矩阵 */
     for(i <- 0 until size){
-        when(~io.rat_flush_en & (io.rob_state === 0.U) & (i.U === freeIdBuffer.io.free_id_o) & io.rob_item_i.valid){
+        when(
+            ~io.rat_flush_en & 
+            (io.rob_state === 0.U) & 
+            (i.U === freeIdBuffer.io.free_id_o) & 
+            io.rob_item_i.valid &
+            freeIdBuffer.io.rd_able
+        ){
             rob_item_reg(i) := rob_item_i_update
             /* 有效的项比新写入的项要老 */
             for(j <- 0 until size){

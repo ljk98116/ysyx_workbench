@@ -49,12 +49,20 @@ class Decode extends Module
         val decode_br_addr = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
 
         val btb_hit_vec_o = Output(Vec(base.FETCH_WIDTH, Bool()))
-        val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))       
+        val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))    
+
+        /* control */
+        val issue_wr_able = Input(Bool())   
     })
 
     /* pipeline */
     var stall = WireInit(false.B)
-    stall := (io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR & io.store_buffer_wr_able
+    stall := 
+        (io.rob_state === 0.U) & 
+        io.freereg_rd_able.asUInt.andR & 
+        io.store_buffer_wr_able &
+        io.issue_wr_able
+        
     var pc_vec_reg = RegInit(VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
     var inst_valid_mask_reg = RegInit((0.U)(base.FETCH_WIDTH.W))
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))

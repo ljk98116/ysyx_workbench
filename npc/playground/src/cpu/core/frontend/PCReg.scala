@@ -32,6 +32,8 @@ class PCReg extends Module
         val pc_o = Output(UInt(base.ADDR_WIDTH.W))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
+        /* control */
+        val issue_wr_able = Input(Bool())
     })
 
     var pc_reg = RegInit((base.RESET_VECTOR.U)(base.ADDR_WIDTH.W))
@@ -68,7 +70,10 @@ class PCReg extends Module
 
     pc_reg := Mux(io.rat_flush_en, io.rat_flush_pc, 
         Mux(
-            ((io.rob_state === 0.U)) & io.freereg_rd_able.asUInt.andR & io.store_buffer_wr_able, 
+            ((io.rob_state === 0.U)) & 
+            io.freereg_rd_able.asUInt.andR & 
+            io.store_buffer_wr_able &
+            io.issue_wr_able, 
             nextpc, 
             pc_reg
         ))

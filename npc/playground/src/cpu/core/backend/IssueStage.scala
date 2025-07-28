@@ -35,6 +35,8 @@ class IssueStage extends Module
         val alu_issue_write_able = Output(Vec(base.ALU_NUM, Bool()))
         val agu_issue_read_able = Output(Vec(base.AGU_NUM, Bool()))
         val agu_issue_write_able = Output(Vec(base.AGU_NUM, Bool()))
+        /* control signal */
+        val wr_able = Output(Bool())
     })
 
     /* ReserveStations接收总线信号 */
@@ -42,6 +44,10 @@ class IssueStage extends Module
     var alu_reserve_stations = Seq.fill(base.ALU_NUM)(
         Module(new ALUReserveStation(16))
     )
+
+    var wr_able_mask = WireInit(VecInit(
+        Seq.fill(base.ALU_NUM + 1)(false.B)
+    ))
 
     for(i <- 0 until base.ALU_NUM){
         alu_reserve_stations(i).io.cdb_i := io.cdb_i
@@ -51,6 +57,7 @@ class IssueStage extends Module
 
         alu_reserve_stations(i).io.prf_rs1_data_rdata := io.prf_rs1_data_rdata(i)
         alu_reserve_stations(i).io.prf_rs2_data_rdata := io.prf_rs2_data_rdata(i)
+        wr_able_mask(i) := alu_reserve_stations(i).io.write_able
     }
     var alu_fu_items_o = WireInit(VecInit(
         Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))
@@ -85,6 +92,7 @@ class IssueStage extends Module
         agu_reserve_station.io.prf_rs1_data_rdata(i) := io.prf_rs1_data_rdata(base.ALU_NUM + i)
         agu_reserve_station.io.prf_rs2_data_rdata(i) := io.prf_rs2_data_rdata(base.ALU_NUM + i)
     }
+    wr_able_mask(base.ALU_NUM) := agu_reserve_station.io.write_able
 
     var agu_fu_items_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))
@@ -116,4 +124,5 @@ class IssueStage extends Module
     io.agu_issue_write_able := agu_issue_write_able
     io.agu_channel_rs1_rdata := agu_reserve_station.io.agu_channel_rs1_rdata
     io.agu_channel_rs2_rdata := agu_reserve_station.io.agu_channel_rs2_rdata
+    io.wr_able := wr_able_mask.asUInt.andR
 }

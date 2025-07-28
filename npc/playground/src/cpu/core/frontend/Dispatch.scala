@@ -49,16 +49,21 @@ class Dispatch extends Module
 
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
+
+        /* control */
+        val issue_wr_able = Input(Bool())
     })
 
+    var stall = WireInit(false.B)
+    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able
     /* pipeline */
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    rob_item_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.rob_item_i, rob_item_reg)
+    rob_item_reg := Mux(stall, io.rob_item_i, rob_item_reg)
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_cnt_reg := Mux((io.rob_state =/= "b11".U) & io.store_buffer_wr_able, io.inst_valid_cnt_i, inst_valid_cnt_reg)
+    inst_valid_cnt_reg := Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg)
 
     /* 物理寄存器有效状态使能 */
     var prf_valid_rs1_ren = WireInit(VecInit(
@@ -104,8 +109,8 @@ class Dispatch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
     ))
 
-    rs1_match_reg := Mux((io.rob_state =/= "b11".U), io.rs1_match, rs1_match_reg)
-    rs2_match_reg := Mux((io.rob_state =/= "b11".U), io.rs2_match, rs2_match_reg)    
+    rs1_match_reg := Mux(stall, io.rs1_match, rs1_match_reg)
+    rs2_match_reg := Mux(stall, io.rs2_match, rs2_match_reg)    
 
     /* 使用总线信号以及物理寄存器状态更新ROB项依赖状态 */
     var rob_items = WireInit(VecInit(
