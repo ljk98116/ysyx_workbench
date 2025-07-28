@@ -52,15 +52,51 @@ class AGUReservestation(size : Int) extends Module
         Seq.fill(base.AGU_NUM)((0.U)asTypeOf(new ROBItem))
     ))
 
-    for(i <- 0 until base.FETCH_WIDTH){
-        when(io.write_able & ~io.rat_flush_en & io.rob_item_i(i).valid & (io.rob_state === 0.U)){
-            rob_item_reg(tail + i.U) := io.rob_item_i(i)
+    for(j <- 0 until base.FETCH_WIDTH){
+        var issue_able_rs1_vec = WireInit(VecInit(
+            Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
+        ))
+        var issue_able_rs2_vec = WireInit(VecInit(
+            Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
+        ))
+        var rob_item_update = WireInit((0.U).asTypeOf(new ROBItem))
+        rob_item_update := io.rob_item_i(j)
+        for(i <- 0 until base.ALU_NUM){
+            issue_able_rs1_vec(i) := 
+                (io.rob_item_i(j).ps1 === io.cdb_i.alu_channel(i).phy_reg_id) &
+                io.cdb_i.alu_channel(i).valid &
+                (io.cdb_i.alu_channel(i).arch_reg_id === io.rob_item_i(j).rs1)
+            issue_able_rs2_vec(i) := 
+                (io.rob_item_i(j).ps2 === io.cdb_i.alu_channel(i).phy_reg_id) &
+                io.cdb_i.alu_channel(i).valid &
+                (io.cdb_i.alu_channel(i).arch_reg_id === io.rob_item_i(j).rs2)
+        }
+        for(i <- 0 until base.AGU_NUM){
+            issue_able_rs1_vec(i + base.ALU_NUM) := 
+                (io.rob_item_i(j).ps1 === io.cdb_i.agu_channel(i).phy_reg_id) &
+                io.cdb_i.agu_channel(i).valid &
+                (io.cdb_i.agu_channel(i).arch_reg_id === io.rob_item_i(j).rs1)
+            issue_able_rs2_vec(i + base.ALU_NUM) := 
+                (io.rob_item_i(j).ps2 === io.cdb_i.agu_channel(i).phy_reg_id) &
+                io.cdb_i.agu_channel(i).valid &
+                (io.cdb_i.agu_channel(i).arch_reg_id === io.rob_item_i(j).rs2)
+        }
+        rob_item_update.rdy1 := issue_able_rs1_vec.asUInt.orR | io.rob_item_i(j).rdy1
+        rob_item_update.rdy2 := issue_able_rs2_vec.asUInt.orR | io.rob_item_i(j).rdy2
+        when(io.write_able & ~io.rat_flush_en & io.rob_item_i(j).valid & (io.rob_state === 0.U)){
+            rob_item_reg(tail + j.U) := rob_item_update
         }
     }
 
     /* 更新 */
     for(j <- 0 until size){
-        when(~io.rat_flush_en & rob_item_reg(j).valid){
+        var is_write_loc = WireInit(VecInit(
+            Seq.fill(base.FETCH_WIDTH)(false.B)
+        ))
+        for(k <- 0 until base.FETCH_WIDTH){
+            is_write_loc(k) := io.rob_item_i(k).valid & ((tail + k.U) === j.U)
+        }
+        when(~io.rat_flush_en & rob_item_reg(j).valid & (io.rob_state === 0.U) & ~(is_write_loc.asUInt.orR)){
             var issue_able_rs1_vec = WireInit(VecInit(
                 Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
             ))
@@ -87,7 +123,7 @@ class AGUReservestation(size : Int) extends Module
                     io.cdb_i.agu_channel(i).valid &
                     (io.cdb_i.agu_channel(i).arch_reg_id === rob_item_reg(j).rs2)
             }
-            rob_item_reg(j).rdy1 := issue_able_rs1_vec.asUInt.orR | rob_item_reg(j).rdy1 
+            rob_item_reg(j).rdy1 := issue_able_rs1_vec.asUInt.orR | rob_item_reg(j).rdy1
             rob_item_reg(j).rdy2 := issue_able_rs2_vec.asUInt.orR | rob_item_reg(j).rdy2
         }.elsewhen(io.rat_flush_en){
             rob_item_reg(j) := 0.U.asTypeOf(new ROBItem)
