@@ -67,12 +67,18 @@ class RenameStage1 extends Module
         val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W))) 
 
         /* control */
+        val rob_wr_able = Input(Bool())
         val issue_wr_able = Input(Bool())
     })
 
     var stall = WireInit(false.B)
 
-    stall := (io.rob_state === 0.U) & io.freereg_rd_able.asUInt.andR & io.store_buffer_wr_able & io.issue_wr_able
+    stall := (io.rob_state === 0.U) & 
+        io.freereg_rd_able.asUInt.andR & 
+        io.store_buffer_wr_able & 
+        io.issue_wr_able &
+        io.rob_wr_able
+
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))

@@ -52,10 +52,11 @@ class Dispatch extends Module
 
         /* control */
         val issue_wr_able = Input(Bool())
+        val rob_wr_able = Input(Bool())
     })
 
     var stall = WireInit(false.B)
-    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able
+    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able
     /* pipeline */
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
@@ -393,13 +394,13 @@ class Dispatch extends Module
     }
 
     /* connect */
-    io.agu_items_cnt_o := Mux(io.store_buffer_wr_able, agu_items_cnt_o, 0.U)
-    io.alu_items_vec_o := Mux(io.store_buffer_wr_able, alu_items_vec_o, VecInit(
+    io.agu_items_cnt_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, agu_items_cnt_o, 0.U)
+    io.alu_items_vec_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, alu_items_vec_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)(
             (0.U).asTypeOf(new ROBItem)
         )
     ))
-    io.agu_items_vec_o := Mux(io.store_buffer_wr_able, agu_items_vec_o, VecInit(
+    io.agu_items_vec_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, agu_items_vec_o, VecInit(
         Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
     io.prf_valid_rs1_ren := prf_valid_rs1_ren
@@ -411,16 +412,16 @@ class Dispatch extends Module
     io.prf_valid_rd_waddr := prf_valid_rd_waddr
     io.prf_valid_rd_wdata := prf_valid_rd_wdata
 
-    io.rob_item_o := Mux(io.store_buffer_wr_able, rob_items_o, VecInit(
+    io.rob_item_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, rob_items_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    io.inst_valid_cnt_o := Mux(io.store_buffer_wr_able, inst_valid_cnt_o, 0.U)
+    io.inst_valid_cnt_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, inst_valid_cnt_o, 0.U)
 
-    io.store_buffer_write_en := Mux(io.store_buffer_wr_able, store_flags, VecInit(
+    io.store_buffer_write_en := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, store_flags, VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
-    io.store_buffer_item_o   := Mux(io.store_buffer_wr_able, store_buffer_item_o, VecInit(
+    io.store_buffer_item_o   := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, store_buffer_item_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new StoreBufferItem))
     ))
-    io.store_buffer_write_cnt := Mux(io.store_buffer_wr_able, store_buffer_item_cnt, 0.U)
+    io.store_buffer_write_cnt := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, store_buffer_item_cnt, 0.U)
 }

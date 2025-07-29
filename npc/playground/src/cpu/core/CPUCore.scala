@@ -10,7 +10,7 @@ import cpu.memory.MultiPortSram
 import chisel3.experimental.ChiselAnnotation
 
 /* PC -> Fetch -> Decode -> Rename1 -> Rename2 -> Dispatch -> */
-/* Issue -> RegRead -> Ex -> Mem1 -> Mem2 -> Mem3 -> Retire */
+/* Issue -> Ex -> Mem1 -> Mem2 -> Mem3 -> Retire */
 class CPUCore(memfile: String) extends Module
 {
 
@@ -508,8 +508,15 @@ class CPUCore(memfile: String) extends Module
         agu_vec(i).io.rob_state    := rob_buffer.io.rob_state
     }
 
-    /* rob_buffer -> storebuffer */
+    /* rob_buffer -> storebuffer及前面 */
     storebuffer.io.rob_items_i                 := rob_buffer.io.rob_item_o
+    dispatch.io.rob_wr_able                    := rob_buffer.io.robw_able
+    rename2.io.rob_wr_able                    := rob_buffer.io.robw_able
+    rename1.io.rob_wr_able                    := rob_buffer.io.robw_able
+    decode.io.rob_wr_able                    := rob_buffer.io.robw_able
+    fetch.io.rob_wr_able                    := rob_buffer.io.robw_able
+    pc_reg.io.rob_wr_able                    := rob_buffer.io.robw_able
+
     /* retire -> storebuffer */
     storebuffer.io.rob_state                := retire.io.rob_state
 

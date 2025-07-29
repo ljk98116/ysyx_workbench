@@ -40,6 +40,7 @@ class RenameStage2 extends Module
 
         val rat_ren_i = Input(UInt((base.FETCH_WIDTH * 3).W))
         val rat_raddr_i = Input(Vec(base.FETCH_WIDTH * 3, UInt(base.AREG_WIDTH.W)))
+        /* 暂停时需要缓存 */
         val rat_rdata_i = Input(Vec(base.FETCH_WIDTH * 3, UInt((base.PREG_WIDTH + 1).W)))
 
         /* RAT读写使能 */
@@ -64,10 +65,11 @@ class RenameStage2 extends Module
 
         /* control */
         val issue_wr_able = Input(Bool())
+        val rob_wr_able = Input(Bool())
     })
 
     var stall = WireInit(false.B)
-    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able
+    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
@@ -99,6 +101,26 @@ class RenameStage2 extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
     ))
 
+    /* 暂停处理状态机 */
+    /* 暂停状态使用暂存的指令 */
+    var rat_rdata_state = RegInit(false.B)
+    var rat_rdata_vec_stall_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH * 3)((0.U)((base.PREG_WIDTH + 1).W))
+    ))
+    var rat_rdata_vec_used = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH * 3)((0.U)((base.PREG_WIDTH + 1).W))
+    ))
+    /* 收到暂停信号的那一刻更新 */
+    rat_rdata_vec_stall_reg := Mux(
+        ~(stall) & ~rat_rdata_state,  
+        io.rat_rdata_i,
+        rat_rdata_vec_stall_reg
+    )
+    /* 收到暂停信号，变化状态 */
+    rat_rdata_state := ~(stall)
+    /* 处于暂停状态,使用锁存的值,否则使用输入值 */
+    rat_rdata_vec_used := Mux(rat_rdata_state, rat_rdata_vec_stall_reg, io.rat_rdata_i)
+
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     /* 缓存上一个store指令的ROBID */
     var last_store_idx = RegInit((1 << base.ROBID_WIDTH).U((base.ROBID_WIDTH + 1).W))
@@ -121,6 +143,7 @@ class RenameStage2 extends Module
     rs1_match_reg := Mux(stall, io.rs1_match, rs1_match_reg)
     rs2_match_reg := Mux(stall, io.rs2_match, rs2_match_reg)
     inst_valid_cnt_reg := Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg)
+    
     /* 分支预测结果 */
     var gbranch_pre_res_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
@@ -245,7 +268,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs1_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(3 * i)(base.PREG_WIDTH - 1, 0)
+                        rat_rdata_vec_used(3 * i)(base.PREG_WIDTH - 1, 0)
                     )
                 )
             )
@@ -258,7 +281,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs2_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        io.rat_rdata_i(3 * i + 1)(base.PREG_WIDTH - 1, 0)
+                        rat_rdata_vec_used(3 * i + 1)(base.PREG_WIDTH - 1, 0)
                     )
                 )
             )

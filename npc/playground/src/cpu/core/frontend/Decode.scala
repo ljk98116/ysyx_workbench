@@ -53,6 +53,7 @@ class Decode extends Module
 
         /* control */
         val issue_wr_able = Input(Bool())   
+        val rob_wr_able = Input(Bool())
     })
 
     /* pipeline */
@@ -61,8 +62,9 @@ class Decode extends Module
         (io.rob_state === 0.U) & 
         io.freereg_rd_able.asUInt.andR & 
         io.store_buffer_wr_able &
-        io.issue_wr_able
-        
+        io.issue_wr_able &
+        io.rob_wr_able
+
     var pc_vec_reg = RegInit(VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))))
     var inst_valid_mask_reg = RegInit((0.U)(base.FETCH_WIDTH.W))
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))

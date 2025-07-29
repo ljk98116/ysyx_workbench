@@ -6,10 +6,7 @@ object Elaborate extends App {
       "disallowLocalVariables",
       "disallowPackedArrays",
       "locationInfoStyle=wrapInAtSquareBracket"
-    ).reduce(_ + "," + _),
-    "--split-verilog",
-    "-o",
-    "./vsrc"
+    ).reduce(_ + "," + _)
   )
   // circt.stage.ChiselStage.emitSystemVerilogFile(new gcd.GCD(), args, firtoolOptions)
   /* chapter1 */

@@ -34,6 +34,7 @@ class PCReg extends Module
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
         /* control */
         val issue_wr_able = Input(Bool())
+        val rob_wr_able = Input(Bool())
     })
 
     var pc_reg = RegInit((base.RESET_VECTOR.U)(base.ADDR_WIDTH.W))
@@ -73,7 +74,8 @@ class PCReg extends Module
             ((io.rob_state === 0.U)) & 
             io.freereg_rd_able.asUInt.andR & 
             io.store_buffer_wr_able &
-            io.issue_wr_able, 
+            io.issue_wr_able &
+            io.rob_wr_able, 
             nextpc, 
             pc_reg
         ))

@@ -36,7 +36,7 @@ class ReserveFreeIdBuffer(size : Int) extends Module
 
     for(i <- 0 until size){
         when(~io.rat_flush_en){
-            IDRegFile(i) := Mux(io.issued_i & (i.U === tail), io.issued_id_i, IDRegFile(i)) 
+            IDRegFile(i) := Mux(io.issued_i & (i.U === tail) & io.wr_able, io.issued_id_i, IDRegFile(i)) 
         }.otherwise{
             IDRegFile(i) := i.U
         }

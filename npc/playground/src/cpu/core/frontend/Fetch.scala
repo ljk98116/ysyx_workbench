@@ -43,7 +43,8 @@ class Fetch extends Module
         val local_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val bht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
         /* control */
-        val issue_wr_able = Input(Bool())        
+        val issue_wr_able = Input(Bool())  
+        val rob_wr_able = Input(Bool())      
     })
 
     /* pipeline */
@@ -53,8 +54,9 @@ class Fetch extends Module
         (io.rob_state === "b00".U) & 
         io.freereg_rd_able.asUInt.andR & 
         io.store_buffer_wr_able &
-        io.issue_wr_able
-        
+        io.issue_wr_able &
+        io.rob_wr_able
+
     inst_valid_mask := Mux(
         ~io.rat_flush_en, 
         Mux(stall, io.inst_valid_mask_i, inst_valid_mask), 
