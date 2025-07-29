@@ -16,6 +16,7 @@ class ROBIDBuffer(id : Int) extends Module
         /* output */
         val rat_write_en_rename = Input(Bool())
         val free_robid_o = Output(UInt(base.ROBID_WIDTH.W))
+        val rd_able = Output(Bool())
     })
 
     val regnum = (1 << base.ROBID_WIDTH) >> 2
@@ -35,6 +36,7 @@ class ROBIDBuffer(id : Int) extends Module
     rd_able := head =/= tail
     wr_able := tail + 1.U =/= head
 
+    io.rd_able := rd_able
     for(i <- 0 until regnum){
         when(io.rat_flush_en){
             free_robids(i) := Cat(id.U, i.U(width.W))

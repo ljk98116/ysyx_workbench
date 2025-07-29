@@ -12,7 +12,7 @@ class MemReadAPI extends BlackBox with HasBlackBoxPath{
         val raddr = Input(UInt(base.ADDR_WIDTH.W))
         val rdata = Output(UInt(base.DATA_WIDTH.W))
     })
-    //addPath("./playground/src/resources/MemRead.v")
+    addPath("./playground/src/resources/MemRead.v")
 }
 
 class MemWriteAPI extends BlackBox with HasBlackBoxPath{
@@ -23,5 +23,5 @@ class MemWriteAPI extends BlackBox with HasBlackBoxPath{
         val waddr = Input(UInt(base.ADDR_WIDTH.W))
         val wdata = Input(UInt(base.DATA_WIDTH.W))
     })
-    //addPath("./playground/src/resources/MemWrite.v")
+    addPath("./playground/src/resources/MemWrite.v")
 }

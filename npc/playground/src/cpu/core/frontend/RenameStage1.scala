@@ -69,6 +69,7 @@ class RenameStage1 extends Module
         /* control */
         val rob_wr_able = Input(Bool())
         val issue_wr_able = Input(Bool())
+        val rob_freeid_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))
     })
 
     var stall = WireInit(false.B)
@@ -77,7 +78,8 @@ class RenameStage1 extends Module
         io.freereg_rd_able.asUInt.andR & 
         io.store_buffer_wr_able & 
         io.issue_wr_able &
-        io.rob_wr_able
+        io.rob_wr_able &
+        io.rob_freeid_rd_able.asUInt.andR
 
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(

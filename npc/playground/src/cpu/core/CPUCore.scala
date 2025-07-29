@@ -527,4 +527,13 @@ class CPUCore(memfile: String) extends Module
     decode.io.store_buffer_wr_able := storebuffer.io.wr_able
     fetch.io.store_buffer_wr_able := storebuffer.io.wr_able
     pc_reg.io.store_buffer_wr_able := storebuffer.io.wr_able
+
+    /* rob free id buffer -> rename2及之前模块 */
+    for(i <- 0 until base.FETCH_WIDTH){
+        rename2.io.rob_freeid_rd_able(i) := robidbuf_seq(i).io.rd_able
+        rename1.io.rob_freeid_rd_able(i) := robidbuf_seq(i).io.rd_able
+        decode.io.rob_freeid_rd_able(i) := robidbuf_seq(i).io.rd_able
+        fetch.io.rob_freeid_rd_able(i) := robidbuf_seq(i).io.rd_able
+        pc_reg.io.rob_freeid_rd_able(i) := robidbuf_seq(i).io.rd_able
+    }
 }

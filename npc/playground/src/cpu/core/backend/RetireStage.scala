@@ -287,7 +287,6 @@ class RetireStage extends Module
         (io.rob_items_i(1).ExceptionType === ExceptionType.BRANCH_PREDICTION_ERROR.U) & commit.io.rat_write_en(1),
         (io.rob_items_i(0).ExceptionType === ExceptionType.BRANCH_PREDICTION_ERROR.U) & commit.io.rat_write_en(0)
     ).asTypeOf(UInt(8.W))
-    branch_pred_api.io.rst := reset.asBool
 
     /* connect */
     io.rob_item_rdy_mask := Mux((io.rob_state === 0.U), rob_item_rdy_mask.asUInt, 0.U)

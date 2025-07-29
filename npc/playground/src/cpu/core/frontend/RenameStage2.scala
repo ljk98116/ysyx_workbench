@@ -57,6 +57,8 @@ class RenameStage2 extends Module
 
         /* ROB free buffer */
         val rob_freeid_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ROBID_WIDTH.W)))
+        val rob_freeid_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))
+
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
@@ -69,7 +71,7 @@ class RenameStage2 extends Module
     })
 
     var stall = WireInit(false.B)
-    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able
+    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able & io.rob_freeid_rd_able.asUInt.andR
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
@@ -313,15 +315,29 @@ class RenameStage2 extends Module
     )
 
     /* connect */
-    io.rat_ren_o := rat_ren_reg
-    io.rat_raddr_o := rat_raddr_reg
-    io.rat_wen_o := Mux(io.rob_state === 0.U, rat_wen_reg, 0.U)
+    io.rat_ren_o := Mux(io.rob_freeid_rd_able.asUInt.andR, rat_ren_reg, 0.U)
+    io.rat_raddr_o := Mux(
+        io.rob_freeid_rd_able.asUInt.andR, 
+        rat_raddr_reg, 
+        VecInit(
+            Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.AREG_WIDTH.W))
+        )
+    )
+    io.rat_wen_o := Mux((io.rob_state === 0.U), rat_wen_reg, 0.U)
     io.rat_waddr_o := rat_waddr_reg
     io.rat_wdata_o := rat_wdata_reg
 
-    io.rob_item_o := rob_item_o
-    io.inst_valid_cnt_o := inst_valid_cnt_reg
+    io.rob_item_o := Mux(
+        io.rob_freeid_rd_able.asUInt.andR, 
+        rob_item_o, 
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem)))
+    )
+    io.inst_valid_cnt_o := Mux(io.rob_freeid_rd_able.asUInt.andR, inst_valid_cnt_reg, 0.U)
 
-    io.rs1_match_o := rs1_match_reg
-    io.rs2_match_o := rs2_match_reg
+    io.rs1_match_o := Mux(io.rob_freeid_rd_able.asUInt.andR, rs1_match_reg, VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+    ))
+    io.rs2_match_o := Mux(io.rob_freeid_rd_able.asUInt.andR, rs2_match_reg, VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
+    ))
 }

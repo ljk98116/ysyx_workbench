@@ -20,7 +20,7 @@ uint32_t branch_err_cnt;
 
 bool ref_stop;
 
-static TOP_NAME dut;
+static VCPUCore dut;
 
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us

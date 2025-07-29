@@ -44,7 +44,8 @@ class Fetch extends Module
         val bht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
         /* control */
         val issue_wr_able = Input(Bool())  
-        val rob_wr_able = Input(Bool())      
+        val rob_wr_able = Input(Bool())  
+        val rob_freeid_rd_able = Input(Vec(base.FETCH_WIDTH, Bool()))    
     })
 
     /* pipeline */
@@ -55,7 +56,8 @@ class Fetch extends Module
         io.freereg_rd_able.asUInt.andR & 
         io.store_buffer_wr_able &
         io.issue_wr_able &
-        io.rob_wr_able
+        io.rob_wr_able & 
+        io.rob_freeid_rd_able.asUInt.andR
 
     inst_valid_mask := Mux(
         ~io.rat_flush_en, 
