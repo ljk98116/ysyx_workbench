@@ -56,7 +56,7 @@ class Dispatch extends Module
     })
 
     var stall = WireInit(false.B)
-    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able
+    stall := (io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able & (io.rob_state =/= "b11".U))
     /* pipeline */
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
@@ -120,11 +120,46 @@ class Dispatch extends Module
     var rob_items_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    rob_items := rob_item_reg
-    rob_items_o := rob_item_reg
 
     var inst_valid_cnt_o = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
     inst_valid_cnt_o := inst_valid_cnt_reg
+    /* 总线状态更新stall reg与rob_item_reg仲裁后的wire值 */
+    /* 暂停时会记录更新的结果到stall reg */
+    /* 暂停处理状态机 */
+    /* 暂停状态使用暂存的指令 */
+    var stall_state = RegInit(false.B)
+    var rob_item_stall_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
+    ))
+    var rob_items_used = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
+    ))
+
+    /* 收到暂停信号但不是暂停状态的那一刻更新 */
+    rob_item_stall_reg := Mux(
+        ~(stall) & ~stall_state,  
+        io.rob_item_i,
+        rob_item_stall_reg
+    )
+    /* 收到暂停信号，变化状态 */
+    stall_state := ~(stall)
+    /* 
+        需要时刻监控总线信号，并在对应周期更新结果
+        正常时，使用rob_item_reg的值更新并输出
+        不是暂停状态收到暂停信号，使用输入值，并使用总线结果更新暂停时锁存值，存入stall_reg
+        处于暂停状态收到解除暂停，使用暂停时锁存值，利用总线结果更新锁存值输出结果
+        处于暂停状态且没有收到解除暂停的信号,使用锁存的值，利用总线结果更新，存入stall reg 
+    */
+    rob_items_used := Mux(
+        ~stall_state & stall,
+        rob_item_reg,
+        Mux(
+            stall_state,
+            rob_item_stall_reg,
+            io.rob_item_i
+        )
+    )
+    rob_items_o := rob_items_used
 
     for(i <- 0 until base.FETCH_WIDTH){
         var rdy1_vec = WireInit(VecInit(
@@ -138,26 +173,29 @@ class Dispatch extends Module
         rdy2_vec(base.ALU_NUM + base.AGU_NUM) := io.prf_valid_rs2_rdata(i)
         for(j <- 0 until base.ALU_NUM){
             rdy1_vec(j) := 
-                (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & 
+                (io.cdb_i.alu_channel(j).phy_reg_id === rob_items_used(i).ps1) & 
                 io.cdb_i.alu_channel(j).valid &
-                (io.cdb_i.alu_channel(j).arch_reg_id === rob_item_reg(i).rs1)
+                (io.cdb_i.alu_channel(j).arch_reg_id === rob_items_used(i).rs1)
             rdy2_vec(j) := 
-                (io.cdb_i.alu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & 
+                (io.cdb_i.alu_channel(j).phy_reg_id === rob_items_used(i).ps2) & 
                 io.cdb_i.alu_channel(j).valid &
-                (io.cdb_i.alu_channel(j).arch_reg_id === rob_item_reg(i).rs2)
+                (io.cdb_i.alu_channel(j).arch_reg_id === rob_items_used(i).rs2)
         }
         for(j <- 0 until base.AGU_NUM){
             rdy1_vec(j + base.ALU_NUM) := 
-                (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps1) & 
+                (io.cdb_i.agu_channel(j).phy_reg_id === rob_items_used(i).ps1) & 
                 io.cdb_i.agu_channel(j).valid &
-                (io.cdb_i.agu_channel(j).arch_reg_id === rob_item_reg(i).rs1)
+                (io.cdb_i.agu_channel(j).arch_reg_id === rob_items_used(i).rs1)
             rdy2_vec(j + base.ALU_NUM) := 
-                (io.cdb_i.agu_channel(j).phy_reg_id === rob_item_reg(i).ps2) & 
+                (io.cdb_i.agu_channel(j).phy_reg_id === rob_items_used(i).ps2) & 
                 io.cdb_i.agu_channel(j).valid &
-                (io.cdb_i.agu_channel(j).arch_reg_id === rob_item_reg(i).rs2)
+                (io.cdb_i.agu_channel(j).arch_reg_id === rob_items_used(i).rs2)
         }
-        rob_items(i).rdy1 := (rdy1_vec.asUInt.orR & ~(rs1_match_reg(i).orR)) | rob_item_reg(i).rdy1
-        rob_items(i).rdy2 := (rdy2_vec.asUInt.orR & ~(rs2_match_reg(i).orR)) | rob_item_reg(i).rdy2   
+        rob_items_o(i).rdy1 := (rdy1_vec.asUInt.orR & ~(rs1_match_reg(i).orR) & rob_items_used(i).HasRs1) | rob_items_used(i).rdy1
+        rob_items_o(i).rdy2 := (rdy2_vec.asUInt.orR & ~(rs2_match_reg(i).orR) & rob_items_used(i).HasRs2) | rob_items_used(i).rdy2 
+        /* 更新ready位 */
+        rob_item_stall_reg(i).rdy1 := Mux(~stall, rob_items_o(i).rdy1, rob_item_stall_reg(i).rdy1)
+        rob_item_stall_reg(i).rdy2 := Mux(~stall, rob_items_o(i).rdy2, rob_item_stall_reg(i).rdy2)
     }
 
     var is_alu_vec = WireInit(VecInit(
@@ -394,13 +432,13 @@ class Dispatch extends Module
     }
 
     /* connect */
-    io.agu_items_cnt_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, agu_items_cnt_o, 0.U)
-    io.alu_items_vec_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, alu_items_vec_o, VecInit(
+    io.agu_items_cnt_o := Mux(stall, agu_items_cnt_o, 0.U)
+    io.alu_items_vec_o := Mux(stall, alu_items_vec_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)(
             (0.U).asTypeOf(new ROBItem)
         )
     ))
-    io.agu_items_vec_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, agu_items_vec_o, VecInit(
+    io.agu_items_vec_o := Mux(stall, agu_items_vec_o, VecInit(
         Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
     io.prf_valid_rs1_ren := prf_valid_rs1_ren
@@ -412,16 +450,16 @@ class Dispatch extends Module
     io.prf_valid_rd_waddr := prf_valid_rd_waddr
     io.prf_valid_rd_wdata := prf_valid_rd_wdata
 
-    io.rob_item_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, rob_items_o, VecInit(
+    io.rob_item_o := Mux(stall, rob_items_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    io.inst_valid_cnt_o := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, inst_valid_cnt_o, 0.U)
+    io.inst_valid_cnt_o := Mux(stall, inst_valid_cnt_o, 0.U)
 
-    io.store_buffer_write_en := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, store_flags, VecInit(
+    io.store_buffer_write_en := Mux(stall, store_flags, VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
-    io.store_buffer_item_o   := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, store_buffer_item_o, VecInit(
+    io.store_buffer_item_o   := Mux(stall, store_buffer_item_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new StoreBufferItem))
     ))
-    io.store_buffer_write_cnt := Mux(io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able, store_buffer_item_cnt, 0.U)
+    io.store_buffer_write_cnt := Mux(stall, store_buffer_item_cnt, 0.U)
 }

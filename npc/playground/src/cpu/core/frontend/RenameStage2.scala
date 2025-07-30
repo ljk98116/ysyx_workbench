@@ -121,7 +121,7 @@ class RenameStage2 extends Module
     /* 收到暂停信号，变化状态 */
     rat_rdata_state := ~(stall)
     /* 处于暂停状态,使用锁存的值,否则使用输入值 */
-    rat_rdata_vec_used := Mux(rat_rdata_state, rat_rdata_vec_stall_reg, io.rat_rdata_i)
+    rat_rdata_vec_used := Mux(rat_rdata_state & ~stall, rat_rdata_vec_stall_reg, io.rat_rdata_i)
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     /* 缓存上一个store指令的ROBID */
@@ -210,7 +210,7 @@ class RenameStage2 extends Module
         prio_dec.io.in := store_mask(i, 0)
         StoreIdxs(i) := Mux(store_mask(i, 0).orR & inst_valid_mask_reg(i), prio_dec.io.out, base.FETCH_WIDTH.U)
         rob_item_o(i).pc := pc_vec_reg(i)
-        rob_item_o(i).valid := inst_valid_mask_reg(i)
+        rob_item_o(i).valid := inst_valid_mask_reg(i) & stall
         rob_item_o(i).HasRd := DecodeRes_reg(i).HasRd
         rob_item_o(i).HasRs1 := DecodeRes_reg(i).HasRs1
         rob_item_o(i).HasRs2 := DecodeRes_reg(i).HasRs2
@@ -323,9 +323,9 @@ class RenameStage2 extends Module
             Seq.fill(base.FETCH_WIDTH * 3)((0.U)(base.AREG_WIDTH.W))
         )
     )
-    io.rat_wen_o := Mux((io.rob_state === 0.U), rat_wen_reg, 0.U)
-    io.rat_waddr_o := rat_waddr_reg
-    io.rat_wdata_o := rat_wdata_reg
+    io.rat_wen_o := Mux((io.rob_state === 0.U) & stall, rat_wen_reg, 0.U)
+    io.rat_waddr_o := Mux(stall, rat_waddr_reg, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.AREG_WIDTH.W))))
+    io.rat_wdata_o := Mux(stall, rat_wdata_reg, VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))))
 
     io.rob_item_o := Mux(
         io.rob_freeid_rd_able.asUInt.andR, 
