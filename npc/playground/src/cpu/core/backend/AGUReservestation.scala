@@ -84,11 +84,11 @@ class AGUReservestation(size : Int) extends Module
     issue_able1 := ~(
         (
             rob_item_reg(head + 1.U).HasRs1 & 
-            ~(rob_item_reg(head + 1.U).rdy1 | io.prf_valid_vec(rob_item_reg(head + 1.U).ps1))
+            ~(rob_item_reg(head + 1.U).rdy1)
         ) |
         (
             rob_item_reg(head + 1.U).HasRs2 & 
-            ~(rob_item_reg(head + 1.U).rdy2 | io.prf_valid_vec(rob_item_reg(head + 1.U).ps2))
+            ~(rob_item_reg(head + 1.U).rdy2)
         )
     ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail) & 
     ~(rob_item_reg(head + 1.U).isLoad & rob_item_reg(head).isStore) &
@@ -115,7 +115,11 @@ class AGUReservestation(size : Int) extends Module
 
         /* 是否是发射位置 */
         var is_issue_loc = WireInit(false.B)
-        is_issue_loc := (issue_able0 & (j.U === head)) | (issue_able1 & (j.U === (head + 1.U)))
+        is_issue_loc := 
+            (
+                (issue_able0 & (j.U === head)) & 
+                (issue_able1 & (j.U === (head + 1.U)))
+            ) | (issue_able0 & (j.U === head))
 
         rob_item_reg(j) := Mux(
             (is_issue_loc & io.read_able) | io.rat_flush_en,
@@ -133,7 +137,8 @@ class AGUReservestation(size : Int) extends Module
             false.B,
             Mux(
                 is_write_loc.asUInt.orR,
-                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps1),
+                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps1) | 
+                io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).rdy1,
                 rob_item_reg(j).rdy1 | 
                 io.prf_valid_vec(rob_item_reg(j).ps1)            
             )
@@ -144,7 +149,8 @@ class AGUReservestation(size : Int) extends Module
             false.B,
             Mux(
                 is_write_loc.asUInt.orR,
-                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps2),
+                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps2) |
+                io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).rdy2,
                 rob_item_reg(j).rdy2 | 
                 io.prf_valid_vec(rob_item_reg(j).ps2)            
             )

@@ -46,7 +46,7 @@ class ROB extends Module
     dontTouch(ROBBankRegs)
 
     var ROBIDLocMem = RegInit(VecInit(
-        Seq.fill(1 << base.ROBID_WIDTH)((0.U)(bankwidth.W))
+        Seq.fill(1 << base.ROBID_WIDTH)(((1 << bankwidth).U)((bankwidth + 1).W))
     ))
 
     var head = RegInit((0.U)(bankwidth.W))
@@ -83,21 +83,24 @@ class ROB extends Module
     }
 
     for(i <- 0 until base.ALU_NUM){
-        when(io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en){
-            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).rdy := true.B
-            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
-            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).targetBrAddr := io.cdb_i.alu_channel(i).branch_target_addr
-            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).hasException := io.cdb_i.alu_channel(i).has_exception
-            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)).ExceptionType := io.cdb_i.alu_channel(i).exception_type
+        when(io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth)){
+            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
+            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
+            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).targetBrAddr := io.cdb_i.alu_channel(i).branch_target_addr
+            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).hasException := io.cdb_i.alu_channel(i).has_exception
+            ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).ExceptionType := io.cdb_i.alu_channel(i).exception_type
+            ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id) := (1 << base.ROBID_WIDTH).U
         }
     }
     for(i <- 0 until base.AGU_NUM){
-        when(io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en){
-            ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).rdy := true.B
-            ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
+        when(io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth)){
+            ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
+            ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
+            ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id) := (1 << base.ROBID_WIDTH).U
         }
-        when(io.agu_valid(i) & io.agu_ls_flag(i) & (io.rob_state =/= "b11".U) & ~io.rat_flush_en){
-            ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))).rdy := true.B           
+        when(io.agu_valid(i) & io.agu_ls_flag(i) & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~ROBIDLocMem(io.agu_rob_id(i))(bankwidth)){
+            ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))).rdy := true.B  
+            ROBIDLocMem(io.agu_rob_id(i)) := (1 << base.ROBID_WIDTH).U         
         }
     }
 
@@ -105,9 +108,6 @@ class ROB extends Module
         when(io.robw_able & io.rob_item_i(i).valid){
             ROBBankRegs(i)(tail) := io.rob_item_i(i)
             ROBIDLocMem(io.rob_item_i(i).id) := tail
-        }.otherwise{//避免尾部没有覆盖
-            ROBBankRegs(i)(tail) := 0.U.asTypeOf(new ROBItem)
-            ROBIDLocMem(io.rob_item_i(i).id) := 0.U           
         }
     }
 

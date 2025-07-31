@@ -66,6 +66,7 @@ class RenameStage2 extends Module
         val prf_valid_rd_wen = Output(Vec(base.FETCH_WIDTH, Bool()))
         val prf_valid_rd_waddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
         val prf_valid_rd_wdata = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val prf_valid_vec = Input(Vec(1 << base.PREG_WIDTH, Bool()))
 
         /* control */
         val issue_wr_able = Input(Bool())
@@ -247,8 +248,6 @@ class RenameStage2 extends Module
         rob_item_o(i).rs2      := DecodeRes_reg(i).rs2
         rob_item_o(i).rd       := DecodeRes_reg(i).rd
         rob_item_o(i).rdy      := false.B
-        rob_item_o(i).rdy1     := DecodeRes_reg(i).rs1 === 0.U
-        rob_item_o(i).rdy2     := DecodeRes_reg(i).rs2 === 0.U
         /* 暂时所有分支指令均冲刷流水线 */
         rob_item_o(i).hasException := false.B
         rob_item_o(i).ExceptionType := ExceptionType.NORMAL.U
@@ -306,6 +305,8 @@ class RenameStage2 extends Module
                 )
             )
         }
+        rob_item_o(i).rdy1     := ((DecodeRes_reg(i).rs1 === 0.U) | io.prf_valid_vec(rob_item_o(i).ps1)) & ~rs1_match_reg(i).orR
+        rob_item_o(i).rdy2     := ((DecodeRes_reg(i).rs2 === 0.U) | io.prf_valid_vec(rob_item_o(i).ps2)) & ~rs2_match_reg(i).orR
     }
 
     /* 获取最后一个有效的store指令ROBID */

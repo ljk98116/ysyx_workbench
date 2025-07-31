@@ -210,6 +210,7 @@ class CPUCore(memfile: String) extends Module
     rename2.io.rat_wdata_i          := rename1.io.rat_wdata_o
     rename2.io.rs1_match            := rename1.io.rs1_match
     rename2.io.rs2_match            := rename1.io.rs2_match
+    rename2.io.prf_valid_vec        := prf.io.prf_valid_vec
 
     rename2.io.bht_idx_vec_i        := rename1.io.bht_idx_vec_o
     rename2.io.global_pht_idx_vec_i := rename1.io.global_pht_idx_vec_o

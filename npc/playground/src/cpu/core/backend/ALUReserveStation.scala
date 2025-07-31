@@ -110,11 +110,11 @@ class ALUReserveStation(size: Int) extends Module {
         issue_able_vec(i) := ~(
             (
                 rob_item_reg(i).HasRs1 & 
-                ~(rob_item_reg(i).rdy1 | io.prf_valid_vec(rob_item_reg(i).ps1))
+                ~(rob_item_reg(i).rdy1)
             ) | 
             (
                 rob_item_reg(i).HasRs2 & 
-                ~(rob_item_reg(i).rdy2 | io.prf_valid_vec(rob_item_reg(i).ps2))
+                ~(rob_item_reg(i).rdy2)
             )) & rob_item_reg(i).valid
     }
     /* 能发射且比其他能发射的矩阵年长 */
@@ -164,12 +164,12 @@ class ALUReserveStation(size: Int) extends Module {
                 }
                 age_mat(i)(j) := false.B
             }
-            rob_item_reg(i).rdy1 := io.prf_valid_vec(io.rob_item_i.ps1)
-            rob_item_reg(i).rdy2 := io.prf_valid_vec(io.rob_item_i.ps2)
+            rob_item_reg(i).rdy1 := io.prf_valid_vec(io.rob_item_i.ps1) | io.rob_item_i.rdy1
+            rob_item_reg(i).rdy2 := io.prf_valid_vec(io.rob_item_i.ps2) | io.rob_item_i.rdy2
 
         }.elsewhen(~io.rat_flush_en & (i.U =/= freeIdBuffer.io.free_id_o) & rob_item_reg(i).valid & (i.U =/= issue_idx)){
-            rob_item_reg(i).rdy1 := io.prf_valid_vec(io.rob_item_i.ps1) | rob_item_reg(i).rdy1
-            rob_item_reg(i).rdy2 := io.prf_valid_vec(io.rob_item_i.ps2) | rob_item_reg(i).rdy2
+            rob_item_reg(i).rdy1 := io.prf_valid_vec(rob_item_reg(i).ps1) | rob_item_reg(i).rdy1
+            rob_item_reg(i).rdy2 := io.prf_valid_vec(rob_item_reg(i).ps2) | rob_item_reg(i).rdy2
         }.elsewhen((i.U === issue_idx) & freeIdBuffer.io.issued_i & ~io.rat_flush_en){
             for(j <- 0 until size){
                 age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
