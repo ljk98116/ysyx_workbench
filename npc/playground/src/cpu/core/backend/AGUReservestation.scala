@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 
 import cpu.config._
+import cpu.core.utils._
 
 /* 顺序接收ROB项，顺序发射 */
 /* 异常时清空队列 */
@@ -28,7 +29,8 @@ class AGUReservestation(size : Int) extends Module
         val agu_channel_rs1_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val agu_channel_rs2_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         /* 总线状态 */
-        var cdb_i = Input(new CDB)
+        // var cdb_i = Input(new CDB)
+        val prf_valid_vec = Input(Vec(1 << base.PREG_WIDTH, Bool()))
         var rob_item_o = Output(Vec(base.AGU_NUM, new ROBItem))
         var read_able = Output(Bool())
         var write_able = Output(Bool())
@@ -52,100 +54,102 @@ class AGUReservestation(size : Int) extends Module
         Seq.fill(base.AGU_NUM)((0.U)asTypeOf(new ROBItem))
     ))
 
+    /* 更新寄存器ready状态 */
     for(j <- 0 until base.FETCH_WIDTH){
-        var issue_able_rs1_vec = WireInit(VecInit(
-            Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
-        ))
-        var issue_able_rs2_vec = WireInit(VecInit(
-            Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
-        ))
-        var rob_item_update = WireInit((0.U).asTypeOf(new ROBItem))
-        rob_item_update := io.rob_item_i(j)
-        for(i <- 0 until base.ALU_NUM){
-            issue_able_rs1_vec(i) := 
-                (io.rob_item_i(j).ps1 === io.cdb_i.alu_channel(i).phy_reg_id) &
-                io.cdb_i.alu_channel(i).valid &
-                (io.cdb_i.alu_channel(i).arch_reg_id === io.rob_item_i(j).rs1)
-            issue_able_rs2_vec(i) := 
-                (io.rob_item_i(j).ps2 === io.cdb_i.alu_channel(i).phy_reg_id) &
-                io.cdb_i.alu_channel(i).valid &
-                (io.cdb_i.alu_channel(i).arch_reg_id === io.rob_item_i(j).rs2)
-        }
-        for(i <- 0 until base.AGU_NUM){
-            issue_able_rs1_vec(i + base.ALU_NUM) := 
-                (io.rob_item_i(j).ps1 === io.cdb_i.agu_channel(i).phy_reg_id) &
-                io.cdb_i.agu_channel(i).valid &
-                (io.cdb_i.agu_channel(i).arch_reg_id === io.rob_item_i(j).rs1)
-            issue_able_rs2_vec(i + base.ALU_NUM) := 
-                (io.rob_item_i(j).ps2 === io.cdb_i.agu_channel(i).phy_reg_id) &
-                io.cdb_i.agu_channel(i).valid &
-                (io.cdb_i.agu_channel(i).arch_reg_id === io.rob_item_i(j).rs2)
-        }
-        rob_item_update.rdy1 := issue_able_rs1_vec.asUInt.orR | io.rob_item_i(j).rdy1
-        rob_item_update.rdy2 := issue_able_rs2_vec.asUInt.orR | io.rob_item_i(j).rdy2
-        when(io.write_able & ~io.rat_flush_en & io.rob_item_i(j).valid & (io.rob_state === 0.U)){
-            rob_item_reg(tail + j.U) := rob_item_update
-        }
+        rob_item_reg(j).rdy1 := rob_item_reg(j).rdy1 | (
+            io.prf_valid_vec(rob_item_reg(j).ps1) &
+            rob_item_reg(j).HasRs1
+        )
+        rob_item_reg(j).rdy2 := rob_item_reg(j).rdy2 | (
+            io.prf_valid_vec(rob_item_reg(j).ps2) &
+            rob_item_reg(j).HasRs2
+        )
     }
 
+    /* 检查队列前2个位置 */
+    var issue_able0 = WireInit(false.B)
+    issue_able0 := ~(
+        (
+            rob_item_reg(head).HasRs1 & 
+            ~(rob_item_reg(head).rdy1 | io.prf_valid_vec(rob_item_reg(head).ps1))
+        ) |
+        (
+            rob_item_reg(head).HasRs2 & 
+            ~(rob_item_reg(head).rdy2 | io.prf_valid_vec(rob_item_reg(head).ps2))
+        )
+    ) & rob_item_reg(head).valid & (head =/= tail)
+    rob_item_o(0) := Mux(issue_able0, rob_item_reg(head), (0.U).asTypeOf(new ROBItem))
+
+    var issue_able1 = WireInit(false.B)
+    issue_able1 := ~(
+        (
+            rob_item_reg(head + 1.U).HasRs1 & 
+            ~(rob_item_reg(head + 1.U).rdy1 | io.prf_valid_vec(rob_item_reg(head + 1.U).ps1))
+        ) |
+        (
+            rob_item_reg(head + 1.U).HasRs2 & 
+            ~(rob_item_reg(head + 1.U).rdy2 | io.prf_valid_vec(rob_item_reg(head + 1.U).ps2))
+        )
+    ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail) & 
+    ~(rob_item_reg(head + 1.U).isLoad & rob_item_reg(head).isStore) &
+    ~(rob_item_reg(head + 1.U).isStore & rob_item_reg(head).isLoad)
+    rob_item_o(1) := Mux(issue_able1, rob_item_reg(head + 1.U), (0.U).asTypeOf(new ROBItem))
+
     /* 更新 */
+    /* 不是写入位置或者发射位置，不更新 */
+    /* 写入位置更新rdy1, rdy2 */
+    /* 发射位置将该位置置为0 */
     for(j <- 0 until size){
+        /* 是否是新的item写入的位置 */
         var is_write_loc = WireInit(VecInit(
             Seq.fill(base.FETCH_WIDTH)(false.B)
         ))
         for(k <- 0 until base.FETCH_WIDTH){
             is_write_loc(k) := io.rob_item_i(k).valid & ((tail + k.U) === j.U)
         }
-        when(~io.rat_flush_en & rob_item_reg(j).valid & (io.rob_state === 0.U) & ~(is_write_loc.asUInt.orR)){
-            var issue_able_rs1_vec = WireInit(VecInit(
-                Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
-            ))
-            var issue_able_rs2_vec = WireInit(VecInit(
-                Seq.fill(base.AGU_NUM + base.ALU_NUM)(false.B)
-            ))
-            for(i <- 0 until base.ALU_NUM){
-                issue_able_rs1_vec(i) := 
-                    (rob_item_reg(j).ps1 === io.cdb_i.alu_channel(i).phy_reg_id) &
-                    io.cdb_i.alu_channel(i).valid &
-                    (io.cdb_i.alu_channel(i).arch_reg_id === rob_item_reg(j).rs1)
-                issue_able_rs2_vec(i) := 
-                    (rob_item_reg(j).ps2 === io.cdb_i.alu_channel(i).phy_reg_id) &
-                    io.cdb_i.alu_channel(i).valid &
-                    (io.cdb_i.alu_channel(i).arch_reg_id === rob_item_reg(j).rs2)
-            }
-            for(i <- 0 until base.AGU_NUM){
-                issue_able_rs1_vec(i + base.ALU_NUM) := 
-                    (rob_item_reg(j).ps1 === io.cdb_i.agu_channel(i).phy_reg_id) &
-                    io.cdb_i.agu_channel(i).valid &
-                    (io.cdb_i.agu_channel(i).arch_reg_id === rob_item_reg(j).rs1)
-                issue_able_rs2_vec(i + base.ALU_NUM) := 
-                    (rob_item_reg(j).ps2 === io.cdb_i.agu_channel(i).phy_reg_id) &
-                    io.cdb_i.agu_channel(i).valid &
-                    (io.cdb_i.agu_channel(i).arch_reg_id === rob_item_reg(j).rs2)
-            }
-            rob_item_reg(j).rdy1 := issue_able_rs1_vec.asUInt.orR | rob_item_reg(j).rdy1
-            rob_item_reg(j).rdy2 := issue_able_rs2_vec.asUInt.orR | rob_item_reg(j).rdy2
-        }.elsewhen(io.rat_flush_en){
-            rob_item_reg(j) := 0.U.asTypeOf(new ROBItem)
-        }
+        /* 计算写入位置 */
+        var write_loc = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
+        val prio_enc = Module(new PriorityEncoder(base.FETCH_WIDTH))
+        prio_enc.io.val_i := is_write_loc.asUInt
+        write_loc := Mux(is_write_loc.asUInt.orR, prio_enc.io.idx_o, base.FETCH_WIDTH.U)
+
+        /* 是否是发射位置 */
+        var is_issue_loc = WireInit(false.B)
+        is_issue_loc := (issue_able0 & (j.U === head)) | (issue_able1 & (j.U === (head + 1.U)))
+
+        rob_item_reg(j) := Mux(
+            (is_issue_loc & io.read_able) | io.rat_flush_en,
+            0.U.asTypeOf(new ROBItem),
+            Mux(
+                is_write_loc.asUInt.orR,
+                io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)),
+                rob_item_reg(j)
+            )
+        )
+
+        /* 更新寄存器状态位 */
+        rob_item_reg(j).rdy1 := Mux(
+            (is_issue_loc & io.read_able) | io.rat_flush_en,
+            false.B,
+            Mux(
+                is_write_loc.asUInt.orR,
+                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps1),
+                rob_item_reg(j).rdy1 | 
+                io.prf_valid_vec(rob_item_reg(j).ps1)            
+            )
+        )
+
+        rob_item_reg(j).rdy2 := Mux(
+            (is_issue_loc & io.read_able) | io.rat_flush_en,
+            false.B,
+            Mux(
+                is_write_loc.asUInt.orR,
+                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps2),
+                rob_item_reg(j).rdy2 | 
+                io.prf_valid_vec(rob_item_reg(j).ps2)            
+            )
+        )
     }
-
-    /* 检查队列前2个位置 */
-    var issue_able0 = WireInit(false.B)
-    issue_able0 := ~(
-        (rob_item_reg(head).HasRs1 & ~rob_item_reg(head).rdy1) |
-        (rob_item_reg(head).HasRs2 & ~rob_item_reg(head).rdy2)
-    ) & rob_item_reg(head).valid & (head =/= tail)
-    rob_item_o(0) := Mux(issue_able0, rob_item_reg(head), (0.U).asTypeOf(new ROBItem))
-
-    var issue_able1 = WireInit(false.B)
-    issue_able1 := ~(
-        (rob_item_reg(head + 1.U).HasRs1 & ~rob_item_reg(head + 1.U).rdy1) |
-        (rob_item_reg(head + 1.U).HasRs2 & ~rob_item_reg(head + 1.U).rdy2)
-    ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail) & 
-    ~(rob_item_reg(head + 1.U).isLoad & rob_item_reg(head).isStore) &
-    ~(rob_item_reg(head + 1.U).isStore & rob_item_reg(head).isLoad)
-    rob_item_o(1) := Mux(issue_able1, rob_item_reg(head + 1.U), (0.U).asTypeOf(new ROBItem))
 
     io.prf_rs1_data_ren(0) := Mux(issue_able0, rob_item_o(0).HasRs1 & (rob_item_o(0).rs1 =/= 0.U), false.B)
     io.prf_rs1_data_raddr(0) := Mux(issue_able0, rob_item_o(0).ps1, 0.U)

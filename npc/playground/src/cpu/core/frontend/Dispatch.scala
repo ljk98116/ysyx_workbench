@@ -23,24 +23,6 @@ class Dispatch extends Module
         val agu_items_vec_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val agu_items_cnt_o = Output(UInt((log2Ceil(FETCH_WIDTH) + 1).W))
 
-        val rs1_match = Input(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
-        val rs2_match = Input(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
-
-        /* 总线接口 */
-        val cdb_i = Input(new CDB)
-        /* PRF接口 */
-        val prf_valid_rs1_ren = Output(Vec(base.FETCH_WIDTH, Bool()))
-        val prf_valid_rs2_ren = Output(Vec(base.FETCH_WIDTH, Bool()))
-        val prf_valid_rs1_raddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
-        val prf_valid_rs2_raddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
-        val prf_valid_rs1_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
-        val prf_valid_rs2_rdata = Input(Vec(base.FETCH_WIDTH, Bool()))
-
-        /* PRF寄存器状态设置 */
-        val prf_valid_rd_wen = Output(Vec(base.FETCH_WIDTH, Bool()))
-        val prf_valid_rd_waddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
-        val prf_valid_rd_wdata = Output(Vec(base.FETCH_WIDTH, Bool()))
-
         /* store buffer write */
         val store_buffer_wr_able = Input(Bool())
         val store_buffer_write_en = Output(Vec(base.FETCH_WIDTH, Bool()))
@@ -64,139 +46,17 @@ class Dispatch extends Module
     rob_item_reg := Mux(stall, io.rob_item_i, rob_item_reg)
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_cnt_reg := Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg)
-
-    /* 物理寄存器有效状态使能 */
-    var prf_valid_rs1_ren = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)(false.B)
-    ))
-    var prf_valid_rs2_ren = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)(false.B)
-    ))    
-    var prf_valid_rs1_raddr = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
-    ))
-    var prf_valid_rs2_raddr = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
-    ))
-
-    for(i <- 0 until base.FETCH_WIDTH){
-        prf_valid_rs1_ren(i) := rob_item_reg(i).HasRs1
-        prf_valid_rs1_raddr(i) := rob_item_reg(i).ps1
-        prf_valid_rs2_ren(i) := rob_item_reg(i).HasRs2
-        prf_valid_rs2_raddr(i) := rob_item_reg(i).ps2
-    }    
-
-    var prf_valid_rd_wen = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)(false.B)
-    ))
-    var prf_valid_rd_waddr = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
-    ))
-    var prf_valid_rd_wdata = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)(false.B)
-    ))
-
-    for(i <- 0 until base.FETCH_WIDTH){
-        prf_valid_rd_wen(i) := rob_item_reg(i).HasRd & (rob_item_reg(i).rd =/= 0.U)
-        prf_valid_rd_waddr(i) := rob_item_reg(i).pd
-        prf_valid_rd_wdata(i) := false.B
-    }
-
-    var rs1_match_reg = RegInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
-    ))
-    var rs2_match_reg = RegInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
-    ))
-
-    rs1_match_reg := Mux(stall, io.rs1_match, rs1_match_reg)
-    rs2_match_reg := Mux(stall, io.rs2_match, rs2_match_reg)    
+    inst_valid_cnt_reg := Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg) 
 
     /* 使用总线信号以及物理寄存器状态更新ROB项依赖状态 */
-    var rob_items = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
-    ))
     var rob_items_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
 
     var inst_valid_cnt_o = WireInit((0.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
     inst_valid_cnt_o := inst_valid_cnt_reg
-    /* 总线状态更新stall reg与rob_item_reg仲裁后的wire值 */
-    /* 暂停时会记录更新的结果到stall reg */
-    /* 暂停处理状态机 */
-    /* 暂停状态使用暂存的指令 */
-    var stall_state = RegInit(false.B)
-    var rob_item_stall_reg = RegInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
-    ))
-    var rob_items_used = WireInit(VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
-    ))
 
-    /* 收到暂停信号但不是暂停状态的那一刻更新 */
-    rob_item_stall_reg := Mux(
-        ~(stall) & ~stall_state,  
-        io.rob_item_i,
-        rob_item_stall_reg
-    )
-    /* 收到暂停信号，变化状态 */
-    stall_state := ~(stall)
-    /* 
-        需要时刻监控总线信号，并在对应周期更新结果
-        正常时，使用rob_item_reg的值更新并输出
-        不是暂停状态收到暂停信号，使用输入值，并使用总线结果更新暂停时锁存值，存入stall_reg
-        处于暂停状态收到解除暂停，使用暂停时锁存值，利用总线结果更新锁存值输出结果
-        处于暂停状态且没有收到解除暂停的信号,使用锁存的值，利用总线结果更新，存入stall reg 
-    */
-    rob_items_used := Mux(
-        ~stall_state & stall,
-        rob_item_reg,
-        Mux(
-            stall_state,
-            rob_item_stall_reg,
-            io.rob_item_i
-        )
-    )
-    rob_items_o := rob_items_used
-
-    for(i <- 0 until base.FETCH_WIDTH){
-        var rdy1_vec = WireInit(VecInit(
-            Seq.fill(base.ALU_NUM + base.AGU_NUM + 1)(false.B)
-        ))
-        var rdy2_vec = WireInit(VecInit(
-            Seq.fill(base.ALU_NUM + base.AGU_NUM + 1)(false.B)
-        ))        
-        /* 注意写入PRF的依赖, 前面不能出现写入 */
-        rdy1_vec(base.ALU_NUM + base.AGU_NUM) := io.prf_valid_rs1_rdata(i)
-        rdy2_vec(base.ALU_NUM + base.AGU_NUM) := io.prf_valid_rs2_rdata(i)
-        for(j <- 0 until base.ALU_NUM){
-            rdy1_vec(j) := 
-                (io.cdb_i.alu_channel(j).phy_reg_id === rob_items_used(i).ps1) & 
-                io.cdb_i.alu_channel(j).valid &
-                (io.cdb_i.alu_channel(j).arch_reg_id === rob_items_used(i).rs1)
-            rdy2_vec(j) := 
-                (io.cdb_i.alu_channel(j).phy_reg_id === rob_items_used(i).ps2) & 
-                io.cdb_i.alu_channel(j).valid &
-                (io.cdb_i.alu_channel(j).arch_reg_id === rob_items_used(i).rs2)
-        }
-        for(j <- 0 until base.AGU_NUM){
-            rdy1_vec(j + base.ALU_NUM) := 
-                (io.cdb_i.agu_channel(j).phy_reg_id === rob_items_used(i).ps1) & 
-                io.cdb_i.agu_channel(j).valid &
-                (io.cdb_i.agu_channel(j).arch_reg_id === rob_items_used(i).rs1)
-            rdy2_vec(j + base.ALU_NUM) := 
-                (io.cdb_i.agu_channel(j).phy_reg_id === rob_items_used(i).ps2) & 
-                io.cdb_i.agu_channel(j).valid &
-                (io.cdb_i.agu_channel(j).arch_reg_id === rob_items_used(i).rs2)
-        }
-        rob_items_o(i).rdy1 := (rdy1_vec.asUInt.orR & ~(rs1_match_reg(i).orR) & rob_items_used(i).HasRs1) | rob_items_used(i).rdy1
-        rob_items_o(i).rdy2 := (rdy2_vec.asUInt.orR & ~(rs2_match_reg(i).orR) & rob_items_used(i).HasRs2) | rob_items_used(i).rdy2 
-        /* 更新ready位 */
-        rob_item_stall_reg(i).rdy1 := Mux(~stall, rob_items_o(i).rdy1, rob_item_stall_reg(i).rdy1)
-        rob_item_stall_reg(i).rdy2 := Mux(~stall, rob_items_o(i).rdy2, rob_item_stall_reg(i).rdy2)
-    }
+    rob_items_o := rob_item_reg
 
     var is_alu_vec = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
@@ -215,7 +75,7 @@ class Dispatch extends Module
     ))
     
     for(i <- 0 until base.ALU_NUM){
-        alu_items_vec_o(i) := Mux(is_alu_vec(i), rob_items(i), (0.U).asTypeOf(new ROBItem))
+        alu_items_vec_o(i) := Mux(is_alu_vec(i), rob_item_reg(i), (0.U).asTypeOf(new ROBItem))
     }
 
     var agu_items_vec_o = WireInit(VecInit(
@@ -237,66 +97,66 @@ class Dispatch extends Module
     switch(is_agu_vec.asUInt){
         is("b0000".U){}
         is("b0001".U){
-            agu_items_vec_o(0) := rob_items(0)
+            agu_items_vec_o(0) := rob_item_reg(0)
         }
         is("b0010".U){
-            agu_items_vec_o(0) := rob_items(1)
+            agu_items_vec_o(0) := rob_item_reg(1)
         }
         is("b0011".U){
-            agu_items_vec_o(0) := rob_items(0)
-            agu_items_vec_o(1) := rob_items(1)
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)
         }
         is("b0100".U){
-            agu_items_vec_o(0) := rob_items(2)
+            agu_items_vec_o(0) := rob_item_reg(2)
         }
         is("b0101".U){
-            agu_items_vec_o(0) := rob_items(0)
-            agu_items_vec_o(1) := rob_items(2)
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(2)
         }
         is("b0110".U){
-            agu_items_vec_o(0) := rob_items(1)
-            agu_items_vec_o(1) := rob_items(2)
+            agu_items_vec_o(0) := rob_item_reg(1)
+            agu_items_vec_o(1) := rob_item_reg(2)
         }
         is("b0111".U){
-            agu_items_vec_o(0) := rob_items(0)
-            agu_items_vec_o(1) := rob_items(1)
-            agu_items_vec_o(2) := rob_items(2)
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)
+            agu_items_vec_o(2) := rob_item_reg(2)
         }
         is("b1000".U){
-            agu_items_vec_o(0) := rob_items(3)
+            agu_items_vec_o(0) := rob_item_reg(3)
         }
         is("b1001".U){
-            agu_items_vec_o(0) := rob_items(0)
-            agu_items_vec_o(1) := rob_items(3)
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(3)
         }        
         is("b1010".U){
-            agu_items_vec_o(0) := rob_items(1)
-            agu_items_vec_o(1) := rob_items(3)
+            agu_items_vec_o(0) := rob_item_reg(1)
+            agu_items_vec_o(1) := rob_item_reg(3)
         }    
         is("b1011".U){
-            agu_items_vec_o(0) := rob_items(0)
-            agu_items_vec_o(1) := rob_items(1)
-            agu_items_vec_o(2) := rob_items(3)
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)
+            agu_items_vec_o(2) := rob_item_reg(3)
         }    
         is("b1100".U){
-            agu_items_vec_o(0) := rob_items(2)
-            agu_items_vec_o(1) := rob_items(3)            
+            agu_items_vec_o(0) := rob_item_reg(2)
+            agu_items_vec_o(1) := rob_item_reg(3)            
         }
         is("b1101".U){
-            agu_items_vec_o(0) := rob_items(0)
-            agu_items_vec_o(1) := rob_items(2)       
-            agu_items_vec_o(2) := rob_items(3)     
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(2)       
+            agu_items_vec_o(2) := rob_item_reg(3)     
         }
         is("b1110".U){
-            agu_items_vec_o(0) := rob_items(1)
-            agu_items_vec_o(1) := rob_items(2)       
-            agu_items_vec_o(2) := rob_items(3)            
+            agu_items_vec_o(0) := rob_item_reg(1)
+            agu_items_vec_o(1) := rob_item_reg(2)       
+            agu_items_vec_o(2) := rob_item_reg(3)            
         } 
         is("b1111".U){
-            agu_items_vec_o(0) := rob_items(0)
-            agu_items_vec_o(1) := rob_items(1)       
-            agu_items_vec_o(2) := rob_items(2)
-            agu_items_vec_o(3) := rob_items(3)            
+            agu_items_vec_o(0) := rob_item_reg(0)
+            agu_items_vec_o(1) := rob_item_reg(1)       
+            agu_items_vec_o(2) := rob_item_reg(2)
+            agu_items_vec_o(3) := rob_item_reg(3)            
         }       
     }
 
@@ -441,14 +301,6 @@ class Dispatch extends Module
     io.agu_items_vec_o := Mux(stall, agu_items_vec_o, VecInit(
         Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
-    io.prf_valid_rs1_ren := prf_valid_rs1_ren
-    io.prf_valid_rs1_raddr := prf_valid_rs1_raddr
-    io.prf_valid_rs2_ren := prf_valid_rs2_ren
-    io.prf_valid_rs2_raddr := prf_valid_rs2_raddr
-
-    io.prf_valid_rd_wen := prf_valid_rd_wen
-    io.prf_valid_rd_waddr := prf_valid_rd_waddr
-    io.prf_valid_rd_wdata := prf_valid_rd_wdata
 
     io.rob_item_o := Mux(stall, rob_items_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))

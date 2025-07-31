@@ -232,31 +232,31 @@ class CPUCore(memfile: String) extends Module
 
     /* rename2 -> dispatch */
     dispatch.io.rob_item_i          := rename2.io.rob_item_o
-    dispatch.io.rs1_match           := rename2.io.rs1_match_o
-    dispatch.io.rs2_match           := rename2.io.rs2_match_o
+    // dispatch.io.rs1_match           := rename2.io.rs1_match_o
+    // dispatch.io.rs2_match           := rename2.io.rs2_match_o
 
     dontTouch(dispatch.io.rob_item_i)
     dontTouch(dispatch.io.rob_item_o)
 
     dispatch.io.inst_valid_cnt_i    := rename2.io.inst_valid_cnt_o
-    dispatch.io.cdb_i               := cdb
+    // dispatch.io.cdb_i               := cdb
 
     /* prf -> dispatch */
-    dispatch.io.prf_valid_rs1_rdata := prf.io.prf_valid_rs1_rdata
-    dispatch.io.prf_valid_rs2_rdata := prf.io.prf_valid_rs2_rdata
+    // dispatch.io.prf_valid_rs1_rdata := prf.io.prf_valid_rs1_rdata
+    // dispatch.io.prf_valid_rs2_rdata := prf.io.prf_valid_rs2_rdata
 
     /* dispatch -> ROB */
     rob_buffer.io.rob_item_i        := dispatch.io.rob_item_o
     dontTouch(rob_buffer.io.rob_item_i)
 
     /* dispatch -> prf */
-    prf.io.prf_valid_rs1_ren        := dispatch.io.prf_valid_rs1_ren
-    prf.io.prf_valid_rs1_raddr      := dispatch.io.prf_valid_rs1_raddr
-    prf.io.prf_valid_rs2_ren        := dispatch.io.prf_valid_rs2_ren
-    prf.io.prf_valid_rs2_raddr      := dispatch.io.prf_valid_rs2_raddr
-    prf.io.prf_valid_rd_wen         := dispatch.io.prf_valid_rd_wen
-    prf.io.prf_valid_rd_waddr       := dispatch.io.prf_valid_rd_waddr
-    prf.io.prf_valid_rd_wdata       := dispatch.io.prf_valid_rd_wdata
+    // prf.io.prf_valid_rs1_ren        := dispatch.io.prf_valid_rs1_ren
+    // prf.io.prf_valid_rs1_raddr      := dispatch.io.prf_valid_rs1_raddr
+    // prf.io.prf_valid_rs2_ren        := dispatch.io.prf_valid_rs2_ren
+    // prf.io.prf_valid_rs2_raddr      := dispatch.io.prf_valid_rs2_raddr
+    prf.io.prf_valid_rd_wen         := rename2.io.prf_valid_rd_wen
+    prf.io.prf_valid_rd_waddr       := rename2.io.prf_valid_rd_waddr
+    prf.io.prf_valid_rd_wdata       := rename2.io.prf_valid_rd_wdata
 
     /* dispatch -> IssueStage */
     // dontTouch(dispatch.io.alu_items_vec_o)
@@ -270,7 +270,7 @@ class CPUCore(memfile: String) extends Module
     storebuffer.io.store_buffer_item_i   := dispatch.io.store_buffer_item_o
     storebuffer.io.store_buffer_write_cnt := dispatch.io.store_buffer_write_cnt
     
-    issue.io.cdb_i                  := cdb
+    // issue.io.cdb_i                  := cdb
 
     /* IssueStage -> RegReadStage */
     // regread.io.alu_fu_items_i       := issue.io.alu_fu_items_o
@@ -293,6 +293,7 @@ class CPUCore(memfile: String) extends Module
     /* PRF -> IssueStage */
     issue.io.prf_rs1_data_rdata   := prf.io.prf_rs1_data_rdata
     issue.io.prf_rs2_data_rdata   := prf.io.prf_rs2_data_rdata
+    issue.io.prf_valid_vec := prf.io.prf_valid_vec
 
     /* RegRead -> FU */
     for(i <- 0 until base.ALU_NUM){

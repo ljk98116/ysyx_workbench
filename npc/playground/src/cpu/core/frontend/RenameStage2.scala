@@ -62,8 +62,10 @@ class RenameStage2 extends Module
         val rob_item_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val inst_valid_cnt_o = Output(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
 
-        val rs1_match_o = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
-        val rs2_match_o = Output(Vec(base.FETCH_WIDTH, UInt(base.FETCH_WIDTH.W)))
+        /* PRF寄存器状态设置 */
+        val prf_valid_rd_wen = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val prf_valid_rd_waddr = Output(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
+        val prf_valid_rd_wdata = Output(Vec(base.FETCH_WIDTH, Bool()))
 
         /* control */
         val issue_wr_able = Input(Bool())
@@ -192,6 +194,22 @@ class RenameStage2 extends Module
             Seq.fill(base.FETCH_WIDTH)((0.U)(log2Ceil(base.FETCH_WIDTH).W))
         )
     )
+
+    var prf_valid_rd_wen = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var prf_valid_rd_waddr = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PREG_WIDTH.W))
+    ))
+    var prf_valid_rd_wdata = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        prf_valid_rd_wen(i) := DecodeRes_reg(i).HasRd & (DecodeRes_reg(i).rd =/= 0.U)
+        prf_valid_rd_waddr(i) := rob_item_o(i).pd
+        prf_valid_rd_wdata(i) := false.B
+    }
 
     /* 找上一个store指令的robid */
     var store_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
@@ -334,10 +352,7 @@ class RenameStage2 extends Module
     )
     io.inst_valid_cnt_o := Mux(io.rob_freeid_rd_able.asUInt.andR, inst_valid_cnt_reg, 0.U)
 
-    io.rs1_match_o := Mux(io.rob_freeid_rd_able.asUInt.andR, rs1_match_reg, VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
-    ))
-    io.rs2_match_o := Mux(io.rob_freeid_rd_able.asUInt.andR, rs2_match_reg, VecInit(
-        Seq.fill(base.FETCH_WIDTH)((0.U)(base.FETCH_WIDTH.W))
-    ))
+    io.prf_valid_rd_wen := prf_valid_rd_wen
+    io.prf_valid_rd_waddr := prf_valid_rd_waddr
+    io.prf_valid_rd_wdata := prf_valid_rd_wdata
 }
