@@ -64,10 +64,22 @@ class MemStage3 extends Module{
         when(rob_item_reg(i).valid){
             mem_read_data_mid(i) := Mux(~io.storebuffer_rdata_valid(i), io.mem_read_data_i(i), io.storebuffer_rdata(i))
             /* load处理 */
-            switch(mem_read_mask_reg(i)){
-                is("b1111".U){
-                    mem_read_data_o := mem_read_data_mid
+            switch(rob_item_reg(i).funct3){
+                is(Funct3.LB){
+                    mem_read_data_o(i) := Cat(Fill(24, mem_read_data_mid(i)(7)), mem_read_data_mid(i)(7, 0))
                 }
+                is(Funct3.LBU){
+                    mem_read_data_o(i) := Cat(Fill(24, false.B), mem_read_data_mid(i)(7, 0))
+                }
+                is(Funct3.LH){
+                    mem_read_data_o(i) := Cat(Fill(16, mem_read_data_mid(i)(15)), mem_read_data_mid(i)(15, 0))
+                }
+                is(Funct3.LHU){
+                    mem_read_data_o(i) := Cat(Fill(16, false.B), mem_read_data_mid(i)(15, 0))
+                }
+                is(Funct3.LW){
+                    mem_read_data_o(i) := mem_read_data_mid(i)
+                }                
             }
         }
     }

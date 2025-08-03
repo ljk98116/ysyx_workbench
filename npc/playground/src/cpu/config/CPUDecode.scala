@@ -10,6 +10,9 @@ object Opcode
 
     val ADDI    = "b0010011".U
     val SLTIU   = "b0010011".U
+    val ANDI    = "b0010011".U
+    val XORI    = "b0010011".U
+    val ORI     = "b0010011".U
     
     val SLLI    = "b0010011".U
     val SRLI    = "b0010011".U
@@ -17,14 +20,27 @@ object Opcode
 
     val JAL     = "b1101111".U
     val JALR    = "b1100111".U
+
     val SW      = "b0100011".U
+    val SB      = "b0100011".U
+    val SH      = "b0100011".U
+
     val LW      = "b0000011".U
+    val LB      = "b0000011".U
+    val LH      = "b0000011".U
+    val LBU     = "b0000011".U
+    val LHU     = "b0000011".U
 
     val ADD     = "b0110011".U
     val SUB     = "b0110011".U
     val SLTU    = "b0110011".U
     val XOR     = "b0110011".U
+    val SLL     = "b0110011".U
+    val SLT     = "b0110011".U
+    val SRL     = "b0110011".U
+    val SRA     = "b0110011".U
     val OR      = "b0110011".U
+    val AND     = "b0110011".U
 
     val BEQ     = "b1100011".U
     val BNE     = "b1100011".U
@@ -41,39 +57,58 @@ object Funct3
     val ADD     = "b000".U
     val SUB     = "b000".U
     val BEQ     = "b000".U
+    val LB      = "b000".U
+    val SB      = "b000".U
 
     val SLLI    = "b001".U
     val BNE     = "b001".U
+    val LH      = "b001".U
+    val SH      = "b001".U
+    val SLL     = "b001".U
 
     val SW      = "b010".U
     val LW      = "b010".U
+    val SLT     = "b010".U
     
     val SLTIU   = "b011".U
     val SLTU    = "b011".U
 
     val XOR     = "b100".U
+    val XORI    = "b100".U
     val BLT     = "b100".U
+    val LBU     = "b100".U
     
     val SRLI    = "b101".U
     val SRAI    = "b101".U
     val BGE     = "b101".U
+    val LHU     = "b101".U
+    val SRL     = "b101".U
+    val SRA     = "b101".U
 
     val OR      = "b110".U
     val BLTU    = "b110".U
+    val ORI     = "b110".U
 
     val BGEU    = "b111".U
+    val ANDI    = "b111".U
+    val AND     = "b111".U
 }
 
 object Funct7
 {
     val ADD     = "b0000000".U
     val SUB     = "b0100000".U
+    val SLL     = "b0000000".U
+    val SLT     = "b0000000".U
+    val SRL     = "b0000000".U
+    val SRA     = "b0100000".U
     val SLLI    = "b0000000".U
     val SRLI    = "b0000000".U
     val SRAI    = "b0100000".U
     val SLTU    = "b0000000".U
     val XOR     = "b0000000".U
     val OR      = "b0000000".U
+    val AND     = "b0000000".U
 }
 
 /* 符号扩展 */

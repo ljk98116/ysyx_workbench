@@ -205,11 +205,18 @@ class Decode extends Module
                 /* type I */
                 is(
                     Opcode.ADDI,
-                    //Opcode.SLLI
-                    //Opcode.SRLI
-                    //Opcode.SRAI
-                    //Opcode.SLTIU
-                    Opcode.LW
+                    // Opcode.SLLI
+                    // Opcode.SRLI
+                    // Opcode.SRAI
+                    // Opcode.SLTIU
+                    // Opcode.XORI
+                    // Opcode.ORI
+                    // Opcode.ANDI
+                    Opcode.LW,
+                    // Opcode.LB
+                    // Opcode.LBU
+                    // Opcode.LH
+                    // Opcode.LHU
                 ){
                     decoderes(i).Imm    := Imm.ImmI(inst_vec_used(i))
                     decoderes(i).Opcode := inst_vec_used(i)(6, 0)
@@ -266,7 +273,9 @@ class Decode extends Module
                 }
                 /* type S */
                 is(
-                    Opcode.SW
+                    Opcode.SW,
+                    // Opcode.SB,
+                    // Opcode.SH,
                 ){
                     decoderes(i).Imm    := Imm.ImmS(inst_vec_used(i))
                     decoderes(i).Opcode := inst_vec_used(i)(6, 0)
@@ -283,7 +292,13 @@ class Decode extends Module
                 is(
                     Opcode.ADD
                     //Opcode.SUB
+                    //Opcode.SLL
+                    //Opcode.SLT
                     //Opcode.SLTU
+                    //Opcode.XOR
+                    //Opcode.OR
+                    //Opcode.SRL
+                    //Opcode.SRA
                 ){
                     decoderes(i).Opcode := inst_vec_used(i)(6, 0)
                     decoderes(i).rs1    := inst_vec_used(i)(19, 15)

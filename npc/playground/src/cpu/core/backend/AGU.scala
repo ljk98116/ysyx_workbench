@@ -60,15 +60,41 @@ class AGU extends Module
     mem_rw_mask := 0.U
     switch(rob_item_reg.Opcode){
         is(Opcode.SW){
-            result := (rs1_data_reg + rob_item_reg.Imm) & "b1111_1111_1111_1111_1111_1111_1111_1100".U
-            mem_wr_data := rs2_data_reg
-            mem_rw_mask := "b1111".U
+
+            switch(rob_item_reg.funct3){
+                is(Funct3.SB){
+                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    mem_wr_data := rs2_data_reg(7, 0)
+                    mem_rw_mask := "b0001".U
+                }
+                is(Funct3.SH){
+                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    mem_wr_data := rs2_data_reg(15, 0)
+                    mem_rw_mask := "b0011".U
+                }
+                is(Funct3.SW){
+                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    mem_wr_data := rs2_data_reg
+                    mem_rw_mask := "b1111".U
+                }
+            }
         }
         is(Opcode.LW){
-            result := (rs1_data_reg + rob_item_reg.Imm) & "b1111_1111_1111_1111_1111_1111_1111_1100".U
-            mem_rw_mask := "b1111".U
+            switch(rob_item_reg.funct3){
+                is(Funct3.LB, Funct3.LBU){
+                    result := rs1_data_reg + rob_item_reg.Imm
+                    mem_rw_mask := "b0001".U
+                }
+                is(Funct3.LH, Funct3.LHU){
+                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFE".U
+                    mem_rw_mask := "b0011".U                    
+                }
+                is(Funct3.LW){
+                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    mem_rw_mask := "b1111".U
+                }
+            }
         }
-        // to do
     }
 
     /* connect */

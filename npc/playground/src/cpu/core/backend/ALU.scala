@@ -84,6 +84,20 @@ class ALU extends Module
                         }
                     }                    
                 }
+                is(Funct3.SLL){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.SLL){
+                            result := rs1_data_reg << rs2_data_reg(4, 0)
+                        }
+                    }                    
+                }
+                is(Funct3.SLT){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.SLT){
+                            result := rs1_data_reg << rs2_data_reg(4, 0)
+                        }
+                    }                    
+                }
                 is(Funct3.SLTU){
                     switch(rob_item_reg.funct7){
                         is(Funct7.SLTU){
@@ -98,10 +112,32 @@ class ALU extends Module
                         }
                     }
                 }
+                is(
+                    Funct3.SRL, 
+                    //Funct3.SRA
+                ){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.SRL){
+                            result := rs1_data_reg >> rs2_data_reg(4, 0)
+                        }
+                        is(Funct7.SRA){
+                            var sra_mid = WireInit((0.U)(64.W))
+                            sra_mid := Cat(Fill(32, rs1_data_reg(31)), rs1_data_reg)
+                            result := (sra_mid >> rs2_data_reg(4, 0)) & "hFFFF_FFFF".U
+                        }
+                    }
+                }
                 is(Funct3.OR){
                     switch(rob_item_reg.funct7){
                         is(Funct7.OR){
                             result := rs1_data_reg | rs2_data_reg
+                        }
+                    }
+                }
+                is(Funct3.AND){
+                    switch(rob_item_reg.funct7){
+                        is(Funct7.AND){
+                            result := rs1_data_reg & rs2_data_reg
                         }
                     }
                 }
@@ -115,6 +151,10 @@ class ALU extends Module
             // Opcode.SLLI,
             // Opcode.SRLI,
             // Opcode.SRAI,
+            // Opcode.SLTIU
+            // Opcode.XORI
+            // Opcode.ORI
+            // Opcode.ANDI
         ){
             switch(rob_item_reg.funct3){
                 is(Funct3.ADDI){
@@ -128,17 +168,28 @@ class ALU extends Module
                     }
                 }
                 is(Funct3.SRLI){
-                    switch(rob_item_reg.funct7){
+                    switch(rob_item_reg.Imm(11, 5)){
                         is(Funct7.SRLI){
                             result := rs1_data_reg >> rob_item_reg.Imm(4, 0)
                         }
                         is(Funct7.SRAI){
-                            result := (rs1_data_reg.asSInt >> rob_item_reg.Imm(4, 0)).asUInt
+                            var sra_mid = WireInit((0.U)(64.W))
+                            sra_mid := Cat(Fill(32, rs1_data_reg(31)), rs1_data_reg)
+                            result := (sra_mid >> rob_item_reg.Imm(4, 0)) & "hFFFF_FFFF".U
                         }
                     }
                 }
                 is(Funct3.SLTIU){
                     result := Mux(rs1_data_reg === 0.U, 1.U, 0.U)
+                }
+                is(Funct3.XORI){
+                    result := rs1_data_reg ^ rob_item_reg.Imm
+                }
+                is(Funct3.ORI){
+                    result := rs1_data_reg | rob_item_reg.Imm
+                }
+                is(Funct3.ANDI){
+                    result := rs1_data_reg & rob_item_reg.Imm
                 }
             }
         }
