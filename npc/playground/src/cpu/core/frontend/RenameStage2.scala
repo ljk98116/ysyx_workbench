@@ -140,7 +140,7 @@ class RenameStage2 extends Module
     pc_vec_reg := Mux(stall, io.pc_vec_i, pc_vec_reg)
     inst_valid_mask_reg := Mux(stall, io.inst_valid_mask_i, inst_valid_mask_reg)
     DecodeRes_reg := Mux(stall, io.DecodeRes_i, DecodeRes_reg)
-    rat_wen_reg := Mux(stall, io.rat_wen_i, rat_ren_reg)
+    rat_wen_reg := Mux(stall, io.rat_wen_i, rat_wen_reg)
     rat_waddr_reg := Mux(stall, io.rat_waddr_i, rat_waddr_reg)
     rat_wdata_reg := Mux(stall, io.rat_wdata_i, rat_wdata_reg)
     rat_ren_reg := Mux(stall, io.rat_ren_i, rat_ren_reg)

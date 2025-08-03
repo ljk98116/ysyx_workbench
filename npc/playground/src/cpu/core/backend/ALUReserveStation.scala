@@ -19,7 +19,7 @@ class ReserveFreeIdBuffer(size : Int) extends Module
         val issued_i = Input(Bool())
         val issued_id_i = Input(UInt(width.W))
         /* output */
-        val free_id_o = Output(UInt(width.W)) 
+        val free_id_o = Output(UInt((width + 1).W)) 
         val rd_able = Output(Bool())
         val wr_able = Output(Bool())       
     })
@@ -42,11 +42,27 @@ class ReserveFreeIdBuffer(size : Int) extends Module
         }
     }
 
-    var free_id_o = WireInit((0.U)(width.W))
-    free_id_o := IDRegFile(head)
+    var free_id_o = WireInit((size.U)((width + 1).W))
+    free_id_o := Mux(io.rd_able, IDRegFile(head), size.U)
 
-    head := Mux(io.rd_able, Mux(~io.rat_flush_en, head + io.free_id_ren, 0.U), head)
-    tail := Mux(io.wr_able & io.issued_i & ~io.rat_flush_en, tail + io.issued_i.asUInt, Mux(io.rat_flush_en, (size - 1).U, tail))
+    head := Mux(
+        io.rat_flush_en, 
+        0.U,
+        Mux(
+            io.rd_able & io.free_id_ren,
+            head + 1.U,
+            head
+        )
+    )
+    tail := Mux(
+        io.rat_flush_en,
+        (size - 1).U,
+        Mux(
+            io.wr_able & io.issued_i,
+            tail + 1.U,
+            tail
+        )
+    )
 
     /* connect */
     io.free_id_o := free_id_o
@@ -83,7 +99,7 @@ class ALUReserveStation(size: Int) extends Module {
 
     /* free id阵列 */
     val freeIdBuffer = Module(new ReserveFreeIdBuffer(size))
-
+    val width = log2Ceil(size)
     /* connect */
     /* 写入发射队列的指令数目 */
     /* 读写使能与空闲队列保持一致 */
@@ -152,7 +168,8 @@ class ALUReserveStation(size: Int) extends Module {
         when(
             ~io.rat_flush_en & 
             (io.rob_state === 0.U) & 
-            (i.U === freeIdBuffer.io.free_id_o) & 
+            (i.U === freeIdBuffer.io.free_id_o(width - 1, 0)) & 
+            ~freeIdBuffer.io.free_id_o(width) &
             io.rob_item_i.valid &
             freeIdBuffer.io.rd_able
         ){
@@ -167,7 +184,12 @@ class ALUReserveStation(size: Int) extends Module {
             rob_item_reg(i).rdy1 := io.prf_valid_vec(io.rob_item_i.ps1) | io.rob_item_i.rdy1
             rob_item_reg(i).rdy2 := io.prf_valid_vec(io.rob_item_i.ps2) | io.rob_item_i.rdy2
 
-        }.elsewhen(~io.rat_flush_en & (i.U =/= freeIdBuffer.io.free_id_o) & rob_item_reg(i).valid & (i.U =/= issue_idx)){
+        }.elsewhen(
+            ~io.rat_flush_en & 
+            (
+                (i.U =/= freeIdBuffer.io.free_id_o(width - 1, 0)) | 
+                freeIdBuffer.io.free_id_o(width)
+            ) & rob_item_reg(i).valid & (i.U =/= issue_idx)){
             rob_item_reg(i).rdy1 := io.prf_valid_vec(rob_item_reg(i).ps1) | rob_item_reg(i).rdy1
             rob_item_reg(i).rdy2 := io.prf_valid_vec(rob_item_reg(i).ps2) | rob_item_reg(i).rdy2
         }.elsewhen((i.U === issue_idx) & freeIdBuffer.io.issued_i & ~io.rat_flush_en){

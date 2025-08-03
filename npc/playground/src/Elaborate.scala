@@ -9,7 +9,7 @@ object Elaborate extends App {
     ).reduce(_ + "," + _),
     "--split-verilog",
     "-o",
-    "./vsrc"
+    "./vsrc",
   )
   // circt.stage.ChiselStage.emitSystemVerilogFile(new gcd.GCD(), args, firtoolOptions)
   /* chapter1 */

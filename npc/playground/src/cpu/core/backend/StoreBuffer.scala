@@ -34,6 +34,7 @@ class StoreBuffer(size : Int) extends Module{
         val store_buffer_rdata_valid = Output(Vec(base.AGU_NUM, Bool()))
         /* retire段，ROB头部项 */
         val rob_items_i = Input(Vec(base.FETCH_WIDTH, new ROBItem))
+        val commit_valid_mask = Input(UInt(base.FETCH_WIDTH.W))
         /* 输出队列头部2个Item */
         val store_buffer_item_o = Output(Vec(base.AGU_NUM, new StoreBufferItem))
         /* StoreBuffer是否可写入 */
@@ -115,7 +116,7 @@ class StoreBuffer(size : Int) extends Module{
     
     /* 时序逻辑 */
     for(i <- 0 until size){
-        when(io.rob_state =/= "b00".U){
+        when(io.rob_state === "b11".U){
             storebuffer_item_reg(i) := 0.U.asTypeOf(new StoreBufferItem)
             store_buffer_mapping(storebuffer_item_reg(i).rob_id) := size.U
         }.elsewhen((i.U === tail) & io.store_buffer_item_i(0).valid){
@@ -144,7 +145,7 @@ class StoreBuffer(size : Int) extends Module{
             }
             for(j <- 0 until base.FETCH_WIDTH){
                 when(
-                    storebuffer_item_reg(i).valid & io.rob_items_i(j).valid &
+                    storebuffer_item_reg(i).valid & io.rob_items_i(j).valid & io.commit_valid_mask(j) &
                     (storebuffer_item_reg(i).rob_id === io.rob_items_i(j).id)
                 ){
                     storebuffer_item_reg(i).rob_rdy := io.rob_items_i(j).rdy
@@ -154,12 +155,12 @@ class StoreBuffer(size : Int) extends Module{
     }
 
     tail := Mux(
-        io.rob_state =/= "b00".U, 
+        io.rob_state === "b11".U, 
         0.U, 
         Mux(io.wr_able, tail + io.store_buffer_write_cnt, tail)
     )
     rob_head := Mux(
-        io.rob_state =/= "b00".U,
+        io.rob_state === "b11".U,
         0.U,
         Mux(
             storebuffer_item_reg(rob_head).rob_rdy & storebuffer_item_reg(rob_head).rdy &
@@ -169,7 +170,7 @@ class StoreBuffer(size : Int) extends Module{
         )
     )
     head := Mux(
-        io.rob_state =/= "b00".U,
+        io.rob_state === "b11".U,
         0.U,
         Mux(
             ((head + 1.U) =/= tail) & (io.mem_write_en.asUInt === "b11".U), 

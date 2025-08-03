@@ -43,6 +43,7 @@ class RetireStage extends Module
         /* 是否覆盖前端RAT */
         val rat_flush_en = Output(Bool())
         val exception_mask_front = Output(Vec(base.FETCH_WIDTH, Bool()))
+        val commit_valid_mask = Output(UInt(base.FETCH_WIDTH.W))
     })
 
     /* 屏蔽位 */
@@ -100,6 +101,17 @@ class RetireStage extends Module
         (~io.rob_items_i(1).valid & commit_item_rdy_mask(0)) |
         (io.rob_items_i(1).valid & (io.rob_items_i(0).hasException))
         
+    io.commit_valid_mask := Mux(
+        commit_item_rdy_mask.asUInt.andR & (io.rob_state === 0.U),
+        Cat(
+            io.rob_items_i(3).valid & (io.rob_state === 0.U) & ~(exception_mask_mid.asUInt(2, 0).orR | branch_mask_mid.asUInt(2, 0).orR),
+            io.rob_items_i(2).valid & (io.rob_state === 0.U) & ~(exception_mask_mid.asUInt(1, 0).orR | branch_mask_mid.asUInt(1, 0).orR),
+            io.rob_items_i(1).valid & (io.rob_state === 0.U) & ~(exception_mask_mid.asUInt(0).orR | branch_mask_mid.asUInt(0).orR),
+            io.rob_items_i(0).valid & (io.rob_state === 0.U)
+        ),
+        0.U
+    )
+
     rob_item_rdy_mask(2) := 
         (
             (

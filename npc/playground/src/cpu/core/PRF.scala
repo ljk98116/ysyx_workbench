@@ -49,9 +49,10 @@ class PRF extends Module
 
     for(i <- 0 until (1 << base.PREG_WIDTH)){
         for(j <- 0 until base.ALU_NUM){
-            when((io.cdb_i.alu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en){
+            when((io.cdb_i.alu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en & io.cdb_i.alu_channel(j).valid){
                 prf_valid_regs(i) := 
-                    Mux(io.cdb_i.alu_channel(j).valid & (io.cdb_i.alu_channel(j).arch_reg_id =/= 0.U),
+                    Mux(
+                        (io.cdb_i.alu_channel(j).arch_reg_id =/= 0.U),
                         true.B,
                         prf_valid_regs(i)
                     )
@@ -60,9 +61,10 @@ class PRF extends Module
             }
         }
         for(j <- 0 until base.AGU_NUM){
-            when((io.cdb_i.agu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en){
+            when((io.cdb_i.agu_channel(j).phy_reg_id === i.U) & ~io.rat_flush_en & io.cdb_i.agu_channel(j).valid){
                 prf_valid_regs(i) := 
-                    Mux(io.cdb_i.agu_channel(j).valid & (io.cdb_i.agu_channel(j).arch_reg_id =/= 0.U),
+                    Mux(
+                        (io.cdb_i.agu_channel(j).arch_reg_id =/= 0.U),
                         true.B,
                         prf_valid_regs(i)
                     )                

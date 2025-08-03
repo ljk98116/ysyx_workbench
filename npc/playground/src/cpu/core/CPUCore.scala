@@ -426,6 +426,9 @@ class CPUCore(memfile: String) extends Module
     rob_buffer.io.retire_rdy_mask       := retire.io.rob_item_rdy_mask
     rob_buffer.io.rat_flush_en          := retire.io.rat_flush_en
 
+    /* retire ->storebuffer */
+    storebuffer.io.commit_valid_mask   := retire.io.commit_valid_mask
+
     /* retire -> retireRAT */
     retireRAT.io.rat_wen                := retire.io.rat_write_en.asUInt
     retireRAT.io.rat_waddr              := retire.io.rat_write_addr

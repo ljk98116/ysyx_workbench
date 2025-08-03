@@ -3,9 +3,6 @@ package cpu.memory
 import cpu.config._
 import chisel3._
 import chisel3.util._
-import chisel3.experimental._
-import scopt.Read
-import chisel3.util.experimental.loadMemoryFromFile
 
 /* 多读一写 */
 class MultiPortSram(ReadPorts : Int, memfile : String, DEBUG: Boolean = false) extends Module{
@@ -28,16 +25,39 @@ if(DEBUG){
         Module(new MemReadAPI)
     )
     var write_apis = Seq.fill(base.AGU_NUM)(Module(new MemWriteAPI))
+    var xwen_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
+    var xwaddr_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
+    ))
+
+    var xwdata_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
+    ))
+    var xwmask_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(8.W))
+    ))
+    var xraddr_reg = RegInit(VecInit(
+        Seq.fill(ReadPorts)((0.U)(base.ADDR_WIDTH.W))
+    ))
+    for(i <- 0 until base.AGU_NUM){
+        xwen_reg(i) := io.wen(i)
+        xwaddr_reg(i) := io.waddr(i)
+        xwdata_reg(i) := io.wdata(i)
+        xwmask_reg(i) := io.wmask(i)
+    }
     for(i <- 0 until ReadPorts){
+        xraddr_reg(i) := io.raddr(i)
         if(i < base.FETCH_WIDTH){
             rdata(i) := read_apis(i).io.rdata
         }else{
             rdata(i) := Mux(
-                io.wen(1) & (io.waddr(1) === io.raddr(i)), 
-                io.wdata(1), 
+                xwen_reg(1) & (xwaddr_reg(1) === xraddr_reg(i)), 
+                xwdata_reg(1), 
                 Mux(
-                    io.wen(0) & (io.waddr(0) === io.raddr(i)), 
-                    io.wdata(0),
+                    xwen_reg(0) & (xwaddr_reg(0) === xraddr_reg(i)), 
+                    xwdata_reg(0),
                     read_apis(i).io.rdata                     
                 )
             )
