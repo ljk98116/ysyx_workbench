@@ -96,11 +96,13 @@ class StoreBuffer(size : Int) extends Module{
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
                 (((j.U < tail) & (head > tail)) | (head < tail)) &
+                (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width)) &
                 ((store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U) & (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) < tail))
             load_raw_mask_2(j) := 
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
+                (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width)) &
                 (((j.U >= head) & (head > tail)) | (head < tail)) & 
                 (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U)
         }

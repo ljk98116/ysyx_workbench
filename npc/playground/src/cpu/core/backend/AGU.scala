@@ -63,12 +63,12 @@ class AGU extends Module
 
             switch(rob_item_reg.funct3){
                 is(Funct3.SB){
-                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFF".U
                     mem_wr_data := rs2_data_reg(7, 0)
                     mem_rw_mask := "b0001".U
                 }
                 is(Funct3.SH){
-                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFE".U
                     mem_wr_data := rs2_data_reg(15, 0)
                     mem_rw_mask := "b0011".U
                 }
