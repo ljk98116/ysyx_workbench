@@ -77,7 +77,7 @@ class AGUReservestation(size : Int) extends Module
             rob_item_reg(head).HasRs2 & 
             ~(rob_item_reg(head).rdy2 | io.prf_valid_vec(rob_item_reg(head).ps2))
         )
-    ) & rob_item_reg(head).valid & (head =/= tail)
+    ) & rob_item_reg(head).valid & (head =/= tail) & (io.rob_state === "b00".U)
     rob_item_o(0) := Mux(issue_able0, rob_item_reg(head), (0.U).asTypeOf(new ROBItem))
 
     var issue_able1 = WireInit(false.B)
@@ -92,7 +92,7 @@ class AGUReservestation(size : Int) extends Module
         )
     ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail) & 
     ~(rob_item_reg(head + 1.U).isLoad & rob_item_reg(head).isStore) &
-    ~(rob_item_reg(head + 1.U).isStore & rob_item_reg(head).isLoad)
+    ~(rob_item_reg(head + 1.U).isStore & rob_item_reg(head).isLoad) & (io.rob_state === "b00".U)
     rob_item_o(1) := Mux(issue_able1, rob_item_reg(head + 1.U), (0.U).asTypeOf(new ROBItem))
 
     /* 更新 */
@@ -122,7 +122,7 @@ class AGUReservestation(size : Int) extends Module
             ) | (issue_able0 & (j.U === head))
 
         rob_item_reg(j) := Mux(
-            (is_issue_loc & io.read_able) | io.rat_flush_en,
+            (is_issue_loc & io.read_able) | io.rat_flush_en | (io.rob_state === "b11".U),
             0.U.asTypeOf(new ROBItem),
             Mux(
                 is_write_loc.asUInt.orR,
@@ -133,7 +133,7 @@ class AGUReservestation(size : Int) extends Module
 
         /* 更新寄存器状态位 */
         rob_item_reg(j).rdy1 := Mux(
-            (is_issue_loc & io.read_able) | io.rat_flush_en,
+            (is_issue_loc & io.read_able) | io.rat_flush_en | (io.rob_state === "b11".U),
             false.B,
             Mux(
                 is_write_loc.asUInt.orR,
@@ -145,7 +145,7 @@ class AGUReservestation(size : Int) extends Module
         )
 
         rob_item_reg(j).rdy2 := Mux(
-            (is_issue_loc & io.read_able) | io.rat_flush_en,
+            (is_issue_loc & io.read_able) | io.rat_flush_en | (io.rob_state === "b11".U),
             false.B,
             Mux(
                 is_write_loc.asUInt.orR,

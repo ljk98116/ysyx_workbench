@@ -318,19 +318,19 @@ class RenameStage2 extends Module
         )
     ))
     last_store_idx_mid(0) := Mux(
-        rob_item_o(1).storeIdx =/= (1 << base.ROBID_WIDTH).U, 
+        rob_item_o(1).storeIdx =/= last_store_idx, 
         rob_item_o(1).storeIdx, 
         rob_item_o(0).storeIdx
     )
     last_store_idx_mid(1) := Mux(
-        rob_item_o(3).storeIdx =/= (1 << base.ROBID_WIDTH).U, 
+        rob_item_o(3).storeIdx =/= last_store_idx, 
         rob_item_o(3).storeIdx, 
         rob_item_o(2).storeIdx
     )
     last_store_idx := Mux(
-        last_store_idx_mid(1) =/= (1 << base.ROBID_WIDTH).U, 
+        last_store_idx_mid(1) =/= last_store_idx, 
         last_store_idx_mid(1), 
-        Mux(last_store_idx_mid(0) =/= (1 << base.ROBID_WIDTH).U, last_store_idx_mid(0), last_store_idx)
+        Mux(last_store_idx_mid(0) =/= last_store_idx, last_store_idx_mid(0), last_store_idx)
     )
 
     /* connect */

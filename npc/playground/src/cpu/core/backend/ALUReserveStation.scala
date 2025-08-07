@@ -131,7 +131,7 @@ class ALUReserveStation(size: Int) extends Module {
             (
                 rob_item_reg(i).HasRs2 & 
                 ~(rob_item_reg(i).rdy2)
-            )) & rob_item_reg(i).valid
+            )) & rob_item_reg(i).valid  & (io.rob_state === "b00".U)
     }
     /* 能发射且比其他能发射的矩阵年长 */
     var issue_oh_vec = WireInit(VecInit(
