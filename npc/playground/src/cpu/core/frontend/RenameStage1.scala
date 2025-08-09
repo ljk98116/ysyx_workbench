@@ -247,7 +247,7 @@ class RenameStage1 extends Module
         for(j <- i + 1 until base.FETCH_WIDTH){
             when(DecodeRes_reg(i).HasRd & DecodeRes_reg(j).HasRd)
             {
-                rat_waw_mask(i)(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rd
+                rat_waw_mask(i)(j) := (DecodeRes_reg(i).rd === DecodeRes_reg(j).rd)
             }.otherwise{
                 rat_waw_mask(i)(j) := false.B
             }

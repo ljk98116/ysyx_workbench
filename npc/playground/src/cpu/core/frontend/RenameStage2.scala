@@ -272,12 +272,16 @@ class RenameStage2 extends Module
         var waw_mask = WireInit(VecInit(Seq.fill(base.FETCH_WIDTH)(false.B)))
         var target_idx = WireInit((base.FETCH_WIDTH.U)((log2Ceil(base.FETCH_WIDTH) + 1).W))
         for(j <- 0 until i){
-            waw_mask(j) := DecodeRes_reg(i).rd === DecodeRes_reg(j).rd
+            waw_mask(j) := (DecodeRes_reg(i).rd === DecodeRes_reg(j).rd) & DecodeRes_reg(i).HasRd & DecodeRes_reg(j).HasRd
         }
         val prio_decoder = Module(new cpu.core.utils.PriorityDecoder(4))
         prio_decoder.io.in := waw_mask.asUInt
         target_idx := prio_decoder.io.out
-        rob_item_o(i).oldpd := Mux(waw_mask.asUInt.orR, rat_wdata_reg(target_idx(log2Ceil(base.FETCH_WIDTH) - 1, 0)), io.rat_rdata_i(3 * i + 2))
+        rob_item_o(i).oldpd := Mux(
+            waw_mask.asUInt.orR, 
+            rat_wdata_reg(target_idx(log2Ceil(base.FETCH_WIDTH) - 1, 0)), 
+            io.rat_rdata_i(3 * i + 2)
+        )
         rob_item_o(i).reg_wb_data := 0.U
         when(DecodeRes_reg(i).HasRs1){
             rob_item_o(i).ps1 := Mux(rs1_match_reg(i)(2), 
