@@ -4,6 +4,7 @@
 
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
 static unsigned long int next = 1;
+static void *addr = NULL;
 
 int rand(void) {
   // RAND_MAX assumed to be 32767
@@ -34,7 +35,14 @@ void *malloc(size_t size) {
   // Therefore do not call panic() here, else it will yield a dead recursion:
   //   panic() -> putchar() -> (glibc) -> malloc() -> panic()
 #if !(defined(__ISA_NATIVE__) && defined(__NATIVE_USE_KLIB__))
-  panic("Not implemented");
+  size = ROUNDUP(size, 8);
+  if(addr == NULL){
+    addr = heap.start;
+  }
+  assert((uint32_t)addr >= (uint32_t)heap.start && (uint32_t)addr + size < (uint32_t)heap.end);
+  void *ret = addr;
+  addr = (void*)((uint8_t*)addr + size);
+  return ret;
 #endif
   return NULL;
 }
@@ -44,11 +52,28 @@ void free(void *ptr) {
 
 int itoa(int x, char *buf){
   int len = 0;
-  while(x){
+  do{
     *(buf + len) = x % 10 + '0';
     x = x / 10;
     ++len;
   }
+  while(x);
+  for(int i=0;i<len / 2;++i){
+    char tmp = *(buf + i);
+    *(buf + i) = *(buf + len - i - 1);
+    *(buf + len - i - 1) = tmp;
+  }
+  return len;
+}
+
+int itox(int x, char *buf){
+  int len = 0;
+  do{
+    *(buf + len) = (x % 16 >= 10) ? ('A' + x % 16 - 10) : ('0' + x % 16);
+    x = x / 16;
+    ++len;
+  }
+  while(x);
   for(int i=0;i<len / 2;++i){
     char tmp = *(buf + i);
     *(buf + i) = *(buf + len - i - 1);

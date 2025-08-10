@@ -1,11 +1,12 @@
 #include <am.h>
 #include <nemu.h>
-
 void __am_timer_init() {
 }
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
-  uptime->us = 0;
+  uint32_t base0 = inl(0xa0000048);
+  uint32_t base1 = inl(0xa000004c);
+  uptime->us = ((uint64_t)base1 << 32) | (uint64_t)base0;
 }
 
 void __am_timer_rtc(AM_TIMER_RTC_T *rtc) {

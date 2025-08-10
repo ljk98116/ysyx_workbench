@@ -31,6 +31,7 @@ void   free      (void *ptr);
 int    abs       (int x);
 int    atoi      (const char *nptr);
 int    itoa      (int x, char *buf);
+int    itox      (int x, char *buf);
 
 // stdio.h
 int    printf    (const char *format, ...);

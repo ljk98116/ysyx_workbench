@@ -77,6 +77,7 @@ static void exec_once(Decode *s, vaddr_t pc) {
   static char fbuf[FTRACE_INFO_SIZE];
 #endif
 #if CONFIG_ISA_riscv
+#ifdef CONFIG_FTRACE
   //recv call
   if(ready_call == 0){
     if(((s->isa.inst & 0b1111111) == 0b0010111) && (((s->isa.inst >> 7) & 0b11111) == 1)){
@@ -133,6 +134,7 @@ static void exec_once(Decode *s, vaddr_t pc) {
         iringbuf_write(ftrace_buf, fbuf, FTRACE_INFO_SIZE);
     #endif
   }
+
   //recv jal
   if((s->isa.inst & 0b1111111) == 0b1101111){
 #ifdef CONFIG_FTRACE
@@ -152,6 +154,7 @@ static void exec_once(Decode *s, vaddr_t pc) {
     }
 #endif
   }
+#endif
 #endif
   s->pc = pc;
   s->snpc = pc;
