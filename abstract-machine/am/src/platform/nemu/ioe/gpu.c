@@ -3,8 +3,16 @@
 
 #define SYNC_ADDR (VGACTL_ADDR + 4)
 
+static int w = 0, h = 0;
 void __am_gpu_init() {
-
+  int i;
+  /* 读取VGA Ctrl MMIO 0xa0000100， 获取宽高 */
+  uint32_t vgactrl = inl(0xa0000100);
+  w = vgactrl >> 16;
+  h = vgactrl & 0xffff;
+  uint32_t *fb = (uint32_t *)(uintptr_t)FB_ADDR;
+  for (i = 0; i < w * h; i ++) fb[i] = i;
+  outl(SYNC_ADDR, 1);
 }
 
 void __am_gpu_config(AM_GPU_CONFIG_T *cfg) {
@@ -28,6 +36,15 @@ void __am_gpu_config(AM_GPU_CONFIG_T *cfg) {
 }
 
 void __am_gpu_fbdraw(AM_GPU_FBDRAW_T *ctl) {
+  /* 将像素值写入FB_ADDR加上偏移后的位置 */
+  if(!ctl->sync && (ctl->w == 0 || ctl->h == 0)) return;
+  uint32_t *pixels = (uint32_t*)(uintptr_t)ctl->pixels;
+  uint32_t *fb_addr = (uint32_t*)(uintptr_t)FB_ADDR;
+  for(int i=ctl->y;i<ctl->y + ctl->h;++i){
+    for(int j=ctl->x;j<ctl->x + ctl->w;++j){
+      fb_addr[i * w + j] = pixels[(i - ctl->y) * ctl->w + (j - ctl->x)];
+    }
+  }
   if (ctl->sync) {
     outl(SYNC_ADDR, 1);
   }
