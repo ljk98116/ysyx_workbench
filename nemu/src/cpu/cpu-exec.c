@@ -229,6 +229,11 @@ static void statistic() {
   free(elf_symtab);
   free(elf_strtab);
 #endif
+#ifdef CONFIG_DTRACE
+  Log("****** NEMU DTRACE RESULT/%d ******\n", 100);
+  iringbuf_print(dtrace_buf);
+  iringbuf_destroy(dtrace_buf);  
+#endif
 }
 
 void assert_fail_msg() {

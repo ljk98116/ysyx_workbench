@@ -226,7 +226,7 @@ class RetireStage extends Module
                     exception_mask_mid.asUInt(i-1, 0).orR
                 )
             flush_free_reg_valid(i) := 
-                (io.rob_state === "b11".U | exception_mask_mid.asUInt(i-1, 0).orR) & 
+                (io.rob_state === "b11".U | ((io.rob_state === "b00".U) & exception_mask_mid.asUInt(i-1, 0).orR)) & 
                 io.rob_items_i(i).valid & io.rob_items_i(i).HasRd
                 
             free_reg_id_wdata(i) := Mux(

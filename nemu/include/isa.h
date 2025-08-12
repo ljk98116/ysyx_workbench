@@ -61,6 +61,7 @@ void isa_difftest_attach();
 extern iringbuf_t *itrace_buf;
 extern iringbuf_t *mtrace_buf;
 extern iringbuf_t *ftrace_buf;
+extern iringbuf_t *dtrace_buf;
 
 #define MTRACE_INFO_SIZE 128
 #define MTRACE_NUM 60

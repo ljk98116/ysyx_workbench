@@ -15,10 +15,13 @@
 
 #include <common.h>
 #include <utils.h>
+#include <memory/paddr.h>
 #include <device/alarm.h>
 #ifndef CONFIG_TARGET_AM
 #include <SDL2/SDL.h>
 #endif
+
+iringbuf_t *dtrace_buf;
 
 void init_map();
 void init_serial();
@@ -86,4 +89,7 @@ void init_device() {
   IFDEF(CONFIG_HAS_SDCARD, init_sdcard());
 
   IFNDEF(CONFIG_TARGET_AM, init_alarm());
+#ifdef CONFIG_DTRACE
+  dtrace_buf = iringbuf_create(DTRACE_INFO_SIZE * DTRACE_NUM);
+#endif
 }
