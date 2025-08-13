@@ -59,7 +59,7 @@ static void exec_once(VerilatedVcdC* tfp){
   if(tfp != nullptr) tfp->dump(cycle);
   /* 存在指令提交,进行difftest */
   if(commit_num > 0){
-    Log("npc commit_num:%d at %d th cycle", commit_num, cycle);
+    // Log("npc commit_num:%d at %d th cycle", commit_num, cycle);
     trace_and_difftest();
     g_nr_guest_inst += commit_num;
   }

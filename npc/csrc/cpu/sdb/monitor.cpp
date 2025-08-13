@@ -87,6 +87,7 @@ extern void init_mem();
 extern void init_isa();
 extern void init_difftest(char *ref_so_file, long img_size, int port);
 extern void init_sdb();
+extern void init_device();
 
 void init_monitor(int argc, char *argv[]) {
   /* Perform some global initialization. */
@@ -104,7 +105,7 @@ void init_monitor(int argc, char *argv[]) {
   init_mem();
 
   /* Initialize devices. */
-  IFDEF(CONFIG_DEVICE, init_device());
+  init_device();
 
   /* Perform ISA dependent initialization. */
   init_isa();
