@@ -1,6 +1,7 @@
 #include <memory/paddr.hpp>
 #include <memory/host.hpp>
 #include <isa.hpp>
+#include <device/mmio.hpp>
 
 namespace npc{
 
@@ -40,12 +41,12 @@ void init_mem() {
 }
 
 word_t paddr_read(paddr_t addr, int len){
+  /* 判断是否是MMIO */
   if (likely(in_pmem(addr))) {
     word_t data = pmem_read(addr, len);
     return data;
   }
-  // out_of_bound(addr);
-  return 0;  
+  return mmio_read(addr, len); 
 }
 
 void paddr_write(paddr_t addr, int len, word_t data) {
@@ -53,7 +54,7 @@ void paddr_write(paddr_t addr, int len, word_t data) {
     pmem_write(addr, len, data);
     return;
   }    
-  // out_of_bound(addr);
+  return mmio_write(addr, len, data);
 }
 
 }
