@@ -8,7 +8,7 @@ import cpu.config._
 /* fetch段获取BTB值 */
 /* decode段写入直接跳转的地址 */
 /* EX段写入间接跳转的地址 */
-class BTB extends Module{
+class BTB(DEBUG: Boolean = false) extends Module{
     val io = IO(new Bundle{
         val rob_state = Input(UInt(2.W))
         val pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
@@ -22,6 +22,7 @@ class BTB extends Module{
         val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
     })
 
+if(!DEBUG){
     val BTB_Mem = Mem(1 << 13, new BTBItem)
     var BTBItem_o = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new BTBItem))
@@ -63,4 +64,9 @@ class BTB extends Module{
         }
         BTB_Mem.write(index, btb_writeItem)
     }
+}
+else{
+    
+}
+
 }
