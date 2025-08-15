@@ -2,6 +2,7 @@
 #include <utils.hpp>
 #include <memory/paddr.hpp>
 #include <device/alarm.hpp>
+#include <device/device.hpp>
 
 #ifndef CONFIG_TARGET_AM
 #include <SDL2/SDL.h>
@@ -9,19 +10,6 @@
 
 namespace npc {
 // iringbuf_t *dtrace_buf;
-
-void init_map();
-void init_serial();
-void init_timer();
-void init_vga();
-void init_i8042();
-void init_audio();
-void init_disk();
-void init_sdcard();
-void init_alarm();
-
-void send_key(uint8_t, bool);
-void vga_update_screen();
 
 void device_update() {
   static uint64_t last = 0;

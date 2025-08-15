@@ -1,5 +1,6 @@
 #include <utils.hpp>
 #include <device/map.hpp>
+#include <device/device.hpp>
 
 namespace npc {
 
@@ -25,11 +26,11 @@ static void serial_putc(char ch) {
 
 void init_serial() {
     serial_base = new_space(8);
-    #ifdef CONFIG_HAS_PORT_IO
+#ifdef CONFIG_HAS_PORT_IO
     add_pio_map ("serial", CONFIG_SERIAL_PORT, serial_base, 8, serial_io_handler);
-    #else
+#else
     add_mmio_map("serial", CONFIG_SERIAL_MMIO, serial_base, 8, serial_io_handler);
-    #endif
+#endif
 }
 
 }

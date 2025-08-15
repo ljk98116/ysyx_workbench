@@ -1,6 +1,7 @@
 #include <device/map.hpp>
 #include <utils.hpp>
 #include <stdio.h>
+#include <device/device.hpp>
 
 namespace npc {
 static uint32_t *rtc_port_base = NULL;

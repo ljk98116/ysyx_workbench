@@ -18,7 +18,7 @@ WORK_DIR = $(pwd)
 $(shell mkdir -p $(BUILD_DIR))
 
 # add nemu so
-LDFLAGS += -lreadline
+LDFLAGS += -lreadline -lSDL2
 LDFLAGS += -Wl,-rpath="$(NEMU_HOME)/build/"
 
 # constraint file
