@@ -2,7 +2,7 @@
 #include <device/alarm.hpp>
 #include <sys/time.h>
 #include <signal.h>
-#include <device/device.hpp>
+#include <device/zio.hpp>
 
 namespace npc {
 #define MAX_HANDLER 8

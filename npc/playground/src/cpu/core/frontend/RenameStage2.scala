@@ -9,10 +9,13 @@ import cpu.core.utils._
 /* use stage2 to read/write RAT */
 /* deal read result and construct ROB Item */
 /* load hold last store idx to judge load forwarding */
+/* 异常时，需要重置last_store_idx */
 class RenameStage2 extends Module
 {
     val io = IO(new Bundle{
         val rob_state = Input(UInt(2.W))
+        val rat_flush_en = Input(Bool())
+        val last_store_idx_retire = Input(UInt((base.ROBID_WIDTH + 1).W))
         val pc_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
@@ -291,7 +294,7 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs1_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        rat_rdata_vec_used(3 * i)(base.PREG_WIDTH - 1, 0)
+                        rat_rdata_vec_used(3 * i)
                     )
                 )
             )
@@ -304,13 +307,13 @@ class RenameStage2 extends Module
                     rat_wdata_reg(1),
                     Mux(rs2_match_reg(i)(0),
                         rat_wdata_reg(0),
-                        rat_rdata_vec_used(3 * i + 1)(base.PREG_WIDTH - 1, 0)
+                        rat_rdata_vec_used(3 * i + 1)
                     )
                 )
             )
         }
-        rob_item_o(i).rdy1     := ((DecodeRes_reg(i).rs1 === 0.U) | io.prf_valid_vec(rob_item_o(i).ps1)) & ~rs1_match_reg(i).orR
-        rob_item_o(i).rdy2     := ((DecodeRes_reg(i).rs2 === 0.U) | io.prf_valid_vec(rob_item_o(i).ps2)) & ~rs2_match_reg(i).orR
+        rob_item_o(i).rdy1     := ((DecodeRes_reg(i).rs1 === 0.U) | io.prf_valid_vec(rob_item_o(i).ps1(base.PREG_WIDTH - 1, 0))) & ~rs1_match_reg(i).orR
+        rob_item_o(i).rdy2     := ((DecodeRes_reg(i).rs2 === 0.U) | io.prf_valid_vec(rob_item_o(i).ps2(base.PREG_WIDTH - 1, 0))) & ~rs2_match_reg(i).orR
     }
 
     /* 获取最后一个有效的store指令ROBID */
@@ -332,9 +335,13 @@ class RenameStage2 extends Module
         rob_item_o(2).storeIdx
     )
     last_store_idx := Mux(
-        last_store_idx_mid(1) =/= last_store_idx, 
-        last_store_idx_mid(1), 
-        Mux(last_store_idx_mid(0) =/= last_store_idx, last_store_idx_mid(0), last_store_idx)
+        ~io.rat_flush_en, 
+        Mux(
+            last_store_idx_mid(1) =/= last_store_idx, 
+            last_store_idx_mid(1), 
+            Mux(last_store_idx_mid(0) =/= last_store_idx, last_store_idx_mid(0), last_store_idx)
+        ),
+        io.last_store_idx_retire
     )
 
     /* connect */

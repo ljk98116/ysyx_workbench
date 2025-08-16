@@ -17,6 +17,7 @@ class MemStage1 extends Module
     val io = IO(new Bundle{
         val rat_flush_en = Input(Bool())
         val rob_state = Input(UInt(2.W))
+        val agu_valid_i = Input(Vec(base.AGU_NUM, Bool()))
         val rob_item_i = Input(Vec(base.AGU_NUM, new ROBItem))
         val agu_result_i = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val agu_rw_mask_i = Input(Vec(base.AGU_NUM, UInt(8.W)))
@@ -46,6 +47,9 @@ class MemStage1 extends Module
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
+    var agu_valid_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
     var agu_result_reg = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U)(base.ADDR_WIDTH.W))
     ))
@@ -64,6 +68,11 @@ class MemStage1 extends Module
         ~io.rat_flush_en, 
         Mux((io.rob_state === 0.U), io.rob_item_i, rob_item_reg), 
         VecInit(Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem)))
+    )
+    agu_valid_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux((io.rob_state === 0.U), io.agu_valid_i, agu_valid_reg), 
+        VecInit(Seq.fill(base.AGU_NUM)(false.B))
     )
     agu_result_reg := Mux(
         ~io.rat_flush_en, 
@@ -122,7 +131,7 @@ class MemStage1 extends Module
     /* load/store使能 */
     /* 将来这里给到TLB,直连TLB判断TLB是否命中 */
     for(i <- 0 until base.AGU_NUM){
-        mem_read_en_o(i) := rob_item_reg(i).valid & rob_item_reg(i).isLoad
+        mem_read_en_o(i) := rob_item_reg(i).valid & rob_item_reg(i).isLoad & agu_valid_reg(i)
         mem_read_addr_o(i) := Mux(rob_item_reg(i).valid & rob_item_reg(i).isLoad, agu_result_reg(i), 0.U)
         mem_read_mask_o(i) := Mux(rob_item_reg(i).valid & rob_item_reg(i).isLoad, agu_rw_mask_reg(i), 0.U)
 

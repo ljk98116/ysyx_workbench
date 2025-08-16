@@ -1,16 +1,17 @@
 #pragma once
 #include <cpu/difftest.hpp>
+#include <common.hpp>
 namespace npc{
     typedef void(*io_callback_t)(uint32_t, int, bool);
     uint8_t* new_space(int size);
 
     typedef struct {
-    const char *name;
-    // we treat ioaddr_t as paddr_t here
-    paddr_t low;
-    paddr_t high;
-    void *space;
-    io_callback_t callback;
+        const char *name;
+        // we treat ioaddr_t as paddr_t here
+        paddr_t low;
+        paddr_t high;
+        void *space;
+        io_callback_t callback;
     } IOMap;
 
     static inline bool map_inside(IOMap *map, paddr_t addr) {

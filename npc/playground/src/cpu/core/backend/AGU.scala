@@ -63,17 +63,17 @@ class AGU extends Module
 
             switch(rob_item_reg.funct3){
                 is(Funct3.SB){
-                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFF".U
+                    result := (rs1_data_reg + rob_item_reg.Imm)
                     mem_wr_data := rs2_data_reg(7, 0)
                     mem_rw_mask := "b0001".U
                 }
                 is(Funct3.SH){
-                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFE".U
+                    result := (rs1_data_reg + rob_item_reg.Imm)
                     mem_wr_data := rs2_data_reg(15, 0)
                     mem_rw_mask := "b0011".U
                 }
                 is(Funct3.SW){
-                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    result := (rs1_data_reg + rob_item_reg.Imm)
                     mem_wr_data := rs2_data_reg
                     mem_rw_mask := "b1111".U
                 }
@@ -86,23 +86,26 @@ class AGU extends Module
                     mem_rw_mask := "b0001".U
                 }
                 is(Funct3.LH, Funct3.LHU){
-                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFE".U
+                    result := (rs1_data_reg + rob_item_reg.Imm)
                     mem_rw_mask := "b0011".U                    
                 }
                 is(Funct3.LW){
-                    result := (rs1_data_reg + rob_item_reg.Imm) & "hFFFF_FFFC".U
+                    result := (rs1_data_reg + rob_item_reg.Imm)
                     mem_rw_mask := "b1111".U
                 }
             }
         }
     }
 
+    var out_of_bound = WireInit(false.B)
+    out_of_bound := ~result(31)
+
     /* connect */
-    io.result := Mux(rob_item_reg.valid, result, 0.U)
+    io.result := Mux(rob_item_reg.valid & ~out_of_bound, result, 0.U)
     io.areg_wr_addr := areg_wr_addr
     io.preg_wr_addr := preg_wr_addr
     io.mem_wr_data := Mux(rob_item_reg.valid, mem_wr_data, 0.U)
     io.mem_rw_mask := Mux(rob_item_reg.valid, mem_rw_mask, 0.U)
     io.rob_item_o  := rob_item_o
-    io.valid       := rob_item_reg.valid
+    io.valid       := rob_item_reg.valid & ~out_of_bound
 }

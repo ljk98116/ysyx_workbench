@@ -2,7 +2,8 @@
 #include <memory/host.hpp>
 #include <memory/vaddr.hpp>
 #include <device/map.hpp>
-#include <device/device.hpp>
+#include <device/zio.hpp>
+#include <common.hpp>
 
 namespace npc {
 #define IO_SPACE_MAX (32 * 1024 * 1024)

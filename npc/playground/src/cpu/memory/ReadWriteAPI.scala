@@ -7,8 +7,9 @@ import chisel3.experimental._
 
 class MemReadAPI extends BlackBox with HasBlackBoxPath{
     val io = IO(new Bundle{
-        val clk = Input(Clock())
+        val clk = Input(Bool())
         val rst = Input(Bool())
+        val ren = Input(Bool())
         val raddr = Input(UInt(base.ADDR_WIDTH.W))
         val rdata = Output(UInt(base.DATA_WIDTH.W))
     })
@@ -17,8 +18,9 @@ class MemReadAPI extends BlackBox with HasBlackBoxPath{
 
 class MemWriteAPI extends BlackBox with HasBlackBoxPath{
     val io = IO(new Bundle{
-        val clk = Input(Clock())
+        val clk = Input(Bool())
         val rst = Input(Bool())
+        val wen = Input(Bool())
         val wmask = Input(UInt(8.W))
         val waddr = Input(UInt(base.ADDR_WIDTH.W))
         val wdata = Input(UInt(base.DATA_WIDTH.W))

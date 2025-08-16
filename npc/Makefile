@@ -38,6 +38,8 @@ CSRCS = $(shell find $(abspath ./csrc/$(PACKAGE)) -name "*.c" -or -name "*.cc" -
 INCFLAGS = $(addprefix -I , $(INC_PATH))
 INCFLAGS += $(addprefix -I , /home/ljk/Arch/ysyx_workbench/npc/csrc/$(PACKAGE)/)
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
+DEPFLAGS = -MMD -MP
+CXXFLAGS += $(DEPFLAGS)
 
 .PHONY: test verilog help reformat checkformat clean all sim
 
@@ -54,6 +56,7 @@ help:
 	mill -i $(PRJ).runMain Elaborate --help
 
 reformat:
+
 	mill -i __.reformat
 
 checkformat:

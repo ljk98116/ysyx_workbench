@@ -44,8 +44,12 @@ class RetireStage extends Module
         val rat_flush_en = Output(Bool())
         val exception_mask_front = Output(Vec(base.FETCH_WIDTH, Bool()))
         val commit_valid_mask = Output(UInt(base.FETCH_WIDTH.W))
+
+        /* 最后一个store指令的ROBID */
+        val last_store_idx = Output(UInt((base.ROBID_WIDTH + 1).W))
     })
 
+    var last_store_idx_reg = RegInit((1 << base.ROBID_WIDTH).U((base.ROBID_WIDTH + 1).W))
     /* 屏蔽位 */
     var store_mask_mid = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)
@@ -59,12 +63,17 @@ class RetireStage extends Module
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
+    var valid_mask_mid = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
     /* mask为false，则对应指令为store指令或者存在异常,后面的指令不能提交 */
     for(i <- 0 until base.FETCH_WIDTH){
         store_mask_mid(i) := io.rob_items_i(i).isStore
         exception_mask_mid(i) := io.rob_items_i(i).hasException
         branch_mask_mid(i) := io.rob_items_i(i).isBranch &
             (io.rob_items_i(i).branch_pred_addr =/= (io.rob_items_i(i).pc + 4.U))
+        valid_mask_mid(i) := io.rob_items_i(i).valid
     }
 
     /* 前面的指令有异常，后面的指令不能写RAT */
@@ -344,4 +353,28 @@ class RetireStage extends Module
         }
         
     }
+
+    /* 没有异常的最后一条指令的storeIdx */
+    var prio_dec1 = Module(new PriorityDecoder(4))
+    var prio_dec2 = Module(new PriorityDecoder(4))
+    var last_exception_idx = WireInit((4.U)(3.W))
+    var last_valid_idx = WireInit((4.U)(3.W))
+
+    prio_dec1.io.in := exception_mask_mid.asUInt
+    last_exception_idx := Mux(exception_mask_mid.asUInt.orR, prio_dec1.io.out, 4.U)
+
+    prio_dec2.io.in := valid_mask_mid.asUInt
+    last_valid_idx := Mux(valid_mask_mid.asUInt.orR, prio_dec2.io.out, 4.U)
+
+    io.last_store_idx := Mux(
+        last_exception_idx(2), 
+        Mux(
+            last_valid_idx(2),
+            last_store_idx_reg,
+            io.rob_items_i(last_valid_idx(1,0)).storeIdx
+        ),
+        io.rob_items_i(last_exception_idx(1,0)).storeIdx
+    )
+
+    last_store_idx_reg := io.last_store_idx
 }

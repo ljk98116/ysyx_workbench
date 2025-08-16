@@ -2,6 +2,7 @@
 #include <memory/host.hpp>
 #include <isa.hpp>
 #include <device/mmio.hpp>
+#include <cpu/cpu.hpp>
 
 namespace npc{
 
@@ -42,19 +43,34 @@ void init_mem() {
 
 word_t paddr_read(paddr_t addr, int len){
   /* 判断是否是MMIO */
+  if(
+    (addr >= 0xa00003f8 && addr <= 0xa00003ff) ||
+    (addr >= 0xa0000048 && addr <= 0xa000004f) ||
+    (addr == 0xa0000060)
+  ){
+    // printf("recv mmio read 0x%x at cycle: %d\n", addr, cycle);
+    return mmio_read(addr, len);
+  }
   if (likely(in_pmem(addr))) {
     word_t data = pmem_read(addr, len);
     return data;
   }
-  return mmio_read(addr, len); 
+  return 0;
 }
 
 void paddr_write(paddr_t addr, int len, word_t data) {
+  if(
+    (addr >= 0xa00003f8 && addr <= 0xa00003ff) ||
+    (addr >= 0xa0000048 && addr <= 0xa000004c) ||
+    (addr == 0xa0000060)
+  ){
+    // printf("recv mmio write 0x%x at cycle: %d\n", addr, cycle);
+    return mmio_write(addr, len, data);
+  }  
   if (likely(in_pmem(addr))) { 
     pmem_write(addr, len, data);
     return;
-  }    
-  return mmio_write(addr, len, data);
+  }
 }
 
 }

@@ -27,10 +27,10 @@ class CPUCore(memfile: String) extends Module
     val fetch = Module(new Fetch)
 
     /* PHT */
-    val pht = Module(new PHTReg)
+    val pht = Module(new PHTReg(true))
 
     /* BTB */
-    val btb = Module(new BTB)
+    val btb = Module(new BTB(true))
 
     /* decode stage */
     val decode = Module(new Decode)
@@ -337,6 +337,7 @@ class CPUCore(memfile: String) extends Module
         memstage1.io.agu_result_i(i)    := agu_vec(i).io.result
         memstage1.io.agu_rw_mask_i(i)   := agu_vec(i).io.mem_rw_mask
         memstage1.io.agu_mem_wdata(i)   := agu_vec(i).io.mem_wr_data
+        memstage1.io.agu_valid_i(i)     := agu_vec(i).io.valid
     }
     
     /* AGU -> StoreBuffer */
@@ -466,6 +467,9 @@ class CPUCore(memfile: String) extends Module
     fetch.io.rat_flush_en                          := retire.io.rat_flush_en
     decode.io.rat_flush_en                         := retire.io.rat_flush_en
     rename1.io.rat_flush_en                        := retire.io.rat_flush_en
+    rename2.io.rat_flush_en                        := retire.io.rat_flush_en
+    rename2.io.last_store_idx_retire               := retire.io.last_store_idx
+
     issue.io.rat_flush_en                          := retire.io.rat_flush_en
     // regread.io.rat_flush_en                        := retire.io.rat_flush_en
     memstage1.io.rat_flush_en                      := retire.io.rat_flush_en

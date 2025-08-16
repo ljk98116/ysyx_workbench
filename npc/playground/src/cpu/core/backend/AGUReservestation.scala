@@ -21,8 +21,8 @@ class AGUReservestation(size : Int) extends Module
         /* PRF 读使能 */
         val prf_rs1_data_ren = Output(Vec(base.AGU_NUM, Bool()))
         val prf_rs2_data_ren = Output(Vec(base.AGU_NUM, Bool()))
-        val prf_rs1_data_raddr = Output(Vec(base.AGU_NUM, UInt(base.PREG_WIDTH.W)))
-        val prf_rs2_data_raddr = Output(Vec(base.AGU_NUM, UInt(base.PREG_WIDTH.W)))
+        val prf_rs1_data_raddr = Output(Vec(base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
+        val prf_rs2_data_raddr = Output(Vec(base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
         val prf_rs1_data_rdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val prf_rs2_data_rdata = Input(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         /* 输出对应channel的操作数 */
@@ -57,11 +57,11 @@ class AGUReservestation(size : Int) extends Module
     /* 更新寄存器ready状态 */
     for(j <- 0 until base.FETCH_WIDTH){
         rob_item_reg(j).rdy1 := rob_item_reg(j).rdy1 | (
-            io.prf_valid_vec(rob_item_reg(j).ps1) &
+            io.prf_valid_vec(rob_item_reg(j).ps1(base.PREG_WIDTH - 1, 0)) &
             rob_item_reg(j).HasRs1
         )
         rob_item_reg(j).rdy2 := rob_item_reg(j).rdy2 | (
-            io.prf_valid_vec(rob_item_reg(j).ps2) &
+            io.prf_valid_vec(rob_item_reg(j).ps2(base.PREG_WIDTH - 1, 0)) &
             rob_item_reg(j).HasRs2
         )
     }
@@ -71,11 +71,11 @@ class AGUReservestation(size : Int) extends Module
     issue_able0 := ~(
         (
             rob_item_reg(head).HasRs1 & 
-            ~(rob_item_reg(head).rdy1 | io.prf_valid_vec(rob_item_reg(head).ps1))
+            ~(rob_item_reg(head).rdy1 | io.prf_valid_vec(rob_item_reg(head).ps1(base.PREG_WIDTH - 1, 0)))
         ) |
         (
             rob_item_reg(head).HasRs2 & 
-            ~(rob_item_reg(head).rdy2 | io.prf_valid_vec(rob_item_reg(head).ps2))
+            ~(rob_item_reg(head).rdy2 | io.prf_valid_vec(rob_item_reg(head).ps2(base.PREG_WIDTH - 1, 0)))
         )
     ) & rob_item_reg(head).valid & (head =/= tail) & (io.rob_state === "b00".U)
     rob_item_o(0) := Mux(issue_able0, rob_item_reg(head), (0.U).asTypeOf(new ROBItem))
@@ -137,10 +137,10 @@ class AGUReservestation(size : Int) extends Module
             false.B,
             Mux(
                 is_write_loc.asUInt.orR,
-                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps1) | 
+                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps1(base.PREG_WIDTH - 1, 0)) | 
                 io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).rdy1,
                 rob_item_reg(j).rdy1 | 
-                io.prf_valid_vec(rob_item_reg(j).ps1)            
+                io.prf_valid_vec(rob_item_reg(j).ps1(base.PREG_WIDTH - 1, 0))            
             )
         )
 
@@ -149,10 +149,10 @@ class AGUReservestation(size : Int) extends Module
             false.B,
             Mux(
                 is_write_loc.asUInt.orR,
-                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps2) |
+                io.prf_valid_vec(io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).ps2(base.PREG_WIDTH - 1, 0)) |
                 io.rob_item_i(write_loc(log2Ceil(base.FETCH_WIDTH) - 1, 0)).rdy2,
                 rob_item_reg(j).rdy2 | 
-                io.prf_valid_vec(rob_item_reg(j).ps2)            
+                io.prf_valid_vec(rob_item_reg(j).ps2(base.PREG_WIDTH - 1, 0))            
             )
         )
     }
@@ -162,10 +162,10 @@ class AGUReservestation(size : Int) extends Module
     io.prf_rs2_data_ren(0) := Mux(issue_able0, rob_item_o(0).HasRs2 & (rob_item_o(0).rs2 =/= 0.U), false.B)
     io.prf_rs2_data_raddr(0) := Mux(issue_able0, rob_item_o(0).ps2, 0.U)
 
-    io.prf_rs1_data_ren(1) := Mux(issue_able0, rob_item_o(1).HasRs1 & (rob_item_o(1).rs1 =/= 0.U), false.B)
-    io.prf_rs1_data_raddr(1) := Mux(issue_able0, rob_item_o(1).ps1, 0.U)
-    io.prf_rs2_data_ren(1) := Mux(issue_able0, rob_item_o(1).HasRs2 & (rob_item_o(1).rs2 =/= 0.U), false.B)
-    io.prf_rs2_data_raddr(1) := Mux(issue_able0, rob_item_o(1).ps2, 0.U)
+    io.prf_rs1_data_ren(1) := Mux(issue_able1, rob_item_o(1).HasRs1 & (rob_item_o(1).rs1 =/= 0.U), false.B)
+    io.prf_rs1_data_raddr(1) := Mux(issue_able1, rob_item_o(1).ps1, 0.U)
+    io.prf_rs2_data_ren(1) := Mux(issue_able1, rob_item_o(1).HasRs2 & (rob_item_o(1).rs2 =/= 0.U), false.B)
+    io.prf_rs2_data_raddr(1) := Mux(issue_able1, rob_item_o(1).ps2, 0.U)
 
     io.agu_channel_rs1_rdata := io.prf_rs1_data_rdata
     io.agu_channel_rs2_rdata := io.prf_rs2_data_rdata

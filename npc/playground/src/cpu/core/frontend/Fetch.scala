@@ -113,7 +113,7 @@ class Fetch extends Module
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))        
     )
 
-    pc_vec_o(0) := Mux(~io.rat_flush_en, pc, 0.U)
+    pc_vec_o(0) := Mux(~io.rat_flush_en & inst_valid_mask(0), pc, 0.U)
     pc_vec_o(1) := Mux(~io.rat_flush_en & inst_valid_mask(1), pc + 4.U, 0.U)
     pc_vec_o(2) := Mux(~io.rat_flush_en & inst_valid_mask(2), pc + 8.U, 0.U)
     pc_vec_o(3) := Mux(~io.rat_flush_en & inst_valid_mask(3), pc + 12.U, 0.U)

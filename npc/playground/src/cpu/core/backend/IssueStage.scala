@@ -19,8 +19,8 @@ class IssueStage extends Module
         /* PRF 读使能 */
         val prf_rs1_data_ren = Output(Vec(base.ALU_NUM + base.AGU_NUM, Bool()))
         val prf_rs2_data_ren = Output(Vec(base.ALU_NUM + base.AGU_NUM, Bool()))
-        val prf_rs1_data_raddr = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.PREG_WIDTH.W)))
-        val prf_rs2_data_raddr = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.PREG_WIDTH.W)))
+        val prf_rs1_data_raddr = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
+        val prf_rs2_data_raddr = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
         val prf_rs1_data_rdata = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val prf_rs2_data_rdata = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         /* PRF valid状态位 */

@@ -4,7 +4,7 @@
  * NEMU Configuration Menu
  *
  */
-#define CONFIG_DIFFTEST 1
+#define CONFIG_DIFFTEST 0
 #define CONFIG_AUDIO_CTL_MMIO 0xa0000200
 #define CONFIG_DIFFTEST_REF_NAME "none"
 #define CONFIG_ENGINE "interpreter"

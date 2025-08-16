@@ -13,6 +13,11 @@ namespace npc{
 npc_CPU_state cpu = {};
 uint8_t retire_RAT[32];
 uint8_t rename_RAT[32];
+btb_item_t btb_table[1 << 13];
+uint8_t gPHT[1 << 13];
+uint8_t lPHT[1 << 13];
+uint8_t cPHT[1 << 13];
+
 uint8_t commit_num;
 uint32_t cycle;
 uint32_t total_branch_cnt;
@@ -31,7 +36,16 @@ static void trace_and_difftest() {
   if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
 #endif
   // if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); }
-  IFDEF(CONFIG_DIFFTEST, difftest_step());
+#if CONFIG_DIFFTEST
+  difftest_step();
+#else
+  static uint32_t last_npc_pc[4];
+  if(memcmp(last_npc_pc, cpu.pc, sizeof(last_npc_pc)) == 0){
+    ref_stop = true;
+    return;
+  }
+  memcpy(last_npc_pc, cpu.pc, sizeof(last_npc_pc));
+#endif
   // IFDEF(CONFIG_WATCH_POINT, watchpoint_step());
 }
 
@@ -59,7 +73,7 @@ static void exec_once(VerilatedVcdC* tfp){
   if(tfp != nullptr) tfp->dump(cycle);
   /* 存在指令提交,进行difftest */
   if(commit_num > 0){
-    Log("npc commit_num:%d at %d th cycle", commit_num, cycle);
+    // Log("npc commit_num:%d at %d th cycle", commit_num, cycle);
     trace_and_difftest();
     g_nr_guest_inst += commit_num;
   }

@@ -5,11 +5,12 @@ import chisel3.util._
 
 import cpu.config._
 import cpu.config.base.PHTID_WIDTH
+import cpu.core.utils._
 
 /* fetch阶段读取PCReg段写入，读取在下一周期给出结果，会缓存读信号 */
 /* 使用chisel Mem, 同时读取出饱和计数器值 */
 /* 局部历史PHT和全局历史PHT，综合二者的结果 */
-class PHTReg extends Module{
+class PHTReg(DEBUG : Boolean = false) extends Module{
     val io = IO(new Bundle{
         /* retire段全局、局部历史PHT索引 */
         /* 是否前置无异常指令的分支指令 */
@@ -31,6 +32,7 @@ class PHTReg extends Module{
         val branch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
     })   
 
+if(!DEBUG){
     var gPHTReg = Mem(1 << base.PHTID_WIDTH, UInt(2.W))
     var lPHTReg = Mem(1 << base.PHTID_WIDTH, UInt(2.W))
     /* 使用lPHT的索引来寻址 */
@@ -113,4 +115,122 @@ class PHTReg extends Module{
     io.gbranch_pre_res_o := gbranch_pre_res_o
     io.lbranch_pre_res_o := lbranch_pre_res_o
     io.branch_pre_res_o := branch_pre_res_o
+}
+else{
+    /* 默认不跳转 */
+    var gbranch_pre_res_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var lbranch_pre_res_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    var branch_pre_res_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
+    var gpht_rd_apis = Seq.fill(base.FETCH_WIDTH)(
+        Module(new gPHTReadAPI)
+    )
+    var gpht_wr_apis = Seq.fill(base.FETCH_WIDTH)(
+        Module(new gPHTWriteAPI)
+    )
+    var lpht_rd_apis = Seq.fill(base.FETCH_WIDTH)(
+        Module(new lPHTReadAPI)
+    )
+    var lpht_wr_apis = Seq.fill(base.FETCH_WIDTH)(
+        Module(new lPHTWriteAPI)
+    )
+    var cpht_rd_apis = Seq.fill(base.FETCH_WIDTH)(
+        Module(new cPHTReadAPI)
+    )
+    var cpht_wr_apis = Seq.fill(base.FETCH_WIDTH)(
+        Module(new cPHTWriteAPI)
+    )
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        gpht_rd_apis(i).io.rst := reset.asBool
+        gpht_rd_apis(i).io.ren := true.B
+        gpht_rd_apis(i).io.raddr := io.global_pht_idx_vec_i(i)
+
+        gpht_wr_apis(i).io.clk := clock.asBool
+        gpht_wr_apis(i).io.rst := reset.asBool
+        gpht_wr_apis(i).io.wen := (io.rob_state =/= "b11".U) & io.retire_br_mask(i)
+        gpht_wr_apis(i).io.waddr := io.retire_gpht_idx(i)
+
+        lpht_rd_apis(i).io.rst := reset.asBool
+        lpht_rd_apis(i).io.ren := true.B
+        lpht_rd_apis(i).io.raddr := io.local_pht_idx_vec_i(i)
+
+        lpht_wr_apis(i).io.clk := clock.asBool
+        lpht_wr_apis(i).io.rst := reset.asBool
+        lpht_wr_apis(i).io.wen := (io.rob_state =/= "b11".U) & io.retire_br_mask(i)
+        lpht_wr_apis(i).io.waddr := io.retire_lpht_idx(i)
+
+        cpht_rd_apis(i).io.rst := reset.asBool
+        cpht_rd_apis(i).io.ren := true.B
+        cpht_rd_apis(i).io.raddr := io.local_pht_idx_vec_i(i)
+
+        cpht_wr_apis(i).io.clk := clock.asBool
+        cpht_wr_apis(i).io.rst := reset.asBool
+        cpht_wr_apis(i).io.wen := (io.rob_state =/= "b11".U) & io.retire_br_mask(i)
+        cpht_wr_apis(i).io.waddr := io.retire_lpht_idx(i)
+    }
+    /* 更新gPHT */
+    for(i <- 0 until base.FETCH_WIDTH){
+        var gPHTReg_val = WireInit((0.U)(2.W))
+        gPHTReg_val := gpht_rd_apis(i).io.rdata
+        gpht_wr_apis(i).io.wdata := 
+            Mux(
+                io.retire_br_taken_vec(i),
+                Mux(gPHTReg_val =/= "b11".U, gPHTReg_val + 1.U, gPHTReg_val),
+                Mux(gPHTReg_val =/= "b00".U, gPHTReg_val - 1.U, gPHTReg_val)
+            )
+    }
+
+    /* 更新lPHT */
+    for(i <- 0 until base.FETCH_WIDTH){
+        var lPHTReg_val = WireInit((0.U)(2.W))
+        lPHTReg_val := lpht_rd_apis(i).io.rdata
+        lpht_wr_apis(i).io.wdata := 
+            Mux(
+                io.retire_br_taken_vec(i),
+                Mux(lPHTReg_val =/= "b11".U, lPHTReg_val + 1.U, lPHTReg_val),
+                Mux(lPHTReg_val =/= "b00".U, lPHTReg_val - 1.U, lPHTReg_val)
+            )
+    }
+
+    /* 更新cPHT */
+    /* 0-1使用gPHT, 2-3使用lPHT */
+    for(i <- 0 until base.FETCH_WIDTH){
+        var cPHTReg_val = WireInit((0.U)(2.W))
+        cPHTReg_val := cpht_rd_apis(i).io.rdata
+        cpht_wr_apis(i).io.wdata := Mux(
+            ~(io.retire_gbranch_pre_res_i(i) ^ io.retire_lbranch_pre_res_i(i)),
+            cPHTReg_val,
+            Mux(
+                /* 全局分支预测正确 */
+                ~(io.retire_gbranch_pre_res_i(i) ^ io.retire_br_taken_vec(i)),
+                Mux(cPHTReg_val =/= "b00".U, cPHTReg_val - 1.U, cPHTReg_val),
+                Mux(cPHTReg_val =/= "b11".U, cPHTReg_val + 1.U, cPHTReg_val)
+            )
+        )
+    }
+
+    /* 计算预测方向 */
+    for(i <- 0 until base.FETCH_WIDTH){
+        gbranch_pre_res_o(i) := gpht_rd_apis(i).io.rdata(1)
+        lbranch_pre_res_o(i) := lpht_rd_apis(i).io.rdata(1)
+        branch_pre_res_o(i) := Mux(
+            cpht_rd_apis(i).io.rdata(1),
+            lbranch_pre_res_o(i),
+            gbranch_pre_res_o(i)
+        )
+    }
+
+    /* connect */
+    io.gbranch_pre_res_o := gbranch_pre_res_o
+    io.lbranch_pre_res_o := lbranch_pre_res_o
+    io.branch_pre_res_o := branch_pre_res_o    
+}
+
 }

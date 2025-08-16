@@ -1,6 +1,6 @@
 #include <utils.hpp>
 #include <device/map.hpp>
-#include <device/device.hpp>
+#include <device/zio.hpp>
 
 namespace npc {
 

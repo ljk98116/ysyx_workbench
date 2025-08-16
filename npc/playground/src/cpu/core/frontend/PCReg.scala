@@ -206,8 +206,8 @@ class PCReg extends Module
     }
     /* 有分支使能，输出分支指令目标PC */
     io.pc_o := Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg)
-    io.inst_valid_mask_o := Mux(~io.rat_flush_en, inst_valid_mask, 0.U)
-    io.inst_valid_cnt_o  := Mux(~io.rat_flush_en, inst_valid_cnt, 0.U)
+    io.inst_valid_mask_o := Mux(~io.rat_flush_en && (io.rob_state === 0.U), inst_valid_mask, 0.U)
+    io.inst_valid_cnt_o  := Mux(~io.rat_flush_en && (io.rob_state === 0.U), inst_valid_cnt, 0.U)
     io.global_pht_idx_vec_o := global_pht_idx_vec_o
     io.local_pht_idx_vec_o := local_pht_idx_vec_o
     io.bht_idx_vec_o := bht_idx_vec_o

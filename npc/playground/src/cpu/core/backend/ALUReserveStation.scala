@@ -79,8 +79,8 @@ class ALUReserveStation(size: Int) extends Module {
         /* PRF 读使能 */
         val prf_rs1_data_ren = Output(Bool())
         val prf_rs2_data_ren = Output(Bool())
-        val prf_rs1_data_raddr = Output(UInt(base.PREG_WIDTH.W))
-        val prf_rs2_data_raddr = Output(UInt(base.PREG_WIDTH.W))
+        val prf_rs1_data_raddr = Output(UInt((base.PREG_WIDTH + 1).W))
+        val prf_rs2_data_raddr = Output(UInt((base.PREG_WIDTH + 1).W))
         val prf_rs1_data_rdata = Input(UInt(base.DATA_WIDTH.W))
         val prf_rs2_data_rdata = Input(UInt(base.DATA_WIDTH.W))
         /* 输出对应channel的操作数 */
@@ -181,8 +181,8 @@ class ALUReserveStation(size: Int) extends Module {
                 }
                 age_mat(i)(j) := false.B
             }
-            rob_item_reg(i).rdy1 := io.prf_valid_vec(io.rob_item_i.ps1) | io.rob_item_i.rdy1
-            rob_item_reg(i).rdy2 := io.prf_valid_vec(io.rob_item_i.ps2) | io.rob_item_i.rdy2
+            rob_item_reg(i).rdy1 := io.prf_valid_vec(io.rob_item_i.ps1(base.PREG_WIDTH - 1, 0)) | io.rob_item_i.rdy1
+            rob_item_reg(i).rdy2 := io.prf_valid_vec(io.rob_item_i.ps2(base.PREG_WIDTH - 1, 0)) | io.rob_item_i.rdy2
 
         }.elsewhen(
             ~io.rat_flush_en & 
@@ -190,8 +190,8 @@ class ALUReserveStation(size: Int) extends Module {
                 (i.U =/= freeIdBuffer.io.free_id_o(width - 1, 0)) | 
                 freeIdBuffer.io.free_id_o(width)
             ) & rob_item_reg(i).valid & (i.U =/= issue_idx)){
-            rob_item_reg(i).rdy1 := io.prf_valid_vec(rob_item_reg(i).ps1) | rob_item_reg(i).rdy1
-            rob_item_reg(i).rdy2 := io.prf_valid_vec(rob_item_reg(i).ps2) | rob_item_reg(i).rdy2
+            rob_item_reg(i).rdy1 := io.prf_valid_vec(rob_item_reg(i).ps1(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy1
+            rob_item_reg(i).rdy2 := io.prf_valid_vec(rob_item_reg(i).ps2(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy2
         }.elsewhen((i.U === issue_idx) & freeIdBuffer.io.issued_i & ~io.rat_flush_en){
             for(j <- 0 until size){
                 age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B

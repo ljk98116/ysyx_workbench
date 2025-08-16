@@ -108,6 +108,53 @@ void npc_update_branch_predict(
     // Log("npc branch_cnt: %d, branch_err_cnt: %d", total_branch_cnt, branch_err_cnt);
 }
 
+void npc_btb_write(
+    short waddr,
+    char valid,
+    char BIA,
+    int BTA
+){
+    btb_table[waddr].V = valid & 0x1;
+    btb_table[waddr].bia = BIA;
+    btb_table[waddr].bta = BTA;
+}
+
+int npc_btb_read_V(short raddr){
+    return btb_table[raddr].V;
+}
+
+int npc_btb_read_BIA(short raddr){
+    return btb_table[raddr].bia;
+}
+
+int npc_btb_read_BTA(short raddr){
+    return btb_table[raddr].bta;
+}
+
+void npc_gpht_write(short waddr, char wdata){
+    gPHT[waddr] = wdata;
+}
+
+void npc_lpht_write(short waddr, char wdata){
+    lPHT[waddr] = wdata;
+}
+
+void npc_cpht_write(short waddr, char wdata){
+    cPHT[waddr] = wdata;
+}
+
+char npc_gpht_read(short raddr){
+    return gPHT[raddr];
+}
+
+char npc_lpht_read(short raddr){
+    return lPHT[raddr];
+}
+
+char npc_cpht_read(short raddr){
+    return cPHT[raddr];
+}
+
 #ifdef __cplusplus
 }
 #endif

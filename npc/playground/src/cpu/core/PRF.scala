@@ -11,8 +11,8 @@ class PRF extends Module
         /* PRF 读使能 */
         val prf_rs1_data_ren = Input(Vec(base.ALU_NUM + base.AGU_NUM, Bool()))
         val prf_rs2_data_ren = Input(Vec(base.ALU_NUM + base.AGU_NUM, Bool()))
-        val prf_rs1_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.PREG_WIDTH.W)))
-        val prf_rs2_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.PREG_WIDTH.W)))
+        val prf_rs1_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
+        val prf_rs2_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
         /* cdb消息, 写入PRF */
         val cdb_i = Input(new CDB)
         val rat_flush_en = Input(Bool())
@@ -21,7 +21,7 @@ class PRF extends Module
         val prf_rs2_data_rdata = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         /* PRF valid 接口 */
         val prf_valid_rd_wen = Input(Vec(base.FETCH_WIDTH, Bool()))
-        val prf_valid_rd_waddr = Input(Vec(base.FETCH_WIDTH, UInt(base.PREG_WIDTH.W)))
+        val prf_valid_rd_waddr = Input(Vec(base.FETCH_WIDTH, UInt((base.PREG_WIDTH + 1).W)))
         val prf_valid_rd_wdata = Input(Vec(base.FETCH_WIDTH, Bool()))
 
         val prf_valid_vec = Output(Vec(1 << base.PREG_WIDTH, Bool()))
@@ -43,8 +43,8 @@ class PRF extends Module
     ))
 
     for(i <- 0 until base.ALU_NUM + base.AGU_NUM){
-        prf_rs1_data_rdata(i) := Mux(io.prf_rs1_data_ren(i), prf_regs(io.prf_rs1_data_raddr(i)), 0.U)
-        prf_rs2_data_rdata(i) := Mux(io.prf_rs2_data_ren(i), prf_regs(io.prf_rs2_data_raddr(i)), 0.U)
+        prf_rs1_data_rdata(i) := Mux(io.prf_rs1_data_ren(i) & (~io.prf_rs1_data_raddr(i)(base.PREG_WIDTH)), prf_regs(io.prf_rs1_data_raddr(i)(base.PREG_WIDTH - 1, 0)), 0.U)
+        prf_rs2_data_rdata(i) := Mux(io.prf_rs2_data_ren(i) & (~io.prf_rs2_data_raddr(i)(base.PREG_WIDTH)), prf_regs(io.prf_rs2_data_raddr(i)(base.PREG_WIDTH - 1, 0)), 0.U)
     }
 
     for(i <- 0 until (1 << base.PREG_WIDTH)){

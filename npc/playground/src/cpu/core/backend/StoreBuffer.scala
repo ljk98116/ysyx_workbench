@@ -80,6 +80,7 @@ class StoreBuffer(size : Int) extends Module{
         Seq.fill(base.AGU_NUM)(false.B)
     ))
 
+    /* load指令的上一个store指令的rob_id的位置要晚于地址匹配的位置 */
     for(i <- 0 until base.AGU_NUM){
         /* head > tail时候的tail以下部分 */
         var load_raw_mask_1 = WireInit(VecInit(
@@ -95,7 +96,7 @@ class StoreBuffer(size : Int) extends Module{
                 (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                (((j.U < tail) & (head > tail)) | (head < tail)) &
+                (((j.U < tail) & (head > tail)) | ((head < tail) & (j.U >= head) & (j.U <= tail))) &
                 (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width)) &
                 ((store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U) & (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) < tail))
             load_raw_mask_2(j) := 
@@ -103,7 +104,7 @@ class StoreBuffer(size : Int) extends Module{
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
                 (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
                 (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width)) &
-                (((j.U >= head) & (head > tail)) | (head < tail)) & 
+                (((j.U >= head) & (head > tail))) & 
                 (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U)
         }
         load_raw_mask := Mux(load_raw_mask_1.asUInt =/= 0.U, load_raw_mask_1.asUInt, load_raw_mask_2.asUInt)
