@@ -164,10 +164,12 @@ void sdb_set_batch_mode() {
 }
 
 void sdb_mainloop(){
+#if CONFIG_USE_VCD
   VerilatedVcdC* tfp = new VerilatedVcdC; // 创建 VCD 对象
   cycle = 0;
   cpu_reset(tfp);
   tfp_cur = tfp;
+#endif
   if (is_batch_mode) {
     cmd_c(NULL);
     return;
@@ -197,12 +199,14 @@ void sdb_mainloop(){
     for (i = 0; i < NR_CMD; i ++) {
       if (strcmp(cmd, cmd_table[i].name) == 0) {
         if (cmd_table[i].handler(args) < 0) { 
+      #if CONFIG_USE_VCD
           tfp->close();
           if(tfp != nullptr) {
             delete tfp;
             tfp_cur = nullptr;
             tfp = nullptr;
           }
+      #endif
           return; 
         }
         break;

@@ -46,6 +46,7 @@ static void trace_and_difftest() {
     (memcmp(last_npc_regs, cpu.gpr, sizeof(last_npc_regs)) == 0)
   ){
     ref_stop = true;
+    nemu_state.state = NEMU_END;
     return;
   }
   memcpy(last_npc_pc, cpu.pc, sizeof(last_npc_pc));
@@ -94,8 +95,12 @@ static void execute(uint64_t n, VerilatedVcdC* tfp) {
 
 void cpu_reset(VerilatedVcdC* tfp){
   dut.reset = 1;
-  dut.trace(tfp, 99); // 跟踪所有信号（99=递归深度）
-  tfp->open("wave2.vcd"); // 输出文件名
+#if CONFIG_USE_VCD
+  if(tfp != nullptr){
+    dut.trace(tfp, 99); // 跟踪所有信号（99=递归深度）
+    tfp->open("wave2.vcd"); // 输出文件名
+  }
+#endif
   int n = 5;
   while (n -- > 0) exec_once(tfp);
   dut.reset = 0;  
