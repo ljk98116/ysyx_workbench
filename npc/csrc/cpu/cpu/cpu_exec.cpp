@@ -40,11 +40,16 @@ static void trace_and_difftest() {
   difftest_step();
 #else
   static uint32_t last_npc_pc[4];
-  if(memcmp(last_npc_pc, cpu.pc, sizeof(last_npc_pc)) == 0){
+  static uint32_t last_npc_regs[32];
+  if(
+    (memcmp(last_npc_pc, cpu.pc, sizeof(last_npc_pc)) == 0) &&
+    (memcmp(last_npc_regs, cpu.gpr, sizeof(last_npc_regs)) == 0)
+  ){
     ref_stop = true;
     return;
   }
   memcpy(last_npc_pc, cpu.pc, sizeof(last_npc_pc));
+  memcpy(last_npc_regs, cpu.gpr, sizeof(last_npc_regs));
 #endif
   // IFDEF(CONFIG_WATCH_POINT, watchpoint_step());
 }
