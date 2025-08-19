@@ -25,7 +25,7 @@ static void pmem_write(paddr_t addr, int len, word_t data) {
 }
 
 static void out_of_bound(paddr_t addr) {
-  panic("address = " FMT_PADDR " is out of bound of pmem [" FMT_PADDR ", " FMT_PADDR "] at pc = " FMT_WORD,
+  npc_panic("address = " NPC_FMT_PADDR " is out of bound of pmem [" NPC_FMT_PADDR ", " NPC_FMT_PADDR "] at pc = " NPC_FMT_WORD,
       addr, PMEM_LEFT, PMEM_RIGHT, cpu.pc);
 }
 
@@ -35,7 +35,7 @@ void init_mem() {
   assert(pmem);
 #endif
   IFDEF(CONFIG_MEM_RANDOM, memset(pmem, rand(), CONFIG_MSIZE));
-  Log("physical memory area [" FMT_PADDR ", " FMT_PADDR "]", PMEM_LEFT, PMEM_RIGHT);
+  NPCLog("physical memory area [" NPC_FMT_PADDR ", " NPC_FMT_PADDR "]", PMEM_LEFT, PMEM_RIGHT);
 // #ifdef CONFIG_MTRACE
 //   mtrace_buf = iringbuf_create(MTRACE_INFO_SIZE * MTRACE_NUM);
 // #endif

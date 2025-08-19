@@ -42,35 +42,36 @@ module BTBReadVAPI(
     input rst,
     input ren,
     input [12:0] raddr,
-    output reg V
+    output V
 );
-
+reg [31:0] V_o;
 always @(*) begin
     if(rst | ~ren) begin
-        V = 1'b0;
+        V_o = 32'b0;
     end    
     else if(ren) begin
-        V = npc_btb_read_V({4'b0, raddr})[0];
+        V_o = npc_btb_read_V({4'b0, raddr});
     end
 end 
-
+assign V = V_o[0];
 endmodule
 
 module BTBReadBIAAPI(
     input rst,
     input ren,
     input [12:0] raddr,
-    output reg [7:0] BIA
+    output [7:0] BIA
 );
-
+reg [31:0] bia;
 always @(*) begin
     if(rst | ~ren) begin
-        BIA = 8'b0;
+        bia = 32'b0;
     end    
     else if(ren) begin
-        BIA = npc_btb_read_BIA({4'b0, raddr})[7:0];
+        bia = npc_btb_read_BIA({4'b0, raddr});
     end
 end 
+assign BIA = bia[7:0];
 
 endmodule
 
@@ -86,7 +87,7 @@ always @(*) begin
         BTA = 32'b0;
     end    
     else if(ren) begin
-        BTA = npc_btb_read_BTA({4'b0, raddr})[31:0];
+        BTA = npc_btb_read_BTA({4'b0, raddr});
     end
 end 
 

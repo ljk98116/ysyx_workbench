@@ -27,13 +27,13 @@ void init_alarm() {
   memset(&s, 0, sizeof(s));
   s.sa_handler = alarm_sig_handler;
   int ret = sigaction(SIGVTALRM, &s, NULL);
-  Assert(ret == 0, "Can not set signal handler");
+  NPCAssert(ret == 0, "Can not set signal handler");
 
   struct itimerval it = {};
   it.it_value.tv_sec = 0;
   it.it_value.tv_usec = 1000000 / TIMER_HZ;
   it.it_interval = it.it_value;
   ret = setitimer(ITIMER_VIRTUAL, &it, NULL);
-  Assert(ret == 0, "Can not set timer");
+  NPCAssert(ret == 0, "Can not set timer");
 }
 }

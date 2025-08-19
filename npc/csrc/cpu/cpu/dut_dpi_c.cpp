@@ -105,7 +105,7 @@ void npc_update_branch_predict(
     if(branch_pred_err & 0x8){
         ++branch_err_cnt;
     }
-    // Log("npc branch_cnt: %d, branch_err_cnt: %d", total_branch_cnt, branch_err_cnt);
+    // NPCLog("npc branch_cnt: %d, branch_err_cnt: %d", total_branch_cnt, branch_err_cnt);
 }
 
 void npc_btb_write(

@@ -7,7 +7,7 @@ NXDC_FILES = constr/$(TOPNAME).nxdc
 
 INC_PATH ?= $(NEMU_HOME)/include
 VERILATOR = verilator
-VERILATOR_FLAGS += --cc --exe --build -O3 -Wall --trace -j 32 --output-split 100
+VERILATOR_FLAGS += --cc --build -O3 -Wall --trace -j 32 --output-split 100
 VERILATOR_FLAGS += -Wno-lint
 
 BUILD_DIR = ./build
@@ -83,7 +83,9 @@ clean:
 $(BIN): $(VSRCS) $(CSRCS) 
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_FLAGS) \
-		--top $(TOPNAME) $^ \
+		--cc $(VSRCS) \
+		--top $(TOPNAME) \
+		--exe $(CSRCS) \
 		$(addprefix -CFLAGS , $(CXXFLAGS)) $(addprefix -LDFLAGS , $(LDFLAGS)) \
 		--Mdir $(OBJ_DIR) -o $(abspath $(BIN))
 

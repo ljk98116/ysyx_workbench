@@ -164,12 +164,13 @@ void sdb_set_batch_mode() {
 }
 
 void sdb_mainloop(){
-#if CONFIG_USE_VCD
-  VerilatedVcdC* tfp = new VerilatedVcdC; // 创建 VCD 对象
   cycle = 0;
-  cpu_reset(tfp);
+  VerilatedVcdC* tfp = nullptr;
+#if CONFIG_USE_VCD
+  tfp = new VerilatedVcdC; // 创建 VCD 对象
   tfp_cur = tfp;
 #endif
+  cpu_reset(tfp);
   if (is_batch_mode) {
     cmd_c(NULL);
     return;

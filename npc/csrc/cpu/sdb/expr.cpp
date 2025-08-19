@@ -84,7 +84,7 @@ void init_regex() {
     ret = regcomp(&re[i], rules[i].regex, REG_EXTENDED);
     if (ret != 0) {
       regerror(ret, &re[i], error_msg, 128);
-      panic("regex compilation failed: %s\n%s", error_msg, rules[i].regex);
+      npc_panic("regex compilation failed: %s\n%s", error_msg, rules[i].regex);
     }
   }
 }
@@ -111,11 +111,11 @@ static bool make_token(char *e) {
         char *substr_start = e + position;
         int substr_len = pmatch.rm_eo;
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
+        NPCLog("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
             i, rules[i].regex, position, substr_len, substr_len, substr_start);
 
         if(substr_len >= 32) {
-          panic("too long for a token at position %d with len %d: %.*s", position, substr_len, substr_len, substr_start);
+          npc_panic("too long for a token at position %d with len %d: %.*s", position, substr_len, substr_len, substr_start);
         }
         position += substr_len;
 
@@ -254,14 +254,14 @@ static word_t eval(int start, int end, bool *success){
   if(start == end){
     if(tokens[start].type != TK_NUMBER && tokens[start].type != TK_HEX && tokens[start].type != TK_REG){
       *success = false;
-      panic("expr cal result is not a number");
+      npc_panic("expr cal result is not a number");
       return 0;
     }
     if(tokens[start].type == TK_NUMBER) return str2int(tokens[start].str, 10u, success);
     if(tokens[start].type == TK_HEX) return str2int(tokens[start].str, 16u, success);
     if(tokens[start].type == TK_REG) return isa_reg_str2val(tokens[start].str, success);
     *success = false;
-    panic("expr cal result is not a number");
+    npc_panic("expr cal result is not a number");
     return 0;
   }
   /* 带括号 */
@@ -281,7 +281,7 @@ static word_t eval(int start, int end, bool *success){
   if(target_idx == -1) {
     printf("%d %d %s %s\n", start, end, tokens[start].str, tokens[end].str);
     *success = false;
-    panic("expr can not calculate");
+    npc_panic("expr can not calculate");
   }
   word_t val1 = eval(start, target_idx - 1, success);
   word_t val2 = eval(target_idx + 1, end, success);
@@ -315,7 +315,7 @@ static word_t eval(int start, int end, bool *success){
     }
     default:{
       *success = false;
-      panic("not implmented");
+      npc_panic("not implmented");
     }
   }
   return 0;

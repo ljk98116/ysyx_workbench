@@ -71,8 +71,8 @@ void init_difftest(char *ref_so_file, long img_size, int port) {
   void (*ref_difftest_init)(int) = (void (*)(int port))dlsym(handle, "difftest_init");
   assert(ref_difftest_init);
 
-  Log("Differential testing: %s", ANSI_FMT("ON", ANSI_FG_GREEN));
-  Log("The result of every instruction will be compared with %s. "
+  NPCLog("Differential testing: %s", NPC_ANSI_FMT("ON", NPC_ANSI_BG_GREEN));
+  NPCLog("The result of every instruction will be compared with %s. "
       "This will help you a lot for debugging, but also significantly reduce the performance. "
       "If it is not necessary, you can turn it off in menuconfig.", ref_so_file);
 
@@ -88,9 +88,9 @@ static void checkregs(CPU_state *ref) {
   if (!isa_difftest_checkregs(ref)) {
     nemu_state.state = NEMU_ABORT;
     if(commit_num > 0) nemu_state.halt_pc = cpu.pc[commit_num - 1];
-    Log("npc regs:\n");
+    NPCLog("npc regs:\n");
     isa_reg_display(&cpu, false);
-    Log("nemu regs:\n");
+    NPCLog("nemu regs:\n");
     isa_reg_display(ref, true);
   }
   else{
@@ -111,7 +111,7 @@ void difftest_step() {
       nemu_state.state = NEMU_END;
       nemu_state.halt_pc = ref_r.pc;
     }
-    // Log("ref pc: 0x%x", ref_r.pc);
+    // NPCLog("ref pc: 0x%x", ref_r.pc);
     checkregs(&ref_r);
     last_ref_pc = ref_r.pc;
   }

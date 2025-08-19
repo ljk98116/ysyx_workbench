@@ -33,7 +33,7 @@ static bool g_print_step = false;
 
 static void trace_and_difftest() {
 #ifdef CONFIG_ITRACE_COND
-  if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
+  if (ITRACE_COND) { npc_log_write("%s\n", _this->logbuf); }
 #endif
   // if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(_this->logbuf)); }
 #if CONFIG_DIFFTEST
@@ -57,12 +57,12 @@ static void trace_and_difftest() {
 
 static void statistic() {
   IFNDEF(CONFIG_TARGET_AM, setlocale(LC_NUMERIC, ""));
-#define NUMBERIC_FMT MUXDEF(CONFIG_TARGET_AM, "%", "%'") PRIu64
-  Log("host time spent = " NUMBERIC_FMT " us", g_timer);
-  Log("total guest instructions = " NUMBERIC_FMT, g_nr_guest_inst);
-  Log("total branch predict success rate: %.2lf %", 100.0 - 100.0 * (double)branch_err_cnt / (double)(total_branch_cnt));
-  if (g_timer > 0) Log("simulation frequency = " NUMBERIC_FMT " inst/s", g_nr_guest_inst * 1000000 / g_timer);
-  else Log("Finish running in less than 1 us and can not calculate the simulation frequency");
+#define NPC_NUMBERIC_FMT MUXDEF(CONFIG_TARGET_AM, "%", "%'") PRIu64
+  NPCLog("host time spent = " NPC_NUMBERIC_FMT " us", g_timer);
+  NPCLog("total guest instructions = " NPC_NUMBERIC_FMT, g_nr_guest_inst);
+  NPCLog("total branch predict success rate: %.2lf %", 100.0 - 100.0 * (double)branch_err_cnt / (double)(total_branch_cnt));
+  if (g_timer > 0) NPCLog("simulation frequency = " NPC_NUMBERIC_FMT " inst/s", g_nr_guest_inst * 1000000 / g_timer);
+  else NPCLog("Finish running in less than 1 us and can not calculate the simulation frequency");
 }
 
 void assert_fail_msg() {
@@ -127,10 +127,10 @@ void cpu_exec(uint64_t n, VerilatedVcdC* tfp) {
     case NEMU_RUNNING: nemu_state.state = NEMU_STOP; break;
 
     case NEMU_END: case NEMU_ABORT:
-      Log("nemu: %s at pc = " FMT_WORD,
-          (nemu_state.state == NEMU_ABORT ? ANSI_FMT("ABORT", ANSI_FG_RED) :
-           (nemu_state.halt_ret == 0 ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) :
-            ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED))),
+      NPCLog("nemu: %s at pc = " NPC_FMT_WORD,
+          (nemu_state.state == NEMU_ABORT ? NPC_ANSI_FMT("ABORT", NPC_ANSI_FG_RED) :
+           (nemu_state.halt_ret == 0 ? NPC_ANSI_FMT("HIT GOOD TRAP", NPC_ANSI_FG_GREEN) :
+            NPC_ANSI_FMT("HIT BAD TRAP", NPC_ANSI_FG_RED))),
           nemu_state.halt_pc);
       // fall through
     case NEMU_QUIT: statistic();

@@ -9,12 +9,12 @@
 namespace npc{
 
 static void welcome() {
-  Log("Trace: %s", MUXDEF(CONFIG_TRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
+  NPCLog("Trace: %s", MUXDEF(CONFIG_TRACE, NPC_ANSI_FMT("ON", NPC_ANSI_FG_GREEN), NPC_ANSI_FMT("OFF", NPC_ANSI_FG_RED)));
   IFDEF(CONFIG_TRACE, Log("If trace is enabled, a log file will be generated "
         "to record the trace. This may lead to a large log file. "
         "If it is not necessary, you can disable it in menuconfig"));
-  Log("Build time: %s, %s", __TIME__, __DATE__);
-  printf("Welcome to %s-NEMU!\n", ANSI_FMT(str(riscv32), ANSI_FG_YELLOW ANSI_BG_RED));
+  NPCLog("Build time: %s, %s", __TIME__, __DATE__);
+  printf("Welcome to %s-NEMU!\n", NPC_ANSI_FMT(str(riscv32), NPC_ANSI_FG_YELLOW NPC_ANSI_BG_RED));
   printf("For help, type \"help\"\n");
   //Log("Exercise: Please remove me in the source code and compile NEMU again.");
   //assert(0);
@@ -28,17 +28,17 @@ static int difftest_port = 1234;
 
 static long load_img() {
   if (img_file == NULL) {
-    Log("No image is given. Use the default build-in image.");
+    NPCLog("No image is given. Use the default build-in image.");
     return 4096; // built-in image size
   }
 
   FILE *fp = fopen(img_file, "rb");
-  Assert(fp, "Can not open '%s'", img_file);
+  NPCAssert(fp, "Can not open '%s'", img_file);
 
   fseek(fp, 0, SEEK_END);
   long size = ftell(fp);
 
-  Log("The image is %s, size = %ld", img_file, size);
+  NPCLog("The image is %s, size = %ld", img_file, size);
 
   fseek(fp, 0, SEEK_SET);
   int ret = fread(guest_to_host(RESET_VECTOR), size, 1, fp);
