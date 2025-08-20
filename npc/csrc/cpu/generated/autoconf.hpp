@@ -4,8 +4,8 @@
  * NEMU Configuration Menu
  *
  */
-#define CONFIG_USE_VCD 1
-#define CONFIG_DIFFTEST 1
+#define CONFIG_USE_VCD 0
+#define CONFIG_DIFFTEST 0
 #define CONFIG_AUDIO_CTL_MMIO 0xa0000200
 #define CONFIG_DIFFTEST_REF_NAME "none"
 #define CONFIG_ENGINE "interpreter"
@@ -17,14 +17,14 @@
 // #define CONFIG_HAS_AUDIO 1
 #define CONFIG_MSIZE 0x8000000
 #define CONFIG_DEVICE 1
-// #define CONFIG_HAS_KEYBOARD 1
+#define CONFIG_HAS_KEYBOARD 1
 #define CONFIG_MODE_SYSTEM 1
 #define CONFIG_MEM_RANDOM 1
 #define CONFIG_HAS_SERIAL 1
 #define CONFIG_ISA_riscv 1
 // #define CONFIG_HAS_DISK 1
 #define CONFIG_FB_ADDR 0xa1000000
-// #define CONFIG_HAS_VGA 1
+#define CONFIG_HAS_VGA 1
 #define CONFIG_HAS_TIMER 1
 #define CONFIG_DISK_CTL_MMIO 0xa0000300
 #define CONFIG_MBASE 0x80000000

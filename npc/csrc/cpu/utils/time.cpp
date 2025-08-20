@@ -16,8 +16,9 @@
 #include <common.hpp>
 #include <utils.hpp>
 
-namespace npc{
 #include MUXDEF(CONFIG_TIMER_GETTIMEOFDAY, <sys/time.h>, <time.h>)
+
+namespace npc{
 
 IFDEF(CONFIG_TIMER_CLOCK_GETTIME,
     static_assert(CLOCKS_PER_SEC == 1000000, "CLOCKS_PER_SEC != 1000000"));

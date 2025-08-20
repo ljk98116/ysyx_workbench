@@ -10,12 +10,15 @@
 #include <memory/paddr.hpp>
 
 // use vcd
+#if CONFIG_USE_VCD
 #include <verilated_vcd_c.h>
+#endif
+
 #include <VCPUCore.h>
 
 namespace npc{
 static int is_batch_mode = false;
-static VerilatedVcdC* tfp_cur;
+static void* tfp_cur;
 
 void init_regex();
 void init_wp_pool();
@@ -165,9 +168,9 @@ void sdb_set_batch_mode() {
 
 void sdb_mainloop(){
   cycle = 0;
-  VerilatedVcdC* tfp = nullptr;
+  void *tfp = nullptr;
 #if CONFIG_USE_VCD
-  tfp = new VerilatedVcdC; // 创建 VCD 对象
+  tfp = (void*)(new VerilatedVcdC); // 创建 VCD 对象
   tfp_cur = tfp;
 #endif
   cpu_reset(tfp);

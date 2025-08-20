@@ -1,4 +1,5 @@
 #include <sdb/sdb.hpp>
+#include <common.hpp>
 #include <VCPUCore.h>
 
 using namespace npc;

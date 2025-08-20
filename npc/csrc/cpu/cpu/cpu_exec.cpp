@@ -71,12 +71,16 @@ void assert_fail_msg() {
 }
 
 /* 执行一个周期 */
-static void exec_once(VerilatedVcdC* tfp){
+static void exec_once(void* tfp){
   commit_num = 0;
   dut.clock = 0; dut.eval();
   dut.clock = 1; dut.eval();
   //vcd记录仿真结果
-  if(tfp != nullptr) tfp->dump(cycle);
+#if CONFIG_USE_VCD
+  if(tfp != nullptr) {
+    ((VerilatedVcdC*)tfp)->dump(cycle);
+  }
+#endif
   /* 存在指令提交,进行difftest */
   if(commit_num > 0){
     // Log("npc commit_num:%d at %d th cycle", commit_num, cycle);
@@ -87,18 +91,18 @@ static void exec_once(VerilatedVcdC* tfp){
 }
 
 /* 执行n个周期 */
-static void execute(uint64_t n, VerilatedVcdC* tfp) {
+static void execute(uint64_t n, void* tfp) {
   while(n-- > 0 && !ref_stop && nemu_state.state != NEMU_ABORT && nemu_state.state != NEMU_END) {
     exec_once(tfp);
   }
 }
 
-void cpu_reset(VerilatedVcdC* tfp){
+void cpu_reset(void* tfp){
   dut.reset = 1;
 #if CONFIG_USE_VCD
   if(tfp != nullptr){
     dut.trace(tfp, 99); // 跟踪所有信号（99=递归深度）
-    tfp->open("wave2.vcd"); // 输出文件名
+    ((VerilatedVcdC*)tfp)->open("wave2.vcd"); // 输出文件名
   }
 #endif
   int n = 5;
@@ -108,7 +112,7 @@ void cpu_reset(VerilatedVcdC* tfp){
 }
 
 /* Simulate how the CPU works. */
-void cpu_exec(uint64_t n, VerilatedVcdC* tfp) {
+void cpu_exec(uint64_t n, void* tfp) {
   g_print_step = (n < MAX_INST_TO_PRINT);
   switch (nemu_state.state) {
     case NEMU_END: case NEMU_ABORT: case NEMU_QUIT:

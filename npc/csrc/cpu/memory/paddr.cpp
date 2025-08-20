@@ -44,11 +44,13 @@ void init_mem() {
 word_t paddr_read(paddr_t addr, int len){
   /* 判断是否是MMIO */
   if(
-    (addr >= 0xa00003f8 && addr <= 0xa00003ff) ||
-    (addr >= 0xa0000048 && addr <= 0xa000004f) ||
-    (addr == 0xa0000060)
+    (addr >= 0xa00003f8 && addr <= 0xa00003ff) || // serial
+    (addr >= 0xa0000048 && addr <= 0xa000004c) || // rtc
+    (addr >= 0xa0000060 && addr <= 0xa0000063) || // keyboard
+    (addr >= 0xa0000100 && addr <= 0xa0000107) || // vga_ctrl
+    (addr >= 0xa1000000 && addr <= 0xa10752ff) // vmem
   ){
-    // printf("recv mmio read 0x%x at cycle: %d\n", addr, cycle);
+    printf("recv mmio read 0x%x at cycle: %d\n", addr, cycle);
     return mmio_read(addr, len);
   }
   if (likely(in_pmem(addr))) {
@@ -60,11 +62,13 @@ word_t paddr_read(paddr_t addr, int len){
 
 void paddr_write(paddr_t addr, int len, word_t data) {
   if(
-    (addr >= 0xa00003f8 && addr <= 0xa00003ff) ||
-    (addr >= 0xa0000048 && addr <= 0xa000004c) ||
-    (addr == 0xa0000060)
+    (addr >= 0xa00003f8 && addr <= 0xa00003ff) || // serial
+    (addr >= 0xa0000048 && addr <= 0xa000004c) || // rtc
+    (addr >= 0xa0000060 && addr <= 0xa0000063) || // keyboard
+    (addr >= 0xa0000100 && addr <= 0xa0000107) || // vga_ctrl
+    (addr >= 0xa1000000 && addr <= 0xa10752ff) // vmem
   ){
-    // printf("recv mmio write 0x%x at cycle: %d\n", addr, cycle);
+    printf("recv mmio write 0x%x at cycle: %d\n", addr, cycle);
     return mmio_write(addr, len, data);
   }  
   if (likely(in_pmem(addr))) { 

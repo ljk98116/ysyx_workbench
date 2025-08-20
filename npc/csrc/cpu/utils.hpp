@@ -47,7 +47,7 @@ uint64_t get_time();
 
 #define npc_log_write(...) IFDEF(CONFIG_TARGET_NATIVE_ELF, \
   do { \
-    if (npc_log_able() && npc_log_fp != NULL) { \
+    if (npc_log_enable() && npc_log_fp != NULL) { \
       fprintf(npc_log_fp, __VA_ARGS__); \
       fflush(npc_log_fp); \
     } \
