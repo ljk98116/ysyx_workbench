@@ -50,7 +50,7 @@ word_t paddr_read(paddr_t addr, int len){
     (addr >= 0xa0000100 && addr <= 0xa0000107) || // vga_ctrl
     (addr >= 0xa1000000 && addr <= 0xa10752ff) // vmem
   ){
-    printf("recv mmio read 0x%x at cycle: %d\n", addr, cycle);
+    // printf("recv mmio read 0x%x at cycle: %d\n", addr, cycle);
     return mmio_read(addr, len);
   }
   if (likely(in_pmem(addr))) {
@@ -68,7 +68,7 @@ void paddr_write(paddr_t addr, int len, word_t data) {
     (addr >= 0xa0000100 && addr <= 0xa0000107) || // vga_ctrl
     (addr >= 0xa1000000 && addr <= 0xa10752ff) // vmem
   ){
-    printf("recv mmio write 0x%x at cycle: %d\n", addr, cycle);
+    // printf("recv mmio write 0x%x at cycle: %d\n", addr, cycle);
     return mmio_write(addr, len, data);
   }  
   if (likely(in_pmem(addr))) { 

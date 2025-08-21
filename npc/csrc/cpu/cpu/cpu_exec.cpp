@@ -4,6 +4,9 @@
 #include <isa.hpp>
 #include <locale.h>
 #include <utils.hpp>
+
+#include <chrono>
+
 #include "VCPUCore.h"
 
 namespace npc{
@@ -58,6 +61,7 @@ static void trace_and_difftest() {
 static void statistic() {
   IFNDEF(CONFIG_TARGET_AM, setlocale(LC_NUMERIC, ""));
 #define NPC_NUMBERIC_FMT MUXDEF(CONFIG_TARGET_AM, "%", "%'") PRIu64
+  NPCLog("single cycle cost %lf us", (double)g_timer / cycle);
   NPCLog("host time spent = " NPC_NUMBERIC_FMT " us", g_timer);
   NPCLog("total guest instructions = " NPC_NUMBERIC_FMT, g_nr_guest_inst);
   NPCLog("total branch predict success rate: %.2lf %", 100.0 - 100.0 * (double)branch_err_cnt / (double)(total_branch_cnt));
@@ -73,6 +77,7 @@ void assert_fail_msg() {
 /* 执行一个周期 */
 static void exec_once(void* tfp){
   commit_num = 0;
+  static bool simflag = false;
   dut.clock = 0; dut.eval();
   dut.clock = 1; dut.eval();
   //vcd记录仿真结果

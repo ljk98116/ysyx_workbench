@@ -8,7 +8,7 @@ NXDC_FILES = constr/$(TOPNAME).nxdc
 INC_PATH ?= $(NEMU_HOME)/include
 VERILATOR = verilator
 # VERILATOR_FLAGS += --cc --build -O3 -Wall --trace -j 32 --output-split 100 --threads 4
-VERILATOR_FLAGS += --cc --build -O3 -Wall -j 32 --output-split 100 --threads 4 --no-timing --prof-exec
+VERILATOR_FLAGS += --cc --build -O3 -Wall -j 32 --output-split 100 --threads 4
 VERILATOR_FLAGS += -Wno-lint
 
 BUILD_DIR = ./build
