@@ -25,7 +25,41 @@ typedef struct {
     uint32_t bta;
 } btb_item_t;
 
+typedef struct {
+    uint32_t pc;
+    uint8_t valid : 1;
+    uint32_t Imm;
+    uint8_t Opcode : 7;
+    uint8_t rs1 : 5;
+    uint8_t rs2 : 5;
+    uint8_t rd : 5;
+    uint8_t funct3 : 5;
+    uint8_t funct7 : 7;
+    uint8_t shamt : 5;
+    uint8_t Type : 3;
+    uint8_t HasRs1 : 1;
+    uint8_t HasRs2 : 1;
+    uint8_t HasRd : 1;
+    uint8_t id : 7;
+    uint8_t ps1;
+    uint8_t ps2;
+    uint8_t pd : 7;
+    uint8_t oldpd;
+    uint8_t rdy1 : 1;
+    uint8_t rdy2 : 1;
+    uint8_t rdy : 1;
+    uint8_t isBranch : 1;
+    uint8_t isStore : 1;
+    uint8_t isLoad : 1;
+    uint8_t hasException : 1;
+    uint8_t ExceptionType;
+    uint8_t isTaken : 1;
+    uint32_t targetBrAddr;
+    
+} rob_item_t;
+
 extern btb_item_t btb_table[1 << 13];
+extern rob_item_t rob_table[1 << 7];
 
 extern uint8_t commit_num;
 extern uint32_t cycle;
