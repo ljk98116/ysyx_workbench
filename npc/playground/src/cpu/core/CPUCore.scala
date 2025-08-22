@@ -56,7 +56,7 @@ class CPUCore(memfile: String) extends Module
     )
 
     /* ROB Buffer */
-    var rob_buffer = Module(new ROB)
+    var rob_buffer = Module(new ROB(true))
 
     /* dispatch stage */
     var dispatch = Module(new Dispatch)

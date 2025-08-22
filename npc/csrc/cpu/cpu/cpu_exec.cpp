@@ -20,6 +20,8 @@ btb_item_t btb_table[1 << 13];
 uint8_t gPHT[1 << 13];
 uint8_t lPHT[1 << 13];
 uint8_t cPHT[1 << 13];
+rob_item_t rob_table[4][1 << 7];
+uint32_t rob_id_loc_mem[1 << 7];
 
 uint8_t commit_num;
 uint32_t cycle;

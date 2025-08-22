@@ -55,15 +55,25 @@ typedef struct {
     uint8_t ExceptionType;
     uint8_t isTaken : 1;
     uint32_t targetBrAddr;
-    
+    uint32_t reg_wb_data;
+    uint8_t storeIdx;
+    uint8_t gbranch_res : 1;
+    uint8_t lbranch_res : 1;
+    uint8_t branch_res : 1;
+    uint16_t global_pht_idx: 13;
+    uint16_t local_pht_idx: 13;
+    uint8_t bht_idx;
+    uint32_t branch_pred_addr;
 } rob_item_t;
 
 extern btb_item_t btb_table[1 << 13];
-extern rob_item_t rob_table[1 << 7];
+extern rob_item_t rob_table[4][1 << 7];
+extern uint32_t rob_id_loc_mem[1 << 7];
 
 extern uint8_t commit_num;
 extern uint32_t cycle;
 extern bool ref_stop;
 extern uint32_t total_branch_cnt;
 extern uint32_t branch_err_cnt;
+
 }

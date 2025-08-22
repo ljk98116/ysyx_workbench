@@ -155,6 +155,62 @@ char npc_cpht_read(short raddr){
     return cPHT[raddr];
 }
 
+#define ROBRW_API(elem, width, type) \
+    void npc_rob_write_##elem(char bankid, int index, int data) { \
+        rob_table[bankid][index].elem = (type)(data & ((1LL << width) - 1)); \
+    } \
+    \
+    int npc_rob_read_##elem(char bankid, int index) { \
+        return rob_table[bankid][index].elem; \
+    }
+
+ROBRW_API(pc, 32, uint32_t)
+ROBRW_API(valid, 1, uint8_t)
+ROBRW_API(Imm, 32, uint32_t)
+ROBRW_API(Opcode, 7, uint8_t)
+ROBRW_API(rs1, 5, uint8_t)
+ROBRW_API(rs2, 5, uint8_t)
+ROBRW_API(rd, 5, uint8_t)
+ROBRW_API(funct3, 5, uint8_t)
+ROBRW_API(funct7, 7, uint8_t)
+ROBRW_API(shamt, 5, uint8_t)
+ROBRW_API(Type, 3, uint8_t)
+ROBRW_API(HasRs1, 1, uint8_t)
+ROBRW_API(HasRs2, 1, uint8_t)
+ROBRW_API(HasRd, 1, uint8_t)
+ROBRW_API(id, 7, uint8_t)
+ROBRW_API(ps1, 8, uint8_t)
+ROBRW_API(ps2, 8, uint8_t)
+ROBRW_API(pd, 7, uint8_t)
+ROBRW_API(oldpd, 8, uint8_t)
+ROBRW_API(rdy1, 1, uint8_t)
+ROBRW_API(rdy2, 1, uint8_t)
+ROBRW_API(rdy, 1, uint8_t)
+ROBRW_API(isBranch, 1, uint8_t)
+ROBRW_API(isStore, 1, uint8_t)
+ROBRW_API(isLoad, 1, uint8_t)
+ROBRW_API(hasException, 1, uint8_t)
+ROBRW_API(ExceptionType, 8, uint8_t)
+ROBRW_API(isTaken, 1, uint8_t)
+ROBRW_API(targetBrAddr, 32, uint32_t)
+ROBRW_API(reg_wb_data, 32, uint32_t)
+ROBRW_API(storeIdx, 8, uint8_t)
+ROBRW_API(gbranch_res, 1, uint8_t)
+ROBRW_API(lbranch_res, 1, uint8_t)
+ROBRW_API(branch_res, 1, uint8_t)
+ROBRW_API(global_pht_idx, 13, uint16_t)
+ROBRW_API(local_pht_idx, 13, uint16_t)
+ROBRW_API(bht_idx, 8, uint8_t)
+ROBRW_API(branch_pred_addr, 32, uint32_t);
+
+void npc_rob_id_loc_mem_write(char index, char data){
+    rob_id_loc_mem[index] = data;
+}
+
+int npc_rob_id_loc_mem_read(char index){
+    return rob_id_loc_mem[index];
+}
+
 #ifdef __cplusplus
 }
 #endif
