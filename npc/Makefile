@@ -7,8 +7,8 @@ NXDC_FILES = constr/$(TOPNAME).nxdc
 
 INC_PATH ?= $(NEMU_HOME)/include
 VERILATOR = verilator
-# VERILATOR_FLAGS += --cc --build -O3 -Wall --trace -j 32 --output-split 100 --threads 4
-VERILATOR_FLAGS += --cc --build -O3 -Wall -j 32 --output-split 100
+# VERILATOR_FLAGS += --cc --build -O3 -Wall --trace --trace-fst -j 32 --x-assign fast --x-initial fast --output-split 100
+VERILATOR_FLAGS += --cc --build -O3 -Wall -j 32 --x-assign fast --x-initial fast --output-split 100 --prof-cfuncs
 VERILATOR_FLAGS += -Wno-lint
 
 BUILD_DIR = ./build
@@ -19,7 +19,7 @@ WORK_DIR = $(pwd)
 $(shell mkdir -p $(BUILD_DIR))
 
 # add nemu so
-LDFLAGS += -lreadline -lSDL2
+LDFLAGS += -lreadline -lSDL2 -pg
 LDFLAGS += -Wl,-rpath="$(NEMU_HOME)/build/"
 
 # constraint file
@@ -40,7 +40,7 @@ INCFLAGS = $(addprefix -I , $(INC_PATH))
 INCFLAGS += $(addprefix -I , /home/ljk/Arch/ysyx_workbench/npc/csrc/$(PACKAGE)/)
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
 DEPFLAGS = -MMD -MP
-CXXFLAGS += $(DEPFLAGS)
+CXXFLAGS += $(DEPFLAGS) -pg
 
 .PHONY: test verilog help reformat checkformat clean all sim
 

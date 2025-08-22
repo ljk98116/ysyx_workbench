@@ -85,7 +85,7 @@ static void exec_once(void* tfp){
   //vcd记录仿真结果
 #if CONFIG_USE_VCD
   if(tfp != nullptr) {
-    ((VerilatedVcdC*)tfp)->dump(cycle);
+    ((VerilatedFstC*)tfp)->dump(cycle);
   }
 #endif
   /* 存在指令提交,进行difftest */
@@ -108,8 +108,8 @@ void cpu_reset(void* tfp){
   dut.reset = 1;
 #if CONFIG_USE_VCD
   if(tfp != nullptr){
-    dut.trace(tfp, 99); // 跟踪所有信号（99=递归深度）
-    ((VerilatedVcdC*)tfp)->open("wave2.vcd"); // 输出文件名
+    dut.trace((VerilatedFstC*)tfp, 99); // 跟踪所有信号（99=递归深度）
+    ((VerilatedFstC*)tfp)->open("wave.fst"); // 输出文件名
   }
 #endif
   int n = 5;

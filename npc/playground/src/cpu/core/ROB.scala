@@ -52,39 +52,6 @@ class ROB (DEBUG : Boolean = false) extends Module
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
-
-
-    /* Retire出现异常，normal->flush */
-    /* head + 1.U == tail, flush->normal */
-    when((rob_state === normal) & io.rat_flush_en){
-        next_rob_state := wait1
-    }.elsewhen(rob_state === wait1){
-        next_rob_state := wait2
-    }.elsewhen(rob_state === wait2){
-        next_rob_state := flush
-    }.elsewhen((rob_state === flush) & ((head + 1.U) === tail) | (head === tail)){
-        next_rob_state := normal
-    }.otherwise{
-        next_rob_state := rob_state
-    }
-
-    rob_state := next_rob_state
-
-    when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state =/= flush)){
-        tail := tail + 1.U
-    }.elsewhen((io.robr_able & (rob_state === flush) & (head =/= tail))){
-        tail := tail - 1.U
-    }
-
-    when(
-        (io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush))
-    ){
-        head := head + 1.U
-    }
-
-    /* connect */
-    io.rob_item_o := rob_item_o
-    io.rob_state  := rob_state
 if(!DEBUG){
     var ROBBankRegs = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(
@@ -147,6 +114,40 @@ if(!DEBUG){
             ROBIDLocMem(io.rob_item_i(i).id) := tail
         }
     }
+
+
+
+    /* Retire出现异常，normal->flush */
+    /* head + 1.U == tail, flush->normal */
+    when((rob_state === normal) & io.rat_flush_en){
+        next_rob_state := wait1
+    }.elsewhen(rob_state === wait1){
+        next_rob_state := wait2
+    }.elsewhen(rob_state === wait2){
+        next_rob_state := flush
+    }.elsewhen((rob_state === flush) & ((head + 1.U) === tail) | (head === tail)){
+        next_rob_state := normal
+    }.otherwise{
+        next_rob_state := rob_state
+    }
+
+    rob_state := next_rob_state
+
+    when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state =/= flush)){
+        tail := tail + 1.U
+    }.elsewhen((io.robr_able & (rob_state === flush) & (head =/= tail))){
+        tail := tail - 1.U
+    }
+
+    when(
+        (io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush))
+    ){
+        head := head + 1.U
+    }
+
+    /* connect */
+    io.rob_item_o := rob_item_o
+    io.rob_state  := rob_state
 }else{
     val rob_elems = Seq(
         ("pc", 32), 
@@ -189,65 +190,78 @@ if(!DEBUG){
         ("branch_pred_addr", 32)        
     )
     val rob_elems_map = rob_elems.toMap
-    def rob_read_elem(elem : String, index: UInt, bankid: UInt, rst : Bool = reset.asBool): UInt = {
+    def rob_read_elem(ren : Bool, elem : String, index: UInt, bankid: UInt, rst : Bool = reset.asBool): UInt = {
         val read_api = Module(new ROBReadAPI(elem, rob_elems_map(elem)))
         read_api.io.rst := rst
+        read_api.io.ren := ren
         read_api.io.index := index
         read_api.io.bankid := bankid
         read_api.io.rob_rdata
     }
-    def rob_write_elem(elem : String, index: UInt, data: UInt, bankid: UInt, clk: Bool = clock.asBool, rst : Bool = reset.asBool): Unit = {
+
+    def rob_write_elem(wen: Bool, elem : String, index: UInt, data: UInt, bankid: UInt, clk: Bool = clock.asBool, rst : Bool = reset.asBool): Unit = {
         val write_api = Module(new ROBWriteAPI(elem, rob_elems_map(elem)))
         write_api.io.clk := clk
         write_api.io.rst := rst
+        write_api.io.wen := wen
         write_api.io.index := index
         write_api.io.bankid := bankid
         write_api.io.rob_wdata := data
     }
 
-    def rob_id_loc_mem_write(index: UInt, data: UInt, clk: Bool = clock.asBool, rst : Bool = reset.asBool) : Unit = {
+    def rob_id_loc_mem_write(wen: Bool, index: UInt, data: UInt, clk: Bool = clock.asBool, rst : Bool = reset.asBool) : Unit = {
         val write_api = Module(new ROBIdLocMemWriteAPI) 
         write_api.io.clk := clk
         write_api.io.rst := rst
+        write_api.io.wen := wen
         write_api.io.index := index
         write_api.io.data := data
     }
 
-    def rob_id_loc_mem_read(index: UInt, rst : Bool = reset.asBool): UInt = {
+    def rob_id_loc_mem_read(ren: Bool, index: UInt, rst : Bool = reset.asBool): UInt = {
         val read_api = Module(new ROBIdLocMemReadAPI) 
         read_api.io.rst := rst
+        read_api.io.ren := ren
         read_api.io.index := index
         read_api.io.data
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.rob_state === flush){
-            // ROBBankRegs(i)(tail - 1.U) := 0.U.asTypeOf(new ROBItem)
-            // ROBIDLocMem(ROBBankRegs(i)(tail - 1.U).id) := (1 << bankwidth).U 
-            for((elem, width) <- rob_elems){
-                rob_write_elem(elem, tail - 1.U, 0.U, i.U(2.W))
-            }
-            rob_id_loc_mem_write(
-                rob_read_elem("id", tail - 1.U, i.U),
-                ((1 << bankwidth).U)(8.W)
-            )
+        for((elem, width) <- rob_elems){
+            rob_write_elem(io.rob_state === flush, elem, tail - 1.U, 0.U, i.U(2.W))
         }
+        rob_id_loc_mem_write(
+            io.rob_state === flush,
+            rob_read_elem(true.B, "id", tail - 1.U, i.U),
+            ((1 << bankwidth).U)(8.W)
+        )
+        // when(io.rob_state === flush){
+                // ROBBankRegs(i)(tail - 1.U) := 0.U.asTypeOf(new ROBItem)
+                // ROBIDLocMem(ROBBankRegs(i)(tail - 1.U).id) := (1 << bankwidth).U 
+        // }
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
         var valid = WireInit(false.B)
-        valid := rob_read_elem("valid", head, i.U(2.W))
-        when(io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & valid){
-            // ROBBankRegs(i)(head) := 0.U.asTypeOf(new ROBItem)
-            // ROBIDLocMem(ROBBankRegs(i)(head).id) := (1 << bankwidth).U     
-            for((elem, width) <- rob_elems){
-                rob_write_elem(elem, head, 0.U, i.U(2.W))
-            }
-            rob_id_loc_mem_write(
-                rob_read_elem("id", head, i.U),
-                ((1 << bankwidth).U)(8.W)
-            )                                
+        valid := rob_read_elem(true.B, "valid", head, i.U(2.W))
+        for((elem, width) <- rob_elems){
+            rob_write_elem(
+                io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & valid,
+                elem, 
+                head, 
+                0.U, 
+                i.U(2.W)
+            )
         }
+        rob_id_loc_mem_write(
+            io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & valid,
+            rob_read_elem(true.B, "id", head, i.U),
+            ((1 << bankwidth).U)(8.W)
+        ) 
+        // when(io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & valid){
+            // ROBBankRegs(i)(head) := 0.U.asTypeOf(new ROBItem)
+            // ROBIDLocMem(ROBBankRegs(i)(head).id) := (1 << bankwidth).U                         
+        // }
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
@@ -255,11 +269,13 @@ if(!DEBUG){
         var rob_head_item = WireInit((0.U).asTypeOf(new ROBItem))
         var rob_tail_item = WireInit((0.U).asTypeOf(new ROBItem))
         rob_head_item.elements.foreach{ 
-            case(name, data) => data := rob_read_elem(name, head, i.U(2.W))
+            case(name, data) => data := rob_read_elem(true.B, name, head, i.U(2.W))
         }
         rob_tail_item.elements.foreach{
-            case(name, data) => data := rob_read_elem(name, tail - 1.U, i.U(2.W))
+            case(name, data) => data := rob_read_elem(true.B, name, tail - 1.U, i.U(2.W))
         }
+        dontTouch(rob_head_item)
+        dontTouch(rob_tail_item)
         rob_item_o(i) := Mux(
             io.robr_able & (rob_state =/= flush), 
             rob_head_item, 
@@ -273,51 +289,135 @@ if(!DEBUG){
 
     for(i <- 0 until base.ALU_NUM){
         var loc = WireInit((0.U)((bankwidth + 1).W))
-        loc := rob_id_loc_mem_read(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)
+        loc := rob_id_loc_mem_read(true.B, io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)
         var bankid = WireInit((0.U)(2.W))
         bankid := io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth)
-        when(io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth)){
+        rob_write_elem(
+            io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth),
+            "rdy", 
+            loc, 
+            true.B.asUInt, 
+            bankid
+        )
+        rob_write_elem(
+            io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth),            
+            "reg_wb_data", 
+            loc, 
+            io.cdb_i.alu_channel(i).reg_wr_data, 
+            bankid
+        )
+        rob_write_elem(
+            io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth),
+            "targetBrAddr", 
+            loc, 
+            io.cdb_i.alu_channel(i).branch_target_addr, 
+            bankid
+        )
+        rob_write_elem(
+            io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth),
+            "hasException", 
+            loc, 
+            io.cdb_i.alu_channel(i).has_exception, 
+            bankid
+        )
+        rob_write_elem(
+            io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth),
+            "ExceptionType", 
+            loc, 
+            io.cdb_i.alu_channel(i).exception_type, 
+            bankid
+        )
+        // when(io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth)){
             // ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
             // ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
             // ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).targetBrAddr := io.cdb_i.alu_channel(i).branch_target_addr
             // ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).hasException := io.cdb_i.alu_channel(i).has_exception
             // ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).ExceptionType := io.cdb_i.alu_channel(i).exception_type
-
-            rob_write_elem("rdy", loc, true.B.asUInt, bankid)
-            rob_write_elem("reg_wb_data", loc, io.cdb_i.alu_channel(i).reg_wr_data, bankid)
-            rob_write_elem("targetBrAddr", loc, io.cdb_i.alu_channel(i).branch_target_addr, bankid)
-            rob_write_elem("hasException", loc, io.cdb_i.alu_channel(i).has_exception, bankid)
-            rob_write_elem("ExceptionType", loc, io.cdb_i.alu_channel(i).exception_type, bankid)
-        }
+        // }
     }
     for(i <- 0 until base.AGU_NUM){
         var loc = WireInit((0.U)((bankwidth + 1).W))
-        loc := rob_id_loc_mem_read(io.cdb_i.agu_channel(i).rob_id)
+        loc := rob_id_loc_mem_read(true.B, io.cdb_i.agu_channel(i).rob_id)
         var bankid = WireInit((0.U)(2.W))
         bankid := io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth)
         var agu_loc = WireInit((0.U)((bankwidth + 1).W))
-        agu_loc := rob_id_loc_mem_read(io.agu_rob_id(i))
-        when(io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth)){
+        agu_loc := rob_id_loc_mem_read(true.B, io.agu_rob_id(i))
+        rob_write_elem(
+            io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth),
+            "rdy", 
+            loc, 
+            true.B.asUInt, 
+            bankid
+        )
+        rob_write_elem(
+            io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth),
+            "reg_wb_data", 
+            loc, io.cdb_i.agu_channel(i).reg_wr_data, 
+            bankid
+        )
+        // when(io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~loc(bankwidth)){
             // ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
             // ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
-            rob_write_elem("rdy", loc, true.B.asUInt, bankid)
-            rob_write_elem("reg_wb_data", loc, io.cdb_i.agu_channel(i).reg_wr_data, bankid)
-        }
-        when(io.agu_valid(i) & io.agu_ls_flag(i) & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~agu_loc(bankwidth)){
-            // ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))(bankwidth - 1, 0)).rdy := true.B     
-            rob_write_elem("rdy", agu_loc, true.B.asUInt, bankid)     
-        }
+        // }
+        rob_write_elem(
+            io.agu_valid(i) & io.agu_ls_flag(i) & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~agu_loc(bankwidth),
+            "rdy", 
+            agu_loc, 
+            true.B.asUInt, 
+            bankid
+        )
+        // when(io.agu_valid(i) & io.agu_ls_flag(i) & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~agu_loc(bankwidth)){
+            // ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))(bankwidth - 1, 0)).rdy := true.B          
+        // }
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.robw_able & io.rob_item_i(i).valid){
+        for((name, data) <- io.rob_item_i(i).elements){
+            rob_write_elem(
+                io.robw_able & io.rob_item_i(i).valid,
+                name, 
+                tail, 
+                data.asUInt, 
+                i.U(2.W)
+            )
+        }
+        rob_id_loc_mem_write(io.robw_able & io.rob_item_i(i).valid, io.rob_item_i(i).id, tail)
+        // when(io.robw_able & io.rob_item_i(i).valid){
             // ROBBankRegs(i)(tail) := io.rob_item_i(i)
             // ROBIDLocMem(io.rob_item_i(i).id) := tail
-            for((name, data) <- io.rob_item_i(i).elements){
-                rob_write_elem(name, tail, data.asUInt, i.U(2.W))
-            }
-            rob_id_loc_mem_write(io.rob_item_i(i).id, tail)
-        }
+        // }
     }
+
+    /* Retire出现异常，normal->flush */
+    /* head + 1.U == tail, flush->normal */
+    when((rob_state === normal) & io.rat_flush_en){
+        next_rob_state := wait1
+    }.elsewhen(rob_state === wait1){
+        next_rob_state := wait2
+    }.elsewhen(rob_state === wait2){
+        next_rob_state := flush
+    }.elsewhen((rob_state === flush) & ((head + 1.U) === tail) | (head === tail)){
+        next_rob_state := normal
+    }.otherwise{
+        next_rob_state := rob_state
+    }
+
+    rob_state := next_rob_state
+
+    when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state =/= flush)){
+        tail := tail + 1.U
+    }.elsewhen((io.robr_able & (rob_state === flush) & (head =/= tail))){
+        tail := tail - 1.U
+    }
+
+    when(
+        (io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush))
+    ){
+        head := head + 1.U
+    }
+
+    /* connect */
+    io.rob_item_o := rob_item_o
+    io.rob_state  := rob_state
 }   
 }

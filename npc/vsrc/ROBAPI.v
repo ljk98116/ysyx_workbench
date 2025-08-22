@@ -49,15 +49,16 @@ import "DPI-C" function int npc_rob_id_loc_mem_read(input byte index);
 `define ROBReadAPI(elem, width) \
     module ROBReadAPI``elem ( \
         input rst, \
+        input ren, \
         input [7:0] index, \
         input [1:0] bankid, \
         output reg [width - 1 : 0] rob_rdata \
     ); \
         always @(*) begin \
-            if(rst) begin \
+            if(rst | ~ren) begin \
                 rob_rdata = width'b0; \
             end \
-            else begin \
+            else if(ren) begin \
                 rob_rdata = npc_rob_read_``elem(bankid, index); \
             end \
         end \
@@ -107,6 +108,7 @@ import "DPI-C" function int npc_rob_id_loc_mem_read(input byte index);
     module ROBWriteAPI``elem ( \
         input clk, \
         input rst, \
+        input wen, \
         input [7:0] index, \
         input [1:0] bankid, \
         input [width - 1 : 0] rob_wdata \
@@ -120,7 +122,7 @@ import "DPI-C" function int npc_rob_id_loc_mem_read(input byte index);
                     end\
                 end\
             end\
-            else begin \
+            else if(wen) begin \
                 npc_rob_write_``elem(bankid, index, rob_wdata); \
             end \
         end \
@@ -168,6 +170,7 @@ import "DPI-C" function int npc_rob_id_loc_mem_read(input byte index);
 module ROBIdLocMemWriteAPI (
     input clk,
     input rst,
+    input wen,
     input [7:0] index,
     input [7:0] data
 );
@@ -178,7 +181,7 @@ module ROBIdLocMemWriteAPI (
                 npc_rob_id_loc_mem_write(i, 8'b10000000);
             end
         end
-        else begin
+        else if(wen) begin
             npc_rob_id_loc_mem_write(index, data);
         end 
     end
@@ -186,14 +189,15 @@ endmodule
 
 module ROBIdLocMemReadAPI (
     input rst,
+    input ren,
     input [7:0] index,
     output reg [7:0] data
 );
     always @(*) begin
-        if(rst) begin
+        if(rst | ~ren) begin
             data = 8'b0;
         end
-        else begin
+        else if(ren) begin
             data = npc_rob_id_loc_mem_read(index);
         end
     end

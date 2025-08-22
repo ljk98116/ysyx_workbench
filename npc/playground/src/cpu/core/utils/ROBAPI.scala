@@ -9,6 +9,7 @@ import chisel3.experimental._
 class ROBReadAPI(val elem : String, val width: Int) extends BlackBox(Map()) with HasBlackBoxPath{
     val io = IO(new Bundle{
         val rst = Input(Bool())
+        val ren = Input(Bool())
         val index = Input(UInt(8.W))
         val bankid = Input(UInt(2.W))
         val rob_rdata = Output(UInt(width.W))
@@ -24,6 +25,7 @@ class ROBWriteAPI(val elem : String, val width: Int) extends BlackBox(Map()) wit
     val io = IO(new Bundle{
         val clk = Input(Bool())
         val rst = Input(Bool())
+        val wen = Input(Bool())
         val index = Input(UInt(8.W))
         val bankid = Input(UInt(2.W))
         val rob_wdata = Input(UInt(width.W))
@@ -39,6 +41,7 @@ class ROBIdLocMemWriteAPI extends BlackBox with HasBlackBoxPath {
     val io = IO(new Bundle{
         val clk = Input(Bool())
         val rst = Input(Bool())
+        val wen = Input(Bool())
         val index = Input(UInt(8.W))
         val data = Input(UInt(8.W))
     })
@@ -48,6 +51,7 @@ class ROBIdLocMemWriteAPI extends BlackBox with HasBlackBoxPath {
 class ROBIdLocMemReadAPI extends BlackBox with HasBlackBoxPath {
     val io = IO(new Bundle{
         val rst = Input(Bool())
+        val ren = Input(Bool())
         val index = Input(UInt(8.W))
         val data = Output(UInt(8.W))
     })

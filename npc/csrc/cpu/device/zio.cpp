@@ -20,7 +20,7 @@ void device_update() {
   }
   last = now;
 
-  // IFDEF(CONFIG_HAS_VGA, vga_update_screen());
+  IFDEF(CONFIG_HAS_VGA, vga_update_screen());
 
 #ifndef CONFIG_TARGET_AM
   SDL_Event event;
@@ -58,7 +58,7 @@ void init_device() {
 
   init_serial();
   init_timer();
-  // IFDEF(CONFIG_HAS_VGA, init_vga());
+  IFDEF(CONFIG_HAS_VGA, init_vga());
   init_i8042();
 // IFDEF(CONFIG_HAS_AUDIO, init_audio());
 // IFDEF(CONFIG_HAS_DISK, init_disk());

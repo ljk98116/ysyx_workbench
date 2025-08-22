@@ -31,4 +31,8 @@ typedef uint16_t ioaddr_t;
 
 #include <debug.hpp>
 
+#if CONFIG_USE_VCD
+#include <verilated_fst_c.h>
+#endif
+
 #endif

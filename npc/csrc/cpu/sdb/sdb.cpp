@@ -11,7 +11,7 @@
 
 // use vcd
 #if CONFIG_USE_VCD
-#include <verilated_vcd_c.h>
+#include <verilated_fst_c.h>
 #endif
 
 #include <VCPUCore.h>
@@ -170,7 +170,7 @@ void sdb_mainloop(){
   cycle = 0;
   void *tfp = nullptr;
 #if CONFIG_USE_VCD
-  tfp = (void*)(new VerilatedVcdC); // 创建 VCD 对象
+  tfp = (void*)(new VerilatedFstC); // 创建 VCD 对象
   tfp_cur = tfp;
 #endif
   cpu_reset(tfp);
@@ -204,9 +204,9 @@ void sdb_mainloop(){
       if (strcmp(cmd, cmd_table[i].name) == 0) {
         if (cmd_table[i].handler(args) < 0) { 
       #if CONFIG_USE_VCD
-          tfp->close();
+          ((VerilatedFstC*)tfp)->close();
           if(tfp != nullptr) {
-            delete tfp;
+            delete (VerilatedFstC*)tfp;
             tfp_cur = nullptr;
             tfp = nullptr;
           }
