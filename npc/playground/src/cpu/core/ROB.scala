@@ -232,7 +232,7 @@ if(!DEBUG){
         }
         rob_id_loc_mem_write(
             io.rob_state === flush,
-            rob_read_elem(true.B, "id", tail - 1.U, i.U),
+            rob_read_elem(io.rob_state === flush, "id", tail - 1.U, i.U),
             ((1 << bankwidth).U)(8.W)
         )
         // when(io.rob_state === flush){
@@ -255,7 +255,7 @@ if(!DEBUG){
         }
         rob_id_loc_mem_write(
             io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & valid,
-            rob_read_elem(true.B, "id", head, i.U),
+            rob_read_elem(io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & valid, "id", head, i.U),
             ((1 << bankwidth).U)(8.W)
         ) 
         // when(io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & valid){

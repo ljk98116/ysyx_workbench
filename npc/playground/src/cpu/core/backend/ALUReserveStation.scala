@@ -163,48 +163,59 @@ class ALUReserveStation(size: Int) extends Module {
 
     /* update issue rob regs */
     /* update age matrix, age[i]为0表示当前ID比其他位置都年轻*/
+    /* 写入位置，发射位置，更新位置 */
     /* 新分配的reg更新年龄矩阵 */
     for(i <- 0 until size){
-        when(
-            ~io.rat_flush_en & 
-            (io.rob_state === 0.U) & 
-            (i.U === freeIdBuffer.io.free_id_o(width - 1, 0)) & 
-            ~freeIdBuffer.io.free_id_o(width) &
-            io.rob_item_i.valid &
-            freeIdBuffer.io.rd_able
-        ){
+        var write_valid = WireInit(false.B)
+        write_valid := (Cat( 
+            io.rob_state === 0.U, 
+            freeIdBuffer.io.rd_able,
+        ).andR) & (Cat((i.U === freeIdBuffer.io.free_id_o(width - 1, 0)),
+            io.rob_item_i.valid).andR)
+        // var update_valid = WireInit(false.B)
+        // update_valid := Cat(            
+        //     (
+        //         (i.U =/= freeIdBuffer.io.free_id_o(width - 1, 0)) | 
+        //         freeIdBuffer.io.free_id_o(width)
+        //     ),
+        //     rob_item_reg(i).valid
+        // ).andR & (i.U =/= issue_idx)
+
+        var issue_valid = WireInit(false.B)
+        issue_valid := Cat(
+            (i.U === issue_idx), freeIdBuffer.io.issued_i
+        ).andR
+
+        when(io.rat_flush_en){
+            rob_item_reg(i) := 0.U.asTypeOf(new ROBItem)
+            for(j <- 0 until size){
+                age_mat(i)(j) := false.B
+            }            
+        }.elsewhen(write_valid){
             rob_item_reg(i) := io.rob_item_i
             /* 有效的项比新写入的项要老 */
             for(j <- 0 until size){
                 if(i != j){
                     age_mat(j)(i) := rob_item_reg(j).valid
                 }
-                age_mat(i)(j) := false.B
+                age_mat(i)(j) :=  false.B
             }
-            rob_item_reg(i).rdy1 := io.prf_valid_vec(io.rob_item_i.ps1(base.PREG_WIDTH - 1, 0)) | io.rob_item_i.rdy1
-            rob_item_reg(i).rdy2 := io.prf_valid_vec(io.rob_item_i.ps2(base.PREG_WIDTH - 1, 0)) | io.rob_item_i.rdy2
-
-        }.elsewhen(
-            ~io.rat_flush_en & 
-            (
-                (i.U =/= freeIdBuffer.io.free_id_o(width - 1, 0)) | 
-                freeIdBuffer.io.free_id_o(width)
-            ) & rob_item_reg(i).valid & (i.U =/= issue_idx)){
-            rob_item_reg(i).rdy1 := io.prf_valid_vec(rob_item_reg(i).ps1(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy1
-            rob_item_reg(i).rdy2 := io.prf_valid_vec(rob_item_reg(i).ps2(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy2
-        }.elsewhen((i.U === issue_idx) & freeIdBuffer.io.issued_i & ~io.rat_flush_en){
+            rob_item_reg(i).rdy1 := 
+                io.prf_valid_vec(io.rob_item_i.ps1(base.PREG_WIDTH - 1, 0)) | io.rob_item_i.rdy1
+            rob_item_reg(i).rdy2 := 
+                io.prf_valid_vec(io.rob_item_i.ps2(base.PREG_WIDTH - 1, 0)) | io.rob_item_i.rdy2           
+        }.elsewhen(issue_valid){
             for(j <- 0 until size){
                 age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
                 age_mat(j)(issue_idx(log2Ceil(size) - 1, 0)) := rob_item_reg(j).valid
             }
-            rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)) := 0.U.asTypeOf(new ROBItem)
-        }.elsewhen(io.rat_flush_en){
-            rob_item_reg(i) := 0.U.asTypeOf(new ROBItem)
-            for(j <- 0 until size){
-                age_mat(i)(j) := false.B
-            }
+            rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)) := 0.U.asTypeOf(new ROBItem)            
+        }otherwise{
+            rob_item_reg(i).rdy1 := Mux(rob_item_reg(i).valid, io.prf_valid_vec(rob_item_reg(i).ps1(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy1, rob_item_reg(i).rdy1)
+            rob_item_reg(i).rdy2 := Mux(rob_item_reg(i).valid, io.prf_valid_vec(rob_item_reg(i).ps2(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy2, rob_item_reg(i).rdy2)            
         }
     }
+
     io.prf_rs1_data_ren := io.rob_item_o.HasRs1 & (io.rob_item_o.rs1 =/= 0.U)
     io.prf_rs2_data_ren := io.rob_item_o.HasRs2 & (io.rob_item_o.rs2 =/= 0.U)
     io.prf_rs1_data_raddr := io.rob_item_o.ps1
