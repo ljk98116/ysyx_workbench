@@ -93,19 +93,36 @@ class StoreBuffer(size : Int) extends Module{
         var load_raw_mask = WireInit((0.U)(size.W))
         for(j <- 0 until size){
             load_raw_mask_1(j) := 
-                (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
-                (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
-                (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                (((j.U < tail) & (head > tail)) | ((head < tail) & (j.U >= head) & (j.U <= tail))) &
-                (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width)) &
-                ((store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U) & (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) < tail))
-            load_raw_mask_2(j) := 
-                (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy) & 
-                (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
-                (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)) & 
-                (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width)) &
-                (((j.U >= head) & (head > tail))) & 
-                (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U)
+                Cat(
+                    Cat(
+                        (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy), 
+                        (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i))
+                    ).andR,
+                    Cat(
+                        (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)),
+                        (((j.U < tail) & (head > tail)) | ((head < tail) & (j.U >= head) & (j.U <= tail)))
+                    ).andR,
+                    Cat(
+                        (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width)),
+                        ((store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U)
+                    ).andR,
+                    (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) < tail))
+                ).andR 
+                
+            load_raw_mask_2(j) := Cat(
+                Cat(
+                    (io.store_buffer_ren(i) & storebuffer_item_reg(j).rdy),
+                    (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i))
+                ).andR,
+                Cat(
+                    (storebuffer_item_reg(j).wmask === io.store_buffer_rmask(i)),
+                    (~store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0))(width))
+                ).andR,
+                Cat(
+                    (((j.U >= head) & (head > tail))),
+                    (store_buffer_mapping(io.store_ids(i)(base.ROBID_WIDTH - 1, 0)) >= j.U)
+                ).andR
+            ).andR                
         }
         load_raw_mask := Mux(load_raw_mask_1.asUInt =/= 0.U, load_raw_mask_1.asUInt, load_raw_mask_2.asUInt)
         prio_decoder_vec(i).io.in := load_raw_mask
@@ -119,41 +136,53 @@ class StoreBuffer(size : Int) extends Module{
     
     /* 时序逻辑 */
     for(i <- 0 until size){
+        var is_write_loc_vec = WireInit(VecInit(
+            Seq.fill(base.FETCH_WIDTH)(false.B)
+        ))
+        for(j <- 0 until base.FETCH_WIDTH){
+            is_write_loc_vec(j) := (i.U === (tail + j.U))
+        }
+        var write_loc = WireInit((0.U)(2.W))
+        write_loc := OHToUInt(is_write_loc_vec.asUInt)
         when(io.rob_state === "b11".U){
             storebuffer_item_reg(i) := 0.U.asTypeOf(new StoreBufferItem)
             store_buffer_mapping(storebuffer_item_reg(i).rob_id) := size.U
-        }.elsewhen((i.U === tail) & io.store_buffer_item_i(0).valid){
-            storebuffer_item_reg(i) := io.store_buffer_item_i(0)
-            store_buffer_mapping(io.store_buffer_item_i(0).rob_id) := i.U
-        }.elsewhen((i.U === (tail + 1.U)) & io.store_buffer_item_i(1).valid){
-            storebuffer_item_reg(i) := io.store_buffer_item_i(1)
-            store_buffer_mapping(io.store_buffer_item_i(1).rob_id) := i.U
-        }.elsewhen((i.U === (tail + 2.U)) & io.store_buffer_item_i(2).valid){
-            storebuffer_item_reg(i) := io.store_buffer_item_i(2)
-            store_buffer_mapping(io.store_buffer_item_i(2).rob_id) := i.U
-        }.elsewhen((i.U === (tail + 3.U)) & io.store_buffer_item_i(3).valid){
-            storebuffer_item_reg(i) := io.store_buffer_item_i(3)
-            store_buffer_mapping(io.store_buffer_item_i(3).rob_id) := i.U
+        }.elsewhen(is_write_loc_vec.asUInt.orR){
+            storebuffer_item_reg(i) := Mux(io.store_buffer_item_i(write_loc).valid, io.store_buffer_item_i(write_loc), storebuffer_item_reg(i))
+            store_buffer_mapping(io.store_buffer_item_i(write_loc).rob_id) := i.U
         }.otherwise{
+            var agu_match = WireInit(VecInit(
+                Seq.fill(base.AGU_NUM)(false.B)
+            ))
+            var agu_match_idx = WireInit((0.U)(1.W))
             for(j <- 0 until base.AGU_NUM){
-                when(
-                    storebuffer_item_reg(i).valid & io.agu_valid(j) &
+                agu_match(j) := storebuffer_item_reg(i).valid & io.agu_valid(j) &
                     (storebuffer_item_reg(i).rob_id === io.agu_rob_id(j))
-                ){
-                    storebuffer_item_reg(i).rdy := true.B
-                    storebuffer_item_reg(i).agu_result := io.agu_result(j)
-                    storebuffer_item_reg(i).wdata := io.agu_wdata(j)
-                    storebuffer_item_reg(i).wmask := io.agu_wmask(j)
-                }
             }
+            agu_match_idx := OHToUInt(agu_match.asUInt)
+            storebuffer_item_reg(i).rdy := Mux(agu_match.asUInt.orR, true.B, storebuffer_item_reg(i).rdy)
+            storebuffer_item_reg(i).agu_result := Mux(agu_match.asUInt.orR, io.agu_result(agu_match_idx), storebuffer_item_reg(i).agu_result)
+            storebuffer_item_reg(i).wdata := Mux(agu_match.asUInt.orR, io.agu_wdata(agu_match_idx), storebuffer_item_reg(i).wdata)
+            storebuffer_item_reg(i).wmask := Mux(agu_match.asUInt.orR, io.agu_wmask(agu_match_idx), storebuffer_item_reg(i).wmask)
+
+            var rob_rdy_match = WireInit(VecInit(
+                Seq.fill(base.FETCH_WIDTH)(false.B)
+            ))
+            var rob_rdy_match_index = WireInit((0.U)(2.W))
+
             for(j <- 0 until base.FETCH_WIDTH){
-                when(
-                    storebuffer_item_reg(i).valid & io.rob_items_i(j).valid & io.commit_valid_mask(j) &
-                    (storebuffer_item_reg(i).rob_id === io.rob_items_i(j).id)
-                ){
-                    storebuffer_item_reg(i).rob_rdy := io.rob_items_i(j).rdy
-                }
+                rob_rdy_match(j) := 
+                    Cat(
+                        storebuffer_item_reg(i).valid,
+                        io.rob_items_i(j).valid
+                    ).andR &
+                    Cat(
+                        io.commit_valid_mask(j),
+                        (storebuffer_item_reg(i).rob_id === io.rob_items_i(j).id)
+                    ).andR
             }
+            rob_rdy_match_index := OHToUInt(rob_rdy_match.asUInt)
+            storebuffer_item_reg(i).rob_rdy := Mux(rob_rdy_match.asUInt.orR, io.rob_items_i(rob_rdy_match_index).rdy, storebuffer_item_reg(i).rob_rdy)
         }
     }
 

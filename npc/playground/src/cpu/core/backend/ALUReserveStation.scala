@@ -206,10 +206,10 @@ class ALUReserveStation(size: Int) extends Module {
                 io.prf_valid_vec(io.rob_item_i.ps2(base.PREG_WIDTH - 1, 0)) | io.rob_item_i.rdy2           
         }.elsewhen(issue_valid){
             for(j <- 0 until size){
-                age_mat(issue_idx(log2Ceil(size) - 1, 0))(j) := false.B
-                age_mat(j)(issue_idx(log2Ceil(size) - 1, 0)) := rob_item_reg(j).valid
+                age_mat(i)(j) := false.B
+                age_mat(j)(i) := rob_item_reg(j).valid
             }
-            rob_item_reg(issue_idx(log2Ceil(size) - 1, 0)) := 0.U.asTypeOf(new ROBItem)            
+            rob_item_reg(i) := 0.U.asTypeOf(new ROBItem)            
         }otherwise{
             rob_item_reg(i).rdy1 := Mux(rob_item_reg(i).valid, io.prf_valid_vec(rob_item_reg(i).ps1(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy1, rob_item_reg(i).rdy1)
             rob_item_reg(i).rdy2 := Mux(rob_item_reg(i).valid, io.prf_valid_vec(rob_item_reg(i).ps2(base.PREG_WIDTH - 1, 0)) | rob_item_reg(i).rdy2, rob_item_reg(i).rdy2)            

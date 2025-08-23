@@ -178,7 +178,7 @@ module ROBIdLocMemWriteAPI (
         if(rst) begin
             integer i;
             for(i=0;i<(1 << 7);i=i+1) begin
-                npc_rob_id_loc_mem_write(i, 8'b10000000);
+                npc_rob_id_loc_mem_write(i, 8'b00100000);
             end
         end
         else if(wen) begin

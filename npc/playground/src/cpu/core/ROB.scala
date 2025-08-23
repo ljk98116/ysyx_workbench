@@ -70,7 +70,16 @@ if(!DEBUG){
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
-        when(io.robr_able & io.retire_rdy_mask.andR & ~(rob_state === flush) & ROBBankRegs(i)(head).valid){
+        when(
+            Cat(
+                io.robr_able,
+                io.retire_rdy_mask.andR
+            ).andR &
+            Cat(
+                ~(rob_state === flush),
+                ROBBankRegs(i)(head).valid
+            ).andR
+        ){
             ROBBankRegs(i)(head) := 0.U.asTypeOf(new ROBItem)
             ROBIDLocMem(ROBBankRegs(i)(head).id) := (1 << bankwidth).U             
         }
@@ -90,7 +99,16 @@ if(!DEBUG){
     }
 
     for(i <- 0 until base.ALU_NUM){
-        when(io.cdb_i.alu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth)){
+        when(
+            Cat(
+                io.cdb_i.alu_channel(i).valid,
+                (io.rob_state =/= "b11".U)
+            ).andR &
+            Cat(
+                ~io.rat_flush_en,
+                ~ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth)
+            ).andR
+        ){
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).targetBrAddr := io.cdb_i.alu_channel(i).branch_target_addr
@@ -99,11 +117,30 @@ if(!DEBUG){
         }
     }
     for(i <- 0 until base.AGU_NUM){
-        when(io.cdb_i.agu_channel(i).valid & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth)){
+        when(
+            Cat(
+                io.cdb_i.agu_channel(i).valid,
+                (io.rob_state =/= "b11".U)
+            ).andR &
+            Cat(
+                ~io.rat_flush_en,
+                ~ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth)
+            ).andR
+        ){
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
         }
-        when(io.agu_valid(i) & io.agu_ls_flag(i) & (io.rob_state =/= "b11".U) & ~io.rat_flush_en & ~ROBIDLocMem(io.agu_rob_id(i))(bankwidth)){
+        when(
+            Cat(
+                io.agu_valid(i),
+                io.agu_ls_flag(i)
+            ).andR &
+            Cat(
+                (io.rob_state =/= "b11".U),
+                ~io.rat_flush_en,
+                ~ROBIDLocMem(io.agu_rob_id(i))(bankwidth)
+            ).andR
+        ){
             ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))(bankwidth - 1, 0)).rdy := true.B          
         }
     }
@@ -114,8 +151,6 @@ if(!DEBUG){
             ROBIDLocMem(io.rob_item_i(i).id) := tail
         }
     }
-
-
 
     /* Retire出现异常，normal->flush */
     /* head + 1.U == tail, flush->normal */

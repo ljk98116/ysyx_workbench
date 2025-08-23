@@ -43,7 +43,7 @@ class IssueStage extends Module
     /* ReserveStations接收总线信号 */
     /* ALU */
     var alu_reserve_stations = Seq.fill(base.ALU_NUM)(
-        Module(new ALUReserveStation(16))
+        Module(new ALUReserveStation(4))
     )
 
     var wr_able_mask = WireInit(VecInit(
@@ -83,7 +83,7 @@ class IssueStage extends Module
     }
 
     /* AGU */
-    var agu_reserve_station = Module(new AGUReservestation(32))
+    var agu_reserve_station = Module(new AGUReservestation(8))
     agu_reserve_station.io.prf_valid_vec := io.prf_valid_vec
     agu_reserve_station.io.rob_item_i := io.agu_items_vec_i
     agu_reserve_station.io.valid_cnt_i := io.agu_items_cnt_i
