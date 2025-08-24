@@ -9,6 +9,7 @@ import cpu.core.utils._
 /* 顺序接收ROB项，顺序发射 */
 /* 异常时清空队列 */
 /* 如果是前面store后面load或者load后面store，且均能发射，只发射第一个指令, 避免load forwarding失效 */
+/* WAR问题，load发射后如果紧跟store，store延迟一周期发射 */
 class AGUReservestation(size : Int) extends Module
 {
     val width = log2Ceil(size)
@@ -42,6 +43,7 @@ class AGUReservestation(size : Int) extends Module
 
     var head = RegInit((0.U)(width.W))
     var tail = RegInit((0.U)(width.W))
+    var state = RegInit(false.B)
 
     io.read_able := head =/= tail
     io.write_able := 

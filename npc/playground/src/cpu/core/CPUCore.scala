@@ -8,7 +8,7 @@ import cpu.core.frontend._
 import cpu.core.backend._
 import cpu.memory.MultiPortSram
 import chisel3.experimental.ChiselAnnotation
-
+// recursion, quick-sort, min3
 /* PC -> Fetch -> Decode -> Rename1 -> Rename2 -> Dispatch -> */
 /* Issue -> Ex -> Mem1 -> Mem2 -> Mem3 -> Retire */
 class CPUCore(memfile: String) extends Module

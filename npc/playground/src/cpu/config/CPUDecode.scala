@@ -162,7 +162,6 @@ class DecodeRes extends Bundle
     var rd = UInt(base.AREG_WIDTH.W)
     var funct3 = UInt(3.W)
     var funct7 = UInt(7.W)
-    var shamt = UInt(base.AREG_WIDTH.W)
     var Type = UInt(3.W)
     var HasRs1 = Bool()
     var HasRs2 = Bool()

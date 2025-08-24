@@ -35,7 +35,6 @@ typedef struct {
     uint8_t rd : 5;
     uint8_t funct3 : 5;
     uint8_t funct7 : 7;
-    uint8_t shamt : 5;
     uint8_t Type : 3;
     uint8_t HasRs1 : 1;
     uint8_t HasRs2 : 1;
@@ -53,7 +52,6 @@ typedef struct {
     uint8_t isLoad : 1;
     uint8_t hasException : 1;
     uint8_t ExceptionType;
-    uint8_t isTaken : 1;
     uint32_t targetBrAddr;
     uint32_t reg_wb_data;
     uint8_t storeIdx;

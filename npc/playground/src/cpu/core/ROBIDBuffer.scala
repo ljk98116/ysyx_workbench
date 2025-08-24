@@ -9,9 +9,11 @@ class ROBIDBuffer(id : Int) extends Module
 {
     val io = IO(new Bundle{
         /* retire stage */
+        val rob_state = Input(UInt(2.W))
         val rat_flush_en = Input(Bool())
         val rat_write_en_retire = Input(Bool())
         val free_robid_i = Input(UInt(base.ROBID_WIDTH.W))
+        val flush_robid_valid = Input(Bool())
 
         /* output */
         val rat_write_en_rename = Input(Bool())

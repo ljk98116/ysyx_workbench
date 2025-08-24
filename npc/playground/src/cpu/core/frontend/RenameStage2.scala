@@ -241,7 +241,6 @@ class RenameStage2 extends Module
         rob_item_o(i).Type := DecodeRes_reg(i).Type
         rob_item_o(i).funct3 := DecodeRes_reg(i).funct3
         rob_item_o(i).funct7 := DecodeRes_reg(i).funct7
-        rob_item_o(i).shamt := DecodeRes_reg(i).shamt
         rob_item_o(i).id := io.rob_freeid_vec_i(i)
         rob_item_o(i).pd := Mux(DecodeRes_reg(i).HasRd, rat_wdata_reg(i), 0.U)
         rob_item_o(i).isBranch := DecodeRes_reg(i).IsBranch
@@ -335,7 +334,7 @@ class RenameStage2 extends Module
         rob_item_o(2).storeIdx
     )
     last_store_idx := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & stall, 
         Mux(
             last_store_idx_mid(1) =/= last_store_idx, 
             last_store_idx_mid(1), 
