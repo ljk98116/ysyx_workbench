@@ -13,12 +13,15 @@ class BTB(DEBUG: Boolean = false) extends Module{
     val io = IO(new Bundle{
         val rob_state = Input(UInt(2.W))
         val pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+        val btb_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val decode_br_mask_i = Input(Vec(base.FETCH_WIDTH, Bool()))
         val decode_pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+        val decode_btb_idx_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val decode_br_addr = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val ex_br_mask_i = Input(Vec(base.FETCH_WIDTH, Bool()))
         val ex_pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val ex_br_addr = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+        val ex_btb_idx_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val btb_hit_vec_o = Output(Vec(base.FETCH_WIDTH, Bool()))
         val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
     })
@@ -30,7 +33,7 @@ if(!DEBUG){
     ))
     
     for(i <- 0 until base.FETCH_WIDTH){
-        BTBItem_o(i) := BTB_Mem.read(io.pc_i(i)(9, 2))
+        BTBItem_o(i) := BTB_Mem.read(io.btb_idx_vec_i(i))
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
@@ -39,7 +42,7 @@ if(!DEBUG){
             BTBItem_o(i).BTA,
             io.pc_i(i) + 4.U
         )
-        io.btb_hit_vec_o(i) := (io.pc_i(i)(17, 10) === BTBItem_o(i).BIA) & BTBItem_o(i).V
+        io.btb_hit_vec_o(i) := (io.pc_i(i)(22, 15) === BTBItem_o(i).BIA) & BTBItem_o(i).V
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
@@ -50,7 +53,7 @@ if(!DEBUG){
             btb_writeItem.V := true.B
             btb_writeItem.BIA := io.ex_pc_i(i)(22, 15)
             btb_writeItem.BTA := io.ex_br_addr(i)
-            index := io.ex_pc_i(i)(14, 2)
+            index := io.ex_btb_idx_i(i)
             BTB_Mem.write(index, btb_writeItem)
         }
     }
@@ -62,7 +65,7 @@ if(!DEBUG){
             btb_writeItem.V := true.B
             btb_writeItem.BIA := io.decode_pc_i(i)(22, 15)
             btb_writeItem.BTA := io.decode_br_addr(i)
-            index := io.decode_pc_i(i)(14, 2)
+            index := io.decode_btb_idx_i(i)
             BTB_Mem.write(index, btb_writeItem)
         }
     }
@@ -85,9 +88,9 @@ else{
         btb_read_bia_api.io.ren := true.B
         btb_read_bta_api.io.ren := true.B
 
-        btb_read_v_api.io.raddr := io.pc_i(i)(9, 2)
-        btb_read_bia_api.io.raddr := io.pc_i(i)(9, 2)
-        btb_read_bta_api.io.raddr := io.pc_i(i)(9, 2)
+        btb_read_v_api.io.raddr := io.btb_idx_vec_i(i)
+        btb_read_bia_api.io.raddr := io.btb_idx_vec_i(i)
+        btb_read_bta_api.io.raddr := io.btb_idx_vec_i(i)
 
         BTBItem_o(i).V := btb_read_v_api.io.V
         BTBItem_o(i).BIA := btb_read_bia_api.io.BIA
@@ -100,7 +103,7 @@ else{
             BTBItem_o(i).BTA,
             io.pc_i(i) + 4.U
         )
-        io.btb_hit_vec_o(i) := (io.pc_i(i)(17, 10) === BTBItem_o(i).BIA) & BTBItem_o(i).V
+        io.btb_hit_vec_o(i) := (io.pc_i(i)(22, 15) === BTBItem_o(i).BIA) & BTBItem_o(i).V
     }
 
     for(i <- 0 until base.FETCH_WIDTH){
@@ -118,7 +121,7 @@ else{
         btb_write_api.io.clk := clock.asBool
         btb_write_api.io.rst := reset.asBool
         btb_write_api.io.wen := io.ex_br_mask_i(i) & (io.rob_state === "b00".U) & (io.ex_br_addr(i)(31))
-        btb_write_api.io.waddr := io.ex_pc_i(i)(14, 2)
+        btb_write_api.io.waddr := io.ex_btb_idx_i(i)
         btb_write_api.io.V := true.B
         btb_write_api.io.BIA := io.ex_pc_i(i)(22, 15)
         btb_write_api.io.BTA := io.ex_br_addr(i)
@@ -139,7 +142,7 @@ else{
         btb_write_api.io.clk := clock.asBool
         btb_write_api.io.rst := reset.asBool
         btb_write_api.io.wen := io.decode_br_mask_i(i) & (io.rob_state === "b00".U) & (io.decode_br_addr(i)(31))
-        btb_write_api.io.waddr := io.decode_pc_i(i)(14, 2)
+        btb_write_api.io.waddr := io.decode_btb_idx_i(i)
         btb_write_api.io.V := true.B
         btb_write_api.io.BIA := io.decode_pc_i(i)(22, 15)
         btb_write_api.io.BTA := io.decode_br_addr(i)

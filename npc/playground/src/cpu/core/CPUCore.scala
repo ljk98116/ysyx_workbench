@@ -107,6 +107,7 @@ class CPUCore(memfile: String) extends Module
     fetch.io.global_pht_idx_vec_i   := pc_reg.io.global_pht_idx_vec_o
     fetch.io.local_pht_idx_vec_i    := pc_reg.io.local_pht_idx_vec_o
     fetch.io.bht_idx_vec_i          := pc_reg.io.bht_idx_vec_o
+    fetch.io.btb_idx_vec_i          := pc_reg.io.btb_idx_vec_o
 
     /* fetch -> pc */
     pc_reg.io.branch_pred_en        := fetch.io.branch_en_pred
@@ -121,6 +122,7 @@ class CPUCore(memfile: String) extends Module
 
     /* fetch -> BTB */
     btb.io.pc_i                     := fetch.io.pc_vec_o
+    btb.io.btb_idx_vec_i            := fetch.io.btb_idx_vec_o
 
     /* BTB -> fetch */
     fetch.io.btb_hit_vec_i          := btb.io.btb_hit_vec_o
@@ -140,14 +142,18 @@ class CPUCore(memfile: String) extends Module
     decode.io.bht_idx_vec_i         := fetch.io.bht_idx_vec_o
     decode.io.global_pht_idx_vec_i  := fetch.io.global_pht_idx_vec_o
     decode.io.local_pht_idx_vec_i   := fetch.io.local_pht_idx_vec_o
+    decode.io.btb_idx_vec_i         := fetch.io.btb_idx_vec_o
+
     decode.io.gbranch_pre_res_i     := pht.io.gbranch_pre_res_o
     decode.io.lbranch_pre_res_i     := pht.io.lbranch_pre_res_o
     decode.io.branch_pre_res_i      := pht.io.branch_pre_res_o
+    
 
     /* decode -> btb */
     btb.io.decode_br_mask_i         := decode.io.decode_br_mask
     btb.io.decode_pc_i              := decode.io.pc_vec_o
     btb.io.decode_br_addr           := decode.io.decode_br_addr
+    btb.io.decode_btb_idx_i         := decode.io.btb_idx_vec_o
 
     /* btb -> decode */
     decode.io.btb_hit_vec_i         := btb.io.btb_hit_vec_o
@@ -191,6 +197,7 @@ class CPUCore(memfile: String) extends Module
     rename1.io.branch_pre_res_i     := decode.io.branch_pre_res_o
     rename1.io.btb_hit_vec_i        := decode.io.btb_hit_vec_o
     rename1.io.btb_pred_addr_i      := decode.io.btb_pred_addr_o
+    rename1.io.btb_idx_vec_i        := decode.io.btb_idx_vec_o
 
     /* robidbuffer -> rename2 */
     for(i <- 0 until base.FETCH_WIDTH){
@@ -220,6 +227,7 @@ class CPUCore(memfile: String) extends Module
     rename2.io.branch_pre_res_i     := rename1.io.branch_pre_res_o
     rename2.io.btb_hit_vec_i        := rename1.io.btb_hit_vec_o
     rename2.io.btb_pred_addr_i      := rename1.io.btb_pred_addr_o
+    rename2.io.btb_idx_vec_i        := rename1.io.btb_idx_vec_o
 
     /* rename2 -> RenameRAT */
     ReNameRAT.io.rat_ren            := rename2.io.rat_ren_o
@@ -326,6 +334,7 @@ class CPUCore(memfile: String) extends Module
         btb.io.ex_br_mask_i(i) := alu_vec(i).io.branch_en
         btb.io.ex_pc_i(i) := alu_vec(i).io.pc_o
         btb.io.ex_br_addr(i) := alu_vec(i).io.branch_target_addr
+        btb.io.ex_btb_idx_i(i) := alu_vec(i).io.btb_idx_o
     }
 
     /* CDB -> PRF */
@@ -361,6 +370,9 @@ class CPUCore(memfile: String) extends Module
 
     /* StoreBuffer -> MemStage1 */
     memstage1.io.storebuffer_head_item_i := storebuffer.io.store_buffer_item_o
+    /* StoreBuffer ->MemStage2 */
+    memstage2.io.storebuffer_rdata_i := storebuffer.io.store_buffer_rdata
+    memstage2.io.storebuffer_rdata_valid_i := storebuffer.io.store_buffer_rdata_valid
 
     /* MemStage1 -> MemStage2 */
     memstage2.io.rob_item_i             := memstage1.io.rob_item_o
@@ -371,16 +383,13 @@ class CPUCore(memfile: String) extends Module
     memstage2.io.mem_write_addr_i       := memstage1.io.mem_write_addr_o
     memstage2.io.mem_write_mask_i       := memstage1.io.mem_write_wmask_o
     memstage2.io.mem_write_data_i       := memstage1.io.mem_write_data_o
-    memstage2.io.storebuffer_ren_i      := memstage1.io.storebuffer_ren_o
-    memstage2.io.storebuffer_raddr_i    := memstage1.io.storebuffer_raddr_o
-    memstage2.io.storebuffer_rmask_i    := memstage1.io.storebuffer_rmask_o
 
-    /* Memstage2 -> StoreBuffer, load forwarding/real steping */
-    storebuffer.io.store_buffer_ren     := memstage2.io.storebuffer_ren_o
-    storebuffer.io.store_buffer_raddr   := memstage2.io.storebuffer_raddr_o
-    storebuffer.io.store_buffer_rmask   := memstage2.io.storebuffer_rmask_o
-    storebuffer.io.mem_write_en         := memstage2.io.mem_write_en_o
-    storebuffer.io.store_ids            := memstage2.io.store_ids_o
+    /* Memstage1 -> StoreBuffer, load forwarding/real steping */
+    storebuffer.io.store_buffer_ren     := memstage1.io.storebuffer_ren_o
+    storebuffer.io.store_buffer_raddr   := memstage1.io.storebuffer_raddr_o
+    storebuffer.io.store_buffer_rmask   := memstage1.io.storebuffer_rmask_o
+    storebuffer.io.mem_write_en         := memstage1.io.mem_write_en_o
+    storebuffer.io.store_ids            := memstage1.io.store_ids_o
 
     /* MemStage2 -> Sram */
     memory.io.wen                       := memstage2.io.mem_write_en_o
@@ -396,6 +405,8 @@ class CPUCore(memfile: String) extends Module
     memstage3.io.rob_item_i             := memstage2.io.rob_item_o
     memstage3.io.mem_read_en_i          := memstage2.io.mem_read_en_o
     memstage3.io.mem_read_mask_i        := memstage2.io.mem_read_mask_o
+    memstage3.io.storebuffer_rdata      := memstage2.io.storebuffer_rdata_o
+    memstage3.io.storebuffer_rdata_valid := memstage2.io.storebuffer_rdata_valid_o
 
     /* memory -> memstage3 */
     for(i <- 0 until base.AGU_NUM){

@@ -63,7 +63,8 @@ static void trace_and_difftest() {
 static void statistic() {
   IFNDEF(CONFIG_TARGET_AM, setlocale(LC_NUMERIC, ""));
 #define NPC_NUMBERIC_FMT MUXDEF(CONFIG_TARGET_AM, "%", "%'") PRIu64
-  NPCLog("single cycle cost %lf us", (double)g_timer / cycle);
+  NPCLog("ipc %lf", (double)g_nr_guest_inst / (cycle * 2));
+  NPCLog("single cycle cost %lf us", (double)g_timer / cycle / 2.0);
   NPCLog("host time spent = " NPC_NUMBERIC_FMT " us", g_timer);
   NPCLog("total guest instructions = " NPC_NUMBERIC_FMT, g_nr_guest_inst);
   NPCLog("total branch predict success rate: %.2lf %", 100.0 - 100.0 * (double)branch_err_cnt / (double)(total_branch_cnt));
@@ -94,6 +95,7 @@ static void exec_once(void* tfp){
     trace_and_difftest();
     g_nr_guest_inst += commit_num;
   }
+  if(cycle % 100000 == 0 & cycle > 0) NPCLog("running cycle %d", cycle);
   ++cycle;
 }
 

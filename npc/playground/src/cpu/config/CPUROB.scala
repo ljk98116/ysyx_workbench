@@ -46,6 +46,7 @@ class ROBItem extends Bundle
     var global_pht_idx = UInt(base.PHTID_WIDTH.W)
     var local_pht_idx = UInt(base.PHTID_WIDTH.W)
     var bht_idx = UInt(base.BHTID_WIDTH.W)
+    var btb_idx = UInt(base.PHTID_WIDTH.W)
     /* 直接跳转，在译码时计算 */
     /* 间接跳转，在执行时计算 */
     var branch_pred_addr = UInt(base.ADDR_WIDTH.W)

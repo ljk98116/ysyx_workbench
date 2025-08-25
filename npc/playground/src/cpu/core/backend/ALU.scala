@@ -18,6 +18,7 @@ class ALU extends Module
         /* 结果是否跳转 */
         val branch_en = Output(Bool())
         val branch_target_addr = Output(UInt(base.ADDR_WIDTH.W))
+        val btb_idx_o = Output(UInt(base.PHTID_WIDTH.W))
         val pc_o = Output(UInt(base.ADDR_WIDTH.W))
         val areg_wr_addr = Output(UInt(base.AREG_WIDTH.W))
         val preg_wr_addr = Output(UInt(base.PREG_WIDTH.W))
@@ -339,6 +340,7 @@ class ALU extends Module
     }
 
     /* connect */
+    io.btb_idx_o := rob_item_reg.btb_idx
     io.has_exception := has_exception
     io.exception_type := exception_type
     io.result := Mux(rob_item_reg.rd =/= 0.U, result, 0.U)

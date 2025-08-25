@@ -125,9 +125,9 @@ class StoreBuffer(size : Int) extends Module{
             // ).andR
             load_raw_mask_1(j) := 
                 io.store_buffer_ren(i) & 
-                storebuffer_item_reg(j).rdy & 
+                storebuffer_item_reg(j).rdy &
                 (storebuffer_item_reg(j).agu_result === io.store_buffer_raddr(i)) &
-                (io.store_ids(i)(base.ROBID_WIDTH - 1, 0) === storebuffer_item_reg(j).rob_id)               
+                ((j.U >= head & j.U < tail & head < tail) | (head > tail & (j.U >= head | j.U < tail)))       
         }
         // load_raw_mask := Mux(load_raw_mask_1.asUInt =/= 0.U, load_raw_mask_1.asUInt, load_raw_mask_2.asUInt)
         prio_decoder_vec(i).io.in := load_raw_mask_1.asUInt

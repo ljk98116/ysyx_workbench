@@ -32,6 +32,13 @@ class MemStage3 extends Module{
         Seq.fill(base.AGU_NUM)((0.U)(8.W))
     ))
 
+    var store_buffer_rdata_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
+    ))
+    var store_buffer_rdata_valid_reg = RegInit(VecInit(
+        Seq.fill(base.AGU_NUM)(false.B)
+    ))
+
     rob_item_reg := Mux(
         ~io.rat_flush_en, 
         Mux((io.rob_state === 0.U), io.rob_item_i, rob_item_reg),
@@ -47,7 +54,16 @@ class MemStage3 extends Module{
         Mux((io.rob_state === 0.U), io.mem_read_mask_i, mem_read_mask_reg),
         VecInit(Seq.fill(base.AGU_NUM)((0.U)(8.W)))
     )
-
+    store_buffer_rdata_reg := Mux(
+        ~io.rat_flush_en,
+        Mux((io.rob_state === 0.U), io.storebuffer_rdata, store_buffer_rdata_reg),
+        VecInit(Seq.fill(base.AGU_NUM)((0.U)(base.DATA_WIDTH.W)))
+    )
+    store_buffer_rdata_valid_reg := Mux(
+        ~io.rat_flush_en,
+        Mux((io.rob_state === 0.U), io.storebuffer_rdata_valid, store_buffer_rdata_valid_reg),
+        VecInit(Seq.fill(base.AGU_NUM)(false.B))        
+    )
     var rob_item_o = WireInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
@@ -62,7 +78,7 @@ class MemStage3 extends Module{
 
     for(i <- 0 until base.AGU_NUM){
         when(rob_item_reg(i).valid){
-            mem_read_data_mid(i) := Mux(~io.storebuffer_rdata_valid(i), io.mem_read_data_i(i), io.storebuffer_rdata(i))
+            mem_read_data_mid(i) := Mux(~store_buffer_rdata_valid_reg(i), io.mem_read_data_i(i), store_buffer_rdata_reg(i))
             /* load处理 */
             switch(rob_item_reg(i).funct3){
                 is(Funct3.LB){

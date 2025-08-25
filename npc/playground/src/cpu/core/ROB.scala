@@ -62,6 +62,9 @@ if(!DEBUG){
         Seq.fill(1 << base.ROBID_WIDTH)(((1 << bankwidth).U)((bankwidth + 1).W))
     ))
     dontTouch(ROBBankRegs)
+    var update_able = WireInit(false.B)
+    update_able := ~io.rat_flush_en & io.rob_state =/= "b11".U
+
     for(i <- 0 until base.FETCH_WIDTH){
         when(io.rob_state === flush){
             ROBBankRegs(i)(tail - 1.U) := 0.U.asTypeOf(new ROBItem)
@@ -99,15 +102,14 @@ if(!DEBUG){
     }
 
     for(i <- 0 until base.ALU_NUM){
-        when(
-            Cat(
+        var update_sig = WireInit(false.B)
+        update_sig := Cat(
                 io.cdb_i.alu_channel(i).valid,
-                (io.rob_state =/= "b11".U)
-            ).andR &
-            Cat(
-                ~io.rat_flush_en,
-                ~ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth)
+                ~ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth),
+                update_able
             ).andR
+        when(
+            update_sig
         ){
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
             ROBBankRegs(io.cdb_i.alu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.alu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.alu_channel(i).reg_wr_data
@@ -117,29 +119,30 @@ if(!DEBUG){
         }
     }
     for(i <- 0 until base.AGU_NUM){
-        when(
-            Cat(
+        var update_sig = WireInit(false.B)
+        update_sig := Cat(
                 io.cdb_i.agu_channel(i).valid,
-                (io.rob_state =/= "b11".U)
-            ).andR &
-            Cat(
-                ~io.rat_flush_en,
-                ~ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth)
+                ~ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth),
+                update_able
             ).andR
+        when(
+            update_sig
         ){
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).rdy := true.B
             ROBBankRegs(io.cdb_i.agu_channel(i).rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.agu_channel(i).rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.agu_channel(i).reg_wr_data
         }
-        when(
+        var update_agu_sig = WireInit(false.B)
+        update_agu_sig := 
             Cat(
                 io.agu_valid(i),
                 io.agu_ls_flag(i)
             ).andR &
             Cat(
-                (io.rob_state =/= "b11".U),
-                ~io.rat_flush_en,
+                update_able,
                 ~ROBIDLocMem(io.agu_rob_id(i))(bankwidth)
             ).andR
+        when(
+            update_agu_sig
         ){
             ROBBankRegs(io.agu_rob_id(i)(bankwidth + 1, bankwidth))(ROBIDLocMem(io.agu_rob_id(i))(bankwidth - 1, 0)).rdy := true.B          
         }
@@ -154,18 +157,32 @@ if(!DEBUG){
 
     /* Retire出现异常，normal->flush */
     /* head + 1.U == tail, flush->normal */
-    when((rob_state === normal) & io.rat_flush_en){
-        next_rob_state := wait1
-    }.elsewhen(rob_state === wait1){
-        next_rob_state := wait2
-    }.elsewhen(rob_state === wait2){
-        next_rob_state := flush
-    }.elsewhen((rob_state === flush) & ((head + 1.U) === tail) | (head === tail)){
-        next_rob_state := normal
-    }.otherwise{
-        next_rob_state := rob_state
-    }
+    // when((rob_state === normal) & io.rat_flush_en){
+    //     next_rob_state := wait1
+    // }.elsewhen(rob_state === wait1){
+    //     next_rob_state := wait2
+    // }.elsewhen(rob_state === wait2){
+    //     next_rob_state := flush
+    // }.elsewhen((rob_state === flush) & ((head + 1.U) === tail) | (head === tail)){
+    //     next_rob_state := normal
+    // }.otherwise{
+    //     next_rob_state := rob_state
+    // }
 
+    switch(rob_state){
+        is(normal){
+            next_rob_state := Mux(io.rat_flush_en, wait1, normal)
+        }
+        is(wait1){
+            next_rob_state := wait2
+        }
+        is(wait2){
+            next_rob_state := flush
+        }
+        is(flush){
+            next_rob_state := Mux(((head + 1.U) === tail) | (head === tail), normal, flush)
+        }
+    }
     rob_state := next_rob_state
 
     when(io.robw_able & rob_input_valid.asUInt.orR & (rob_state =/= flush)){

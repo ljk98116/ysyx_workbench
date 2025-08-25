@@ -23,7 +23,7 @@ class RenameStage1 extends Module
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
         val btb_hit_vec_i = Input(Vec(base.FETCH_WIDTH, Bool()))
         val btb_pred_addr_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
-
+        
         /* 分支预测结果 */
         /* 使用全局/局部历史预测 */
         val gbranch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
@@ -35,6 +35,7 @@ class RenameStage1 extends Module
         val global_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val local_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val bht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+        val btb_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
 
         /* 使用全局/局部历史预测 */
         val gbranch_pre_res_o = Output(Vec(base.FETCH_WIDTH, Bool()))
@@ -45,6 +46,7 @@ class RenameStage1 extends Module
         val global_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val local_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val bht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+        val btb_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
 
         val pc_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val inst_valid_mask_o = Output(UInt(base.FETCH_WIDTH.W))
@@ -122,6 +124,15 @@ class RenameStage1 extends Module
     var btb_pred_addr_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
     ))
+    var btb_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+
+    btb_idx_vec_reg := Mux(
+        ~io.rat_flush_en, 
+        Mux(stall, io.btb_idx_vec_i, btb_idx_vec_reg),
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
+    )
 
     pc_vec_reg := Mux(
         ~io.rat_flush_en, 
@@ -311,6 +322,7 @@ class RenameStage1 extends Module
     io.global_pht_idx_vec_o := global_pht_idx_vec_reg
     io.local_pht_idx_vec_o := local_pht_idx_vec_reg
     io.bht_idx_vec_o := bht_idx_vec_reg
+    io.btb_idx_vec_o := btb_idx_vec_reg
     io.btb_hit_vec_o := btb_hit_vec_reg
     io.btb_pred_addr_o := btb_pred_addr_reg
 }

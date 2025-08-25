@@ -28,6 +28,7 @@ class MemStage1 extends Module
         val storebuffer_ren_o = Output(Vec(base.AGU_NUM, Bool()))
         val storebuffer_raddr_o = Output(Vec(base.AGU_NUM, UInt(base.ADDR_WIDTH.W)))
         val storebuffer_rmask_o = Output(Vec(base.AGU_NUM, UInt(8.W)))
+        val store_ids_o = Output(Vec(base.AGU_NUM, UInt((base.ROBID_WIDTH + 1).W)))
 
         /* storebuffer Item 头部的store指令 */
         val storebuffer_head_item_i = Input(Vec(base.AGU_NUM, new StoreBufferItem))
@@ -62,6 +63,10 @@ class MemStage1 extends Module
 
     var storebuffer_item_reg = RegInit(VecInit(
         Seq.fill(base.AGU_NUM)((0.U).asTypeOf(new StoreBufferItem))
+    ))
+
+    var store_ids_o = WireInit(VecInit(
+        Seq.fill(base.AGU_NUM)(((1 << base.ROBID_WIDTH).U)((base.ROBID_WIDTH + 1).W))
     ))
 
     rob_item_reg := Mux(
@@ -156,10 +161,16 @@ class MemStage1 extends Module
         storebuffer_rmask_o(i) := Mux(rob_item_reg(i).valid & rob_item_reg(i).isLoad, agu_rw_mask_reg(i), 0.U)
     }
 
+    for(i <- 0 until base.AGU_NUM){
+        store_ids_o(i) := rob_item_reg(i).storeIdx
+    }
+
     /* connect */
     io.storebuffer_ren_o := storebuffer_ren_o
     io.storebuffer_raddr_o := storebuffer_raddr_o
     io.storebuffer_rmask_o := storebuffer_rmask_o
+    io.store_ids_o := store_ids_o
+    
     io.mem_read_en_o := mem_read_en_o
     io.mem_read_addr_o := mem_read_addr_o
     io.mem_read_mask_o := mem_read_mask_o

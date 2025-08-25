@@ -85,9 +85,9 @@ if(!DEBUG){
     /* 0-1使用gPHT, 2-3使用lPHT */
     for(i <- 0 until base.FETCH_WIDTH){
         var cPHTReg_val = WireInit((0.U)(2.W))
-        cPHTReg_val := cPHTReg.read(io.retire_lpht_idx(i))
+        cPHTReg_val := cPHTReg.read(io.retire_gpht_idx(i))
         when((io.rob_state =/= "b11".U) & io.retire_br_mask(i)){
-            cPHTReg.write(io.retire_lpht_idx(i), Mux(
+            cPHTReg.write(io.retire_gpht_idx(i), Mux(
                 ~(io.retire_gbranch_pre_res_i(i) ^ io.retire_lbranch_pre_res_i(i)),
                 cPHTReg_val,
                 Mux(
@@ -105,7 +105,7 @@ if(!DEBUG){
         gbranch_pre_res_o(i) := gPHTReg.read(io.global_pht_idx_vec_i(i))(1)
         lbranch_pre_res_o(i) := lPHTReg.read(io.local_pht_idx_vec_i(i))(1)
         branch_pre_res_o(i) := Mux(
-            cPHTReg.read(io.local_pht_idx_vec_i(i))(1), 
+            cPHTReg.read(io.global_pht_idx_vec_i(i))(1), 
             lbranch_pre_res_o(i),
             gbranch_pre_res_o(i)
         )
@@ -168,12 +168,12 @@ else{
 
         cpht_rd_apis(i).io.rst := reset.asBool
         cpht_rd_apis(i).io.ren := true.B
-        cpht_rd_apis(i).io.raddr := io.local_pht_idx_vec_i(i)
+        cpht_rd_apis(i).io.raddr := io.global_pht_idx_vec_i(i)
 
         cpht_wr_apis(i).io.clk := clock.asBool
         cpht_wr_apis(i).io.rst := reset.asBool
         cpht_wr_apis(i).io.wen := (io.rob_state =/= "b11".U) & io.retire_br_mask(i)
-        cpht_wr_apis(i).io.waddr := io.retire_lpht_idx(i)
+        cpht_wr_apis(i).io.waddr := io.retire_gpht_idx(i)
     }
     /* 更新gPHT */
     for(i <- 0 until base.FETCH_WIDTH){

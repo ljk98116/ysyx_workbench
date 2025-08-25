@@ -114,21 +114,21 @@ void npc_btb_write(
     char BIA,
     int BTA
 ){
-    btb_table[waddr].V = valid & 0x1;
-    btb_table[waddr].bia = BIA;
-    btb_table[waddr].bta = BTA;
+    btb_table[waddr & 0x1FF].V = valid & 0x1;
+    btb_table[waddr & 0x1FF].bia = BIA;
+    btb_table[waddr & 0x1FF].bta = BTA;
 }
 
 int npc_btb_read_V(short raddr){
-    return btb_table[raddr].V;
+    return btb_table[raddr & 0x1FF].V;
 }
 
 int npc_btb_read_BIA(short raddr){
-    return btb_table[raddr].bia;
+    return btb_table[raddr & 0x1FF].bia;
 }
 
 int npc_btb_read_BTA(short raddr){
-    return btb_table[raddr].bta;
+    return btb_table[raddr & 0x1FF].bta;
 }
 
 void npc_gpht_write(short waddr, char wdata){

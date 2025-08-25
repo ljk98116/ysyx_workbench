@@ -61,6 +61,7 @@ typedef struct {
     uint16_t global_pht_idx: 13;
     uint16_t local_pht_idx: 13;
     uint8_t bht_idx;
+    uint16_t btb_idx : 13;
     uint32_t branch_pred_addr;
 } rob_item_t;
 

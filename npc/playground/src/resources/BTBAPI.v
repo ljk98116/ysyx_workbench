@@ -50,7 +50,7 @@ always @(*) begin
         V_o = 32'b0;
     end    
     else if(ren) begin
-        V_o = npc_btb_read_V({4'b0, raddr});
+        V_o = npc_btb_read_V({3'b0, raddr});
     end
 end 
 assign V = V_o[0];
@@ -68,7 +68,7 @@ always @(*) begin
         bia = 32'b0;
     end    
     else if(ren) begin
-        bia = npc_btb_read_BIA({4'b0, raddr});
+        bia = npc_btb_read_BIA({3'b0, raddr});
     end
 end 
 assign BIA = bia[7:0];
@@ -87,7 +87,7 @@ always @(*) begin
         BTA = 32'b0;
     end    
     else if(ren) begin
-        BTA = npc_btb_read_BTA({4'b0, raddr});
+        BTA = npc_btb_read_BTA({3'b0, raddr});
     end
 end 
 

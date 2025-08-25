@@ -32,6 +32,7 @@ class RenameStage2 extends Module
         val global_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val local_pht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val bht_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.BHTID_WIDTH.W)))
+        val btb_idx_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
 
         val btb_hit_vec_i = Input(Vec(base.FETCH_WIDTH, Bool()))
         val btb_pred_addr_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
@@ -171,6 +172,11 @@ class RenameStage2 extends Module
     var bht_idx_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W))
     ))
+
+    var btb_idx_vec_reg = RegInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
+    ))
+
     /* 分支预测结果 */
     gbranch_pre_res_reg := Mux(stall, io.gbranch_pre_res_i, gbranch_pre_res_reg)
     lbranch_pre_res_reg := Mux(stall, io.lbranch_pre_res_i, lbranch_pre_res_reg)
@@ -179,7 +185,7 @@ class RenameStage2 extends Module
     local_pht_idx_vec_reg := Mux(stall, io.local_pht_idx_vec_i, local_pht_idx_vec_reg)
     bht_idx_vec_reg := Mux(stall, io.bht_idx_vec_i, bht_idx_vec_reg)  
     btb_hit_vec_reg := Mux(stall, io.btb_hit_vec_i, btb_hit_vec_reg)
-
+    btb_idx_vec_reg := Mux(stall, io.btb_idx_vec_i, btb_idx_vec_reg)
     btb_pred_addr_reg := Mux(stall, io.btb_pred_addr_i, btb_pred_addr_reg)    
 
     /* wires */
@@ -264,6 +270,7 @@ class RenameStage2 extends Module
         rob_item_o(i).global_pht_idx := global_pht_idx_vec_reg(i)
         rob_item_o(i).local_pht_idx := local_pht_idx_vec_reg(i)
         rob_item_o(i).bht_idx := bht_idx_vec_reg(i)
+        rob_item_o(i).btb_idx := btb_idx_vec_reg(i)
         rob_item_o(i).branch_pred_addr := Mux(
             btb_hit_vec_reg(i) & branch_pre_res_reg(i),
             btb_pred_addr_reg(i),

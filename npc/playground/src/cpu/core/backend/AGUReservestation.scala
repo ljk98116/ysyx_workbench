@@ -43,7 +43,6 @@ class AGUReservestation(size : Int) extends Module
 
     var head = RegInit((0.U)(width.W))
     var tail = RegInit((0.U)(width.W))
-    var state = RegInit(false.B)
 
     io.read_able := head =/= tail
     io.write_able := 
@@ -93,8 +92,7 @@ class AGUReservestation(size : Int) extends Module
             ~(rob_item_reg(head + 1.U).rdy2)
         )
     ) & rob_item_reg(head + 1.U).valid & ((head + 1.U) =/= tail) & 
-    ~(rob_item_reg(head + 1.U).isLoad & rob_item_reg(head).isStore) &
-    ~(rob_item_reg(head + 1.U).isStore & rob_item_reg(head).isLoad) & (io.rob_state === "b00".U)
+    ~(rob_item_reg(head + 1.U).isLoad & rob_item_reg(head).isStore) & (io.rob_state === "b00".U)
     rob_item_o(1) := Mux(issue_able1, rob_item_reg(head + 1.U), (0.U).asTypeOf(new ROBItem))
 
     /* 更新 */
