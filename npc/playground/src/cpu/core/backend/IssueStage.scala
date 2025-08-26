@@ -83,7 +83,7 @@ class IssueStage extends Module
     }
 
     /* AGU */
-    var agu_reserve_station = Module(new AGUReservestation(8))
+    var agu_reserve_station = Module(new AGUReservestation(16))
     agu_reserve_station.io.prf_valid_vec := io.prf_valid_vec
     agu_reserve_station.io.rob_item_i := io.agu_items_vec_i
     agu_reserve_station.io.valid_cnt_i := io.agu_items_cnt_i

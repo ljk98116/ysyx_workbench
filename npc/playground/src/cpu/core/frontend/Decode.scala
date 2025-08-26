@@ -3,6 +3,7 @@ package cpu.core.frontend
 import chisel3._
 import chisel3.util._
 import cpu.config._
+import cpu.core.utils._
 
 class Decode extends Module
 {
@@ -15,7 +16,6 @@ class Decode extends Module
         val inst_vec_i = Input(Vec(base.FETCH_WIDTH, UInt(base.DATA_WIDTH.W)))
         val inst_valid_mask_i = Input(UInt(base.FETCH_WIDTH.W))
         val inst_valid_cnt_i = Input(UInt(log2Ceil(base.FETCH_WIDTH + 1).W))
-
 
         /* 分支预测结果 */
         /* 使用全局/局部历史预测 */
@@ -103,59 +103,59 @@ class Decode extends Module
     ))
 
     pc_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.pc_vec_i, pc_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
     inst_valid_mask_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.inst_valid_mask_i, inst_valid_mask_reg), 
         0.U
     )
     inst_valid_cnt_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
         0.U
     )
     gbranch_pre_res_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.gbranch_pre_res_i, gbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     lbranch_pre_res_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.lbranch_pre_res_i, lbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     branch_pre_res_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.branch_pre_res_i, branch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     global_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     local_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     bht_idx_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.bht_idx_vec_i, bht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))
     )
 
     btb_hit_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.btb_hit_vec_i, btb_hit_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
 
     btb_pred_addr_reg := Mux(
-        ~io.rat_flush_en,
+        ~io.rat_flush_en & ~io.branch_en_pred,
         Mux(stall, io.btb_pred_addr_i, btb_pred_addr_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
@@ -164,14 +164,14 @@ class Decode extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
     btb_idx_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.btb_idx_vec_i, btb_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
     
     io.pc_vec_o := pc_vec_reg
-    io.inst_valid_mask_o := inst_valid_mask_reg
-    io.inst_valid_cnt_o := inst_valid_cnt_reg
+    // io.inst_valid_mask_o := inst_valid_mask_reg
+    // io.inst_valid_cnt_o := inst_valid_cnt_reg
     io.gbranch_pre_res_o := gbranch_pre_res_reg
     io.lbranch_pre_res_o := lbranch_pre_res_reg
     io.branch_pre_res_o := branch_pre_res_reg
@@ -350,7 +350,33 @@ class Decode extends Module
         }
     }
 
-    io.DecodeRes_o := decoderes
+    var branch_valid_mask = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+    for(i <- 0 until base.FETCH_WIDTH){
+        branch_valid_mask(i) := decoderes(i).IsBranch & btb_hit_vec_reg(i) & branch_pre_res_reg(i)
+    }
+    var branch_valid_idx = WireInit(((base.FETCH_WIDTH.U)((log2Ceil(base.FETCH_WIDTH) + 1).W)))
+    val prio_enc = Module(new PriorityEncoder(base.FETCH_WIDTH))
+    prio_enc.io.val_i := branch_valid_mask.asUInt
+    branch_valid_idx := Mux(branch_valid_mask.asUInt.orR, prio_enc.io.idx_o, base.FETCH_WIDTH.U)
+    io.inst_valid_mask_o := Cat(
+        Mux(branch_valid_idx >= 3.U, inst_valid_mask_reg(3), false.B),
+        Mux(branch_valid_idx >= 2.U, inst_valid_mask_reg(2), false.B),
+        Mux(branch_valid_idx >= 1.U, inst_valid_mask_reg(1), false.B),
+        Mux(branch_valid_idx >= 0.U, inst_valid_mask_reg(0), false.B)
+    )
+    io.inst_valid_cnt_o := 
+        io.inst_valid_mask_o(0).asTypeOf(UInt(3.W)) + 
+        io.inst_valid_mask_o(1).asTypeOf(UInt(3.W)) + 
+        io.inst_valid_mask_o(2).asTypeOf(UInt(3.W)) + 
+        io.inst_valid_mask_o(3).asTypeOf(UInt(3.W))
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        io.DecodeRes_o(i) := Mux(io.inst_valid_mask_o(i), decoderes(i), (0.U).asTypeOf(new DecodeRes))
+    }
     io.decode_br_mask := decode_br_mask
     io.decode_br_addr := decode_br_addr
+    io.branch_en_pred := branch_valid_mask.asUInt.orR
+    io.branch_addr_pred := Mux(branch_valid_mask.asUInt.orR, btb_pred_addr_reg(branch_valid_idx(log2Ceil(base.FETCH_WIDTH) - 1, 0)), 0.U)
 }

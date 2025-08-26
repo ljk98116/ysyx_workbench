@@ -109,9 +109,10 @@ class CPUCore(memfile: String) extends Module
     fetch.io.bht_idx_vec_i          := pc_reg.io.bht_idx_vec_o
     fetch.io.btb_idx_vec_i          := pc_reg.io.btb_idx_vec_o
 
-    /* fetch -> pc */
-    pc_reg.io.branch_pred_en        := fetch.io.branch_en_pred
-    pc_reg.io.branch_pred_addr      := fetch.io.branch_addr_pred
+    /* decode -> pc, fetch */
+    pc_reg.io.branch_pred_en        := decode.io.branch_en_pred
+    pc_reg.io.branch_pred_addr      := decode.io.branch_addr_pred
+    fetch.io.branch_en_pred         := decode.io.branch_en_pred
 
     /* fetch -> PHT */
     pht.io.global_pht_idx_vec_i     := fetch.io.global_pht_idx_vec_o
@@ -124,9 +125,9 @@ class CPUCore(memfile: String) extends Module
     btb.io.pc_i                     := fetch.io.pc_vec_o
     btb.io.btb_idx_vec_i            := fetch.io.btb_idx_vec_o
 
-    /* BTB -> fetch */
-    fetch.io.btb_hit_vec_i          := btb.io.btb_hit_vec_o
-    fetch.io.btb_pred_addr_i        := btb.io.btb_pred_addr_o
+    /* BTB -> decode */
+    decode.io.btb_hit_vec_i          := btb.io.btb_hit_vec_o
+    decode.io.btb_pred_addr_i        := btb.io.btb_pred_addr_o
 
     /* fetch -> memory */
     for(i <- 0 until base.FETCH_WIDTH){

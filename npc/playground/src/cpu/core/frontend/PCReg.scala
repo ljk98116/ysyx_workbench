@@ -42,25 +42,37 @@ class PCReg extends Module
     var pc_reg = RegInit((base.RESET_VECTOR.U)(base.ADDR_WIDTH.W))
     var inst_valid_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
     var inst_valid_cnt = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
+    var nextpc_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     var nextpc = WireInit((0.U)(base.ADDR_WIDTH.W))
+    var stall = WireInit(false.B)
+    var stall_state = RegInit(false.B)
     /* BHT Table */
     var bht_table_reg = RegInit(VecInit(
         Seq.fill(1 << base.BHTID_WIDTH)((0.U)(base.BHRID_WIDTH.W))
     ))
 
+    stall := ((io.rob_state === 0.U)) & 
+        io.freereg_rd_able.asUInt.andR & 
+        io.store_buffer_wr_able &
+        io.issue_wr_able &
+        io.rob_wr_able & 
+        io.rob_freeid_rd_able.asUInt.andR
+
+    stall_state := stall
+
     inst_valid_mask := "b1111".U
     inst_valid_cnt  := 4.U
-    nextpc := Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg + 16.U)
+    nextpc_reg := Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg + 16.U)
+    nextpc := Mux(
+        stall_state, 
+        nextpc_reg, 
+        Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg + 16.U)
+    )
 
     pc_reg := 
         Mux(io.rat_flush_en, io.rat_flush_pc, 
         Mux(
-            ((io.rob_state === 0.U)) & 
-            io.freereg_rd_able.asUInt.andR & 
-            io.store_buffer_wr_able &
-            io.issue_wr_able &
-            io.rob_wr_able & 
-            io.rob_freeid_rd_able.asUInt.andR, 
+            stall,
             nextpc, 
             pc_reg
         ))

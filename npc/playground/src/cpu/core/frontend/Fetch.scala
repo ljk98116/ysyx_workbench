@@ -33,11 +33,8 @@ class Fetch extends Module
         /* 分支预测方向 */
         val branch_pre_res_i = Input(Vec(base.FETCH_WIDTH, Bool()))
 
-        val btb_hit_vec_i = Input(Vec(base.FETCH_WIDTH, Bool()))
-        val btb_pred_addr_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
-
         // /* 分支预测使能 */
-        // val branch_en_pred = Output(Bool())
+        val branch_en_pred = Input(Bool())
         // val branch_addr_pred = Output(UInt(base.ADDR_WIDTH.W))
 
         val global_pht_idx_vec_o = Output(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
@@ -62,21 +59,21 @@ class Fetch extends Module
         io.rob_freeid_rd_able.asUInt.andR
 
     inst_valid_mask := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.inst_valid_mask_i, inst_valid_mask), 
         0.U(base.FETCH_WIDTH.W)
     )
 
     var pc = RegInit((0.U)(base.ADDR_WIDTH.W))
     pc := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.pc_i, pc),
         (0.U)(base.ADDR_WIDTH.W)
     )
 
     var inst_valid_cnt = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
     inst_valid_cnt := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt),
         (0.U)(log2Ceil(base.FETCH_WIDTH + 1).W)
     )
@@ -86,13 +83,13 @@ class Fetch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))
     ))
     var inst_valid_cnt_o = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_mask_o := Mux(~io.rat_flush_en & (io.rob_state === "b00".U), inst_valid_mask, 0.U)
+    inst_valid_mask_o := Mux(~io.rat_flush_en & (io.rob_state === "b00".U) & ~io.branch_en_pred, inst_valid_mask, 0.U)
 
     var global_pht_idx_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
     global_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
@@ -101,7 +98,7 @@ class Fetch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
     local_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
@@ -110,7 +107,7 @@ class Fetch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W))
     ))
     bht_idx_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.bht_idx_vec_i, bht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))        
     )
@@ -119,16 +116,16 @@ class Fetch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
     btb_idx_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~io.rat_flush_en & ~io.branch_en_pred, 
         Mux(stall, io.btb_idx_vec_i, btb_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
 
-    pc_vec_o(0) := Mux(~io.rat_flush_en & inst_valid_mask(0), pc, 0.U)
-    pc_vec_o(1) := Mux(~io.rat_flush_en & inst_valid_mask(1), pc + 4.U, 0.U)
-    pc_vec_o(2) := Mux(~io.rat_flush_en & inst_valid_mask(2), pc + 8.U, 0.U)
-    pc_vec_o(3) := Mux(~io.rat_flush_en & inst_valid_mask(3), pc + 12.U, 0.U)
-    inst_valid_cnt_o := Mux(~io.rat_flush_en, inst_valid_cnt, 0.U)
+    pc_vec_o(0) := Mux(~io.rat_flush_en & inst_valid_mask(0) & ~io.branch_en_pred, pc, 0.U)
+    pc_vec_o(1) := Mux(~io.rat_flush_en & inst_valid_mask(1) & ~io.branch_en_pred, pc + 4.U, 0.U)
+    pc_vec_o(2) := Mux(~io.rat_flush_en & inst_valid_mask(2) & ~io.branch_en_pred, pc + 8.U, 0.U)
+    pc_vec_o(3) := Mux(~io.rat_flush_en & inst_valid_mask(3) & ~io.branch_en_pred, pc + 12.U, 0.U)
+    inst_valid_cnt_o := Mux(~io.rat_flush_en & ~io.branch_en_pred, inst_valid_cnt, 0.U)
 
     /* 跳转到第一个预测为跳转的分支指令 */
     // var branch_en_pred = WireInit(false.B)
@@ -162,24 +159,7 @@ class Fetch extends Module
     //     branch_pred_addr_mid(1)
     // )
 
-    io.inst_valid_mask_o := Cat(
-        Mux(
-            (
-                (io.branch_pre_res_i(0) & io.btb_hit_vec_i(0)) | 
-                (io.branch_pre_res_i(1) & io.btb_hit_vec_i(1)) |
-                (io.branch_pre_res_i(2) & io.btb_hit_vec_i(2))
-            ),
-            false.B,
-            inst_valid_mask_o(3)
-        ),
-        Mux(
-            ((io.branch_pre_res_i(0) & io.btb_hit_vec_i(0)) | (io.branch_pre_res_i(1) & io.btb_hit_vec_i(1))),
-            false.B,
-            inst_valid_mask_o(2)
-        ),
-        Mux(io.branch_pre_res_i(0) & io.btb_hit_vec_i(0), false.B, inst_valid_mask_o(1)),
-        inst_valid_mask_o(0)
-    )
+    io.inst_valid_mask_o := inst_valid_mask_o
     /* connect */
     // io.inst_valid_mask_o := inst_valid_mask_o
     io.pc_vec_o := pc_vec_o
