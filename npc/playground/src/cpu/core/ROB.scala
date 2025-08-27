@@ -63,7 +63,7 @@ if(!DEBUG){
     ))
     dontTouch(ROBBankRegs)
     var update_able = WireInit(false.B)
-    update_able := ~io.rat_flush_en & io.rob_state =/= "b11".U
+    update_able := ~io.rat_flush_en & (io.rob_state =/= "b11".U)
 
     for(i <- 0 until base.FETCH_WIDTH){
         when(io.rob_state === flush){

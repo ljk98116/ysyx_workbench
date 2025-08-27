@@ -42,16 +42,16 @@ class PCReg extends Module
     var pc_reg = RegInit((base.RESET_VECTOR.U)(base.ADDR_WIDTH.W))
     var inst_valid_mask = WireInit((0.U)(base.FETCH_WIDTH.W))
     var inst_valid_cnt = WireInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    var nextpc_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
+    var nextpc_reg = RegInit((0.U)(base.ADDR_WIDTH.W))
     var nextpc = WireInit((0.U)(base.ADDR_WIDTH.W))
-    var stall = WireInit(false.B)
-    var stall_state = RegInit(false.B)
+    var stall = WireInit(true.B)
+    var stall_state = RegInit(true.B)
     /* BHT Table */
     var bht_table_reg = RegInit(VecInit(
         Seq.fill(1 << base.BHTID_WIDTH)((0.U)(base.BHRID_WIDTH.W))
     ))
 
-    stall := ((io.rob_state === 0.U)) & 
+    stall := ((io.rob_state === 0.U)) &
         io.freereg_rd_able.asUInt.andR & 
         io.store_buffer_wr_able &
         io.issue_wr_able &
@@ -62,20 +62,19 @@ class PCReg extends Module
 
     inst_valid_mask := "b1111".U
     inst_valid_cnt  := 4.U
-    nextpc_reg := Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg + 16.U)
-    nextpc := Mux(
-        stall_state, 
-        nextpc_reg, 
-        Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg + 16.U)
-    )
-
-    pc_reg := 
-        Mux(io.rat_flush_en, io.rat_flush_pc, 
-        Mux(
-            stall,
-            nextpc, 
-            pc_reg
-        ))
+    // stall为0, 缓存branch信息和下一个pc，stall变为1时使用
+    // 暂停恢复直接使用缓存的nextpc输出,pc基于当前输出值增加16
+    // 暂停时需要记录当前进程状态
+    nextpc := Mux(io.rat_flush_en, io.rat_flush_pc, Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg + 16.U))
+    pc_reg := Mux(
+            io.rat_flush_en,
+            io.rat_flush_pc,
+            Mux(
+                stall,
+                Mux(io.branch_pred_en, io.branch_pred_addr, pc_reg + 16.U),
+                pc_reg
+            ) 
+        )
 
     /* 分支预测使用 */
     /* 分支全局历史移位寄存器 */
@@ -201,6 +200,7 @@ class PCReg extends Module
         )
     }
     /* 有分支使能，输出分支指令目标PC */
+    // 从暂停恢复输出缓存的nextpc_reg
     io.pc_o := pc_reg
     io.inst_valid_mask_o := Mux(~io.rat_flush_en & (io.rob_state === 0.U), inst_valid_mask, 0.U)
     io.inst_valid_cnt_o  := Mux(~io.rat_flush_en & (io.rob_state === 0.U), inst_valid_cnt, 0.U)

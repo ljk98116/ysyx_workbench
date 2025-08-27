@@ -43,7 +43,7 @@ class IssueStage extends Module
     /* ReserveStations接收总线信号 */
     /* ALU */
     var alu_reserve_stations = Seq.fill(base.ALU_NUM)(
-        Module(new ALUReserveStation(4))
+        Module(new ALUReserveStation(16))
     )
 
     var wr_able_mask = WireInit(VecInit(
