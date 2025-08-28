@@ -112,7 +112,7 @@ integer i;
 always @(posedge clk) begin
     if(rst) begin
         for (i=0;i<(1 << 13);i=i+1) begin
-            npc_cpht_write(i, 2'b11);
+            npc_cpht_write(i, 2'b00);
         end
     end
     else if(wen) begin

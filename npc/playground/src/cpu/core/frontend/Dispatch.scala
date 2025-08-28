@@ -43,10 +43,26 @@ class Dispatch extends Module
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
-    rob_item_reg := Mux(stall, io.rob_item_i, rob_item_reg)
+    rob_item_reg := Mux(
+        io.rob_state === "b11".U,
+        VecInit(Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))),
+        Mux(
+            stall, 
+            io.rob_item_i, 
+            rob_item_reg
+        )
+    )
 
     var inst_valid_cnt_reg = RegInit((0.U)(log2Ceil(base.FETCH_WIDTH + 1).W))
-    inst_valid_cnt_reg := Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg) 
+    inst_valid_cnt_reg := Mux(
+        io.rob_state === "b11".U,
+        0.U, 
+        Mux(
+            stall, 
+            io.inst_valid_cnt_i, 
+            inst_valid_cnt_reg
+        )       
+    ) 
 
     /* 使用总线信号以及物理寄存器状态更新ROB项依赖状态 */
     var rob_items_o = WireInit(VecInit(

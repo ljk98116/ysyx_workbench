@@ -3,7 +3,7 @@ package cpu.core.frontend
 import chisel3._
 import chisel3.util._
 import cpu.config._
-
+// crc32 
 /* 13 bit bhr ^ pc[15:3] IPC:0.303324 branch_pred_rate: 68.47% */
 /* 8 bit bhr 拼接pc(10, 3) IPC: 0.303324 branch_pred_rate: 68.47% */
 /* GHR与PC异或寻址PHT IPC:  branch_pred_rate: */
@@ -189,7 +189,7 @@ class PCReg extends Module
     ))
     for(i <- 0 until base.FETCH_WIDTH){
         local_pht_idx_vec_o(i) := pc_reg(14, 2) ^ bht_table_reg(pc_reg(9, 2))
-        btb_idx_vec_o(i) := pc_reg(14, 2) ^ GHR
+        btb_idx_vec_o(i) := pc_reg(14, 2)
     }
     /* 更新BHR */
     for(i <- 0 until base.FETCH_WIDTH){

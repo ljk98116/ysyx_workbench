@@ -103,59 +103,59 @@ class Decode extends Module
     ))
 
     pc_vec_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred, 
+        ~io.rat_flush_en, 
         Mux(stall, io.pc_vec_i, pc_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
     inst_valid_mask_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred, 
+        ~io.rat_flush_en, 
         Mux(stall, io.inst_valid_mask_i, inst_valid_mask_reg), 
         0.U
     )
     inst_valid_cnt_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred, 
+        ~io.rat_flush_en, 
         Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg), 
         0.U
     )
     gbranch_pre_res_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.gbranch_pre_res_i, gbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     lbranch_pre_res_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.lbranch_pre_res_i, lbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     branch_pre_res_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.branch_pre_res_i, branch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     global_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     local_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     bht_idx_vec_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.bht_idx_vec_i, bht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))
     )
 
     btb_hit_vec_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.btb_hit_vec_i, btb_hit_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
 
     btb_pred_addr_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred,
+        ~io.rat_flush_en,
         Mux(stall, io.btb_pred_addr_i, btb_pred_addr_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
@@ -164,7 +164,7 @@ class Decode extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W))
     ))
     btb_idx_vec_reg := Mux(
-        ~io.rat_flush_en & ~io.branch_en_pred, 
+        ~io.rat_flush_en, 
         Mux(stall, io.btb_idx_vec_i, btb_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
