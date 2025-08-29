@@ -95,7 +95,7 @@ class ALU extends Module
                 is(Funct3.SLT){
                     switch(rob_item_reg.funct7){
                         is(Funct7.SLT){
-                            result := rs1_data_reg << rs2_data_reg(4, 0)
+                            result := Mux(rs1_data_reg.asSInt < rs2_data_reg.asSInt, 1.U, 0.U)
                         }
                     }                    
                 }

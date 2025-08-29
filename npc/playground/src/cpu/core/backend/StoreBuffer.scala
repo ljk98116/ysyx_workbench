@@ -60,6 +60,9 @@ class StoreBuffer(size : Int) extends Module{
         wr_able_mask(i) := (tail + (i + 1).U) =/= head
     }
     io.wr_able := wr_able_mask.asUInt.andR
+
+    var read_able = WireInit(false.B)
+    read_able := rob_head =/= tail
     /* 组合逻辑，判断load RAW相关性 */
     /* head < tail, 找最晚的匹配 */
     /* head > tail, 优先看tail，同样找最晚的匹配 */
@@ -137,7 +140,7 @@ class StoreBuffer(size : Int) extends Module{
         store_buffer_rvalid(i) := raw_stIdx(i) =/= size.U
     }
     store_buffer_item_o(0) := Mux(rob_head =/= tail, storebuffer_item_reg(rob_head), 0.U.asTypeOf(new StoreBufferItem))
-    store_buffer_item_o(1) := Mux((rob_head + 1.U) =/= tail, storebuffer_item_reg(rob_head + 1.U), 0.U.asTypeOf(new StoreBufferItem))
+    store_buffer_item_o(1) := Mux((rob_head + 1.U) =/= tail & (rob_head =/= tail), storebuffer_item_reg(rob_head + 1.U), 0.U.asTypeOf(new StoreBufferItem))
     
     /* 时序逻辑 */
     for(i <- 0 until size){
@@ -208,16 +211,16 @@ class StoreBuffer(size : Int) extends Module{
         0.U,
         Mux(
             storebuffer_item_reg(rob_head).rob_rdy & storebuffer_item_reg(rob_head).rdy &
-            storebuffer_item_reg(rob_head + 1.U).rob_rdy & storebuffer_item_reg(rob_head + 1.U).rdy,
+            storebuffer_item_reg(rob_head + 1.U).rob_rdy & storebuffer_item_reg(rob_head + 1.U).rdy & read_able & (rob_head + 1.U =/= tail),
             rob_head + 2.U,
-            Mux(storebuffer_item_reg(rob_head).rob_rdy & storebuffer_item_reg(rob_head).rdy, rob_head + 1.U, rob_head)
+            Mux(storebuffer_item_reg(rob_head).rob_rdy & storebuffer_item_reg(rob_head).rdy & read_able, rob_head + 1.U, rob_head)
         )
     )
     head := Mux(
         io.rob_state === "b11".U,
         0.U,
         Mux(
-            ((head + 1.U) =/= tail) & (io.mem_write_en.asUInt === "b11".U), 
+            ((head + 1.U) =/= tail) & (io.mem_write_en.asUInt === "b11".U) & head =/= tail, 
             head + 2.U,
             Mux(
                 (head =/= tail) & (io.mem_write_en.asUInt.orR),
