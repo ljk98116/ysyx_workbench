@@ -38,6 +38,9 @@ word_t isa_reg_str2val(const char *s, bool *success) {
     }
   }
   if(strcmp(&s[1], "pc") == 0) return cpu.pc;
+  if(strcmp(&s[1], "mcause") == 0) return cpu.csr[CSR_MCAUSE];
+  if(strcmp(&s[1], "mstatus") == 0) return cpu.csr[CSR_MSTATUS];
+  if(strcmp(&s[1], "mepc") == 0) return cpu.csr[CSR_MEPC];
   printf("regname %s not found\n", s);
   return 0;
 }

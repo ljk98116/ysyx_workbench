@@ -7,7 +7,7 @@
 #include <string.h>
 
 #include <generated/autoconf.hpp>
-#include <macro.h>
+#include <macro.hpp>
 
 #ifdef CONFIG_TARGET_AM
 #include <klib.h>

@@ -95,7 +95,7 @@ static void exec_once(void* tfp){
     trace_and_difftest();
     g_nr_guest_inst += commit_num;
   }
-  if(cycle % 100000 == 0 & cycle > 0) NPCLog("running cycle %d", cycle);
+  // if(cycle % 100000 == 0 & cycle > 0) NPCLog("running cycle %d", cycle);
   ++cycle;
 }
 
