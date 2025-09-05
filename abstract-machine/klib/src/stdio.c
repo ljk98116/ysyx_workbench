@@ -43,8 +43,8 @@ int snprintf(char *out, size_t n, const char *fmt, ...) {
 
 int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
   int len = 0;
-  char buf[1024];
-  while(*fmt && len < n){
+  char buf[2048];
+  while(*fmt != '\0'){
     switch(*fmt){
       case '%':{
         fmt++;
@@ -59,7 +59,7 @@ int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
           case 'd':{
             int val = va_arg(ap, int);
             if(para_len > 0){
-              int val_len = itoa(val, buf);
+              int val_len = klib_itoa(val, buf);
               int off = 0;
               if(para_len > val_len){
                 for(int i=0;i<para_len - val_len;++i){
@@ -71,7 +71,7 @@ int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
               len += off + val_len;
             }
             else{
-              int val_len = itoa(val, buf);
+              int val_len = klib_itoa(val, buf);
               memcpy(out + len, buf, val_len);
               len += val_len;
             }           
@@ -103,6 +103,12 @@ int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
               len += val_len;
             }           
             break;            
+          }
+          case 'c':{
+            char val = va_arg(ap, int);
+            *(out + len) = val;
+            ++len;
+            break;
           }
         }
         break;

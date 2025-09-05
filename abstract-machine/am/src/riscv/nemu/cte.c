@@ -16,7 +16,6 @@ Context* __am_irq_handle(Context *c) {
     c = user_handler(ev, c);
     assert(c != NULL);
   }
-
   return c;
 }
 
@@ -33,7 +32,8 @@ bool cte_init(Context*(*handler)(Event, Context*)) {
 }
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
-  Context *cp = (Context*)(kstack.end - sizeof(Context));
+  Context *cp = (Context*)((uintptr_t)kstack.end - sizeof(Context));
+  cp->mstatus = 0x1800;
   //上下文切换后会返回mepc值+4,也就是entry
   cp->mepc = (uintptr_t)entry - 4;
   //保存参数，这个参数是void *类型的，比较特殊

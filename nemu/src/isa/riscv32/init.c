@@ -37,6 +37,9 @@ static void restart() {
   /* The zero register is always 0. */
   cpu.gpr[0] = 0;
 
+  for(int i=1; i<32;++i) {
+    cpu.gpr[i] = 0;
+  }
   cpu.csr[CSR_MSTATUS] = 0x00001800;
 }
 

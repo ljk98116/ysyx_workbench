@@ -22,12 +22,11 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
 #ifdef CONFIG_ETRACE
   Log("[ETRACE] ecall at epc: 0x%x, mcause: %d", epc, NO);
 #endif
-  cpu.mode = ((cpu.csr[CSR_MSTATUS] & (1 << 11)) >> 11) | ((cpu.csr[CSR_MSTATUS] & (1 << 12)) >> 11);
-  cpu.csr[CSR_MSTATUS] &= ~(1 << 7); //清除MPIE
-  cpu.csr[CSR_MSTATUS] |= (cpu.csr[CSR_MSTATUS] & (1 << 3)) << 4; //MIE保存到MPIE
-  cpu.csr[CSR_MSTATUS] &= ~(1 << 3); //MIE清零
-  cpu.csr[CSR_MSTATUS] |= ((1 << 11) | (1 << 12)); //特权级改为M
-
+  // cpu.mode = ((cpu.csr[CSR_MSTATUS] & (1 << 11)) >> 11) | ((cpu.csr[CSR_MSTATUS] & (1 << 12)) >> 11);
+  // cpu.csr[CSR_MSTATUS] &= ~(1 << 7); //清除MPIE
+  // cpu.csr[CSR_MSTATUS] |= (cpu.csr[CSR_MSTATUS] & (1 << 3)) << 4; //MIE保存到MPIE
+  // cpu.csr[CSR_MSTATUS] &= ~(1 << 3); //MIE清零
+  // cpu.csr[CSR_MSTATUS] |= ((1 << 11) | (1 << 12)); //特权级改为M
   cpu.csr[CSR_MCAUSE] = NO;
   cpu.csr[CSR_MEPC] = epc;
 

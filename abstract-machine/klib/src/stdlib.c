@@ -50,7 +50,7 @@ void *malloc(size_t size) {
 void free(void *ptr) {
 }
 
-int itoa(int x, char *buf){
+int klib_itoa(int x, char *buf){
   int len = 0;
   do{
     *(buf + len) = x % 10 + '0';
