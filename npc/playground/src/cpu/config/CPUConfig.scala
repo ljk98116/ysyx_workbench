@@ -28,3 +28,10 @@ object BRANCH_TYPE{
     val CALL_JUMP = "b10"
     val RET_JUMP = "b11"
 }
+
+object CSRIndex {
+    val MTVEC = "h305"
+    val MEPC = "h341"
+    val MSTATUS = "h300"
+    val MCAUSE = "h342"
+}

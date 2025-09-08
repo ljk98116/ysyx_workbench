@@ -22,6 +22,8 @@ class Dispatch extends Module
         val alu_items_vec_o = Output(Vec(base.ALU_NUM, new ROBItem))
         val agu_items_vec_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
         val agu_items_cnt_o = Output(UInt((log2Ceil(FETCH_WIDTH) + 1).W))
+        val sys_exu_items_vec_o = Output(Vec(base.FETCH_WIDTH, new ROBItem))
+        val sys_exu_items_cnt_o = Output(UInt((log2Ceil(FETCH_WIDTH) + 1).W))
 
         /* store buffer write */
         val store_buffer_wr_able = Input(Bool())
@@ -81,9 +83,14 @@ class Dispatch extends Module
         Seq.fill(base.FETCH_WIDTH)(false.B)
     ))
 
+    var is_system_vec = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(false.B)
+    ))
+
     for(i <- 0 until base.FETCH_WIDTH){
         is_alu_vec(i) := ~((rob_item_reg(i).Opcode === Opcode.SW) | (rob_item_reg(i).Opcode === Opcode.LW))
         is_agu_vec(i) := (rob_item_reg(i).Opcode === Opcode.SW) | (rob_item_reg(i).Opcode === Opcode.LW)
+        is_system_vec(i) := rob_item_reg(i).Opcode === Opcode.CSRRW
     }
 
     var alu_items_vec_o = WireInit(VecInit(
@@ -307,6 +314,86 @@ class Dispatch extends Module
         }
     }
 
+    var sys_exu_items_vec_o = WireInit(VecInit(
+        Seq.fill(base.FETCH_WIDTH)(
+            (0.U).asTypeOf(new ROBItem)
+        )
+    ))
+    val sys_exu_items_cnt_o = WireInit((0.U)((log2Ceil(FETCH_WIDTH) + 1).W))
+    sys_exu_items_cnt_o := 
+        is_system_vec(0).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W)) +
+        is_system_vec(1).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W)) +
+        is_system_vec(2).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W)) +
+        is_system_vec(3).asTypeOf(UInt((log2Ceil(FETCH_WIDTH) + 1).W))
+
+    for(i <- 0 until base.FETCH_WIDTH){
+        sys_exu_items_vec_o(i) := 0.U.asTypeOf(new ROBItem)
+    }
+
+    switch(is_system_vec.asUInt) {
+        is("b0001".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+        }
+        is("b0010".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(1)
+        }
+        is("b0100".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(2)
+        }
+        is("b1000".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(3)
+        }
+        is("b0011".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+            sys_exu_items_vec_o(1) := rob_item_reg(1)
+        }
+        is("b0101".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+            sys_exu_items_vec_o(1) := rob_item_reg(2)
+        }
+        is("b1001".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+            sys_exu_items_vec_o(1) := rob_item_reg(3)
+        }
+        is("b0110".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(1)
+            sys_exu_items_vec_o(1) := rob_item_reg(2)
+        } 
+        is("b1010".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(1)
+            sys_exu_items_vec_o(1) := rob_item_reg(3)
+        } 
+        is("b1100".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(2)
+            sys_exu_items_vec_o(1) := rob_item_reg(3)
+        }
+        is("b0111".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+            sys_exu_items_vec_o(1) := rob_item_reg(1)
+            sys_exu_items_vec_o(2) := rob_item_reg(2)            
+        }
+        is("b1011".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+            sys_exu_items_vec_o(1) := rob_item_reg(1)
+            sys_exu_items_vec_o(2) := rob_item_reg(3)            
+        }
+        is("b1101".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+            sys_exu_items_vec_o(1) := rob_item_reg(2)
+            sys_exu_items_vec_o(2) := rob_item_reg(3)            
+        } 
+        is("b1110".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(1)
+            sys_exu_items_vec_o(1) := rob_item_reg(2)
+            sys_exu_items_vec_o(2) := rob_item_reg(3)            
+        } 
+        is("b1111".U) {
+            sys_exu_items_vec_o(0) := rob_item_reg(0)
+            sys_exu_items_vec_o(1) := rob_item_reg(1)
+            sys_exu_items_vec_o(2) := rob_item_reg(2)
+            sys_exu_items_vec_o(3) := rob_item_reg(3)            
+        }            
+    }    
     /* connect */
     io.agu_items_cnt_o := Mux(stall, agu_items_cnt_o, 0.U)
     io.alu_items_vec_o := Mux(stall, alu_items_vec_o, VecInit(
@@ -317,7 +404,11 @@ class Dispatch extends Module
     io.agu_items_vec_o := Mux(stall, agu_items_vec_o, VecInit(
         Seq.fill(base.ALU_NUM)((0.U).asTypeOf(new ROBItem))
     ))
-
+    io.sys_exu_items_cnt_o := Mux(stall, sys_exu_items_cnt_o, 0.U)
+    io.sys_exu_items_vec_o := Mux(stall, sys_exu_items_vec_o, VecInit(
+        Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
+    ))
+    
     io.rob_item_o := Mux(stall, rob_items_o, VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
     ))
@@ -330,4 +421,5 @@ class Dispatch extends Module
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new StoreBufferItem))
     ))
     io.store_buffer_write_cnt := Mux(stall, store_buffer_item_cnt, 0.U)
+
 }

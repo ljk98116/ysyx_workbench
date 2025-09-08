@@ -99,6 +99,9 @@ class CPUCore(memfile: String) extends Module
     /* retire RAT */
     var retireRAT = Module(new RetireRAT)
 
+    /* CSR Regfiles */
+    var csrf = Module(new CSRF)
+
     /* connection */
     /* pc -> fetch */
     fetch.io.pc_i                   := pc_reg.io.pc_o

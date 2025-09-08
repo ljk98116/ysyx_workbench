@@ -23,19 +23,29 @@ class IssueStage extends Module
         val prf_rs2_data_raddr = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
         val prf_rs1_data_rdata = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val prf_rs2_data_rdata = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        
+        /* CSRF 读使能 */
+        
+
         /* PRF valid状态位 */
         val prf_valid_vec = Input(Vec(1 << base.PREG_WIDTH, Bool()))
         /* 输出对应channel的操作数 */
         val alu_channel_rs1_rdata = Output(Vec(base.ALU_NUM, UInt(base.DATA_WIDTH.W)))
         val alu_channel_rs2_rdata = Output(Vec(base.ALU_NUM, UInt(base.DATA_WIDTH.W)))
+
         val agu_channel_rs1_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         val agu_channel_rs2_rdata = Output(Vec(base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+
+
         val alu_fu_items_o = Output(Vec(base.ALU_NUM, new ROBItem))
         val agu_fu_items_o = Output(Vec(base.AGU_NUM, new ROBItem))
+
         val alu_issue_read_able = Output(Vec(base.ALU_NUM, Bool()))
         val alu_issue_write_able = Output(Vec(base.ALU_NUM, Bool()))
+
         val agu_issue_read_able = Output(Vec(base.AGU_NUM, Bool()))
         val agu_issue_write_able = Output(Vec(base.AGU_NUM, Bool()))
+
         /* control signal */
         val wr_able = Output(Bool())
     })
@@ -126,4 +136,6 @@ class IssueStage extends Module
     io.agu_channel_rs1_rdata := agu_reserve_station.io.agu_channel_rs1_rdata
     io.agu_channel_rs2_rdata := agu_reserve_station.io.agu_channel_rs2_rdata
     io.wr_able := wr_able_mask.asUInt.andR
+
+
 }

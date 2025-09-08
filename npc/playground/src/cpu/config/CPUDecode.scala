@@ -48,6 +48,11 @@ object Opcode
     val BLT     = "b1100011".U
     val BGEU    = "b1100011".U
     val BLTU    = "b1100011".U
+
+    val CSRRW   = "b1110011".U
+    val CSRRS   = "b1110011".U
+    val ECALL   = "b1110011".U
+    val MRET    = "b1110011".U
 }
 
 object Funct3
@@ -92,6 +97,11 @@ object Funct3
     val BGEU    = "b111".U
     val ANDI    = "b111".U
     val AND     = "b111".U
+
+    val CSRRW   = "b001".U
+    val CSRRS   = "b010".U
+    val MRET    = "b000".U
+    val ECALL   = "b000".U
 }
 
 object Funct7
@@ -141,6 +151,9 @@ object Imm{
         // 0000 1111 1100 0000 0000 0000 1110 1111
         // 0000 0000 0000 0000 0000 0000 1111 1100
     }
+    def ImmCsr(inst : UInt) : UInt = {
+        return inst(31, 20)
+    }
 }
 
 object InstType
@@ -151,6 +164,7 @@ object InstType
     val TYPESB  = "b011".U
     val TYPEU   = "b100".U
     val TYPEUJ  = "b101".U
+    val TYPESYS = "b110".U
 }
 
 class DecodeRes extends Bundle
@@ -169,4 +183,5 @@ class DecodeRes extends Bundle
     var IsBranch = Bool()
     var IsStore = Bool()
     var IsLoad = Bool()
+    var IsSys = Bool()
 }

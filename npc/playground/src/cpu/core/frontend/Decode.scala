@@ -346,6 +346,28 @@ class Decode extends Module
                     decoderes(i).HasRs2 := true.B
                     decoderes(i).HasRd  := false.B                    
                 }
+                /* type SYS */
+                is(
+                    Opcode.CSRRW,
+                    // Opcode.CSRRS,
+                    // Opcode.MRET,
+                    // Opcode.ECALL
+                ) {
+                    decoderes(i).Imm    := Imm.ImmCsr(inst_vec_used(i))
+                    decoderes(i).Opcode := inst_vec_used(i)(6, 0)
+                    decoderes(i).rs1    := inst_vec_used(i)(19, 15)
+                    decoderes(i).rd     := inst_vec_used(i)(11, 7)
+                    decoderes(i).Type   := InstType.TYPESYS
+                    decoderes(i).funct3 := inst_vec_used(i)(14, 12)
+                    // mret
+                    decoderes(i).IsBranch := 
+                        (Imm.ImmCsr(inst_vec_used(i)) === "b001100000010".U) &
+                        (inst_vec_used(i)(19, 7) === 0.U)
+                    decoderes(i).HasRs1 := 
+                        inst_vec_used(i)(14, 12) =/= 0.U
+                    decoderes(i).HasRs2 := false.B
+                    decoderes(i).HasRd  := inst_vec_used(i)(14, 12) =/= 0.U                    
+                }
             }
         }
     }
