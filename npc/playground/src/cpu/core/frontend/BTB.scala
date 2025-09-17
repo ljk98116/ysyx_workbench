@@ -18,10 +18,17 @@ class BTB(DEBUG: Boolean = false) extends Module{
         val decode_pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val decode_btb_idx_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
         val decode_br_addr = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
+
         val ex_br_mask_i = Input(Vec(base.FETCH_WIDTH, Bool()))
         val ex_pc_i = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val ex_br_addr = Input(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
         val ex_btb_idx_i = Input(Vec(base.FETCH_WIDTH, UInt(base.PHTID_WIDTH.W)))
+
+        val sys_ex_br_mask_i = Input(Bool())
+        val sys_ex_pc_i = Input(UInt(base.ADDR_WIDTH.W))
+        val sys_ex_br_addr = Input(UInt(base.ADDR_WIDTH.W))
+        val sys_ex_btb_idx_i = Input(UInt(base.PHTID_WIDTH.W))
+
         val btb_hit_vec_o = Output(Vec(base.FETCH_WIDTH, Bool()))
         val btb_pred_addr_o = Output(Vec(base.FETCH_WIDTH, UInt(base.ADDR_WIDTH.W)))
     })
@@ -126,6 +133,15 @@ else{
         btb_write_api.io.BIA := io.ex_pc_i(i)(22, 15)
         btb_write_api.io.BTA := io.ex_br_addr(i)
     }      
+
+    var sys_btb_write_api = Module(new BTBWriteAPI) 
+    sys_btb_write_api.io.clk := clock.asBool
+    sys_btb_write_api.io.rst := reset.asBool
+    sys_btb_write_api.io.wen := io.sys_ex_br_mask_i & (io.rob_state === "b00".U) & (io.sys_ex_br_addr(31))
+    sys_btb_write_api.io.waddr := io.sys_ex_btb_idx_i
+    sys_btb_write_api.io.V := true.B
+    sys_btb_write_api.io.BIA := io.sys_ex_pc_i(22, 15)
+    sys_btb_write_api.io.BTA := io.sys_ex_br_addr
 
     for(i <- 0 until base.FETCH_WIDTH){
         // var btb_writeItem = WireInit((0.U).asTypeOf(new BTBItem))

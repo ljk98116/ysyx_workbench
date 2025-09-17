@@ -10,7 +10,7 @@
 #include <klib.h>
 #include <klib-macros.h>
 
-#define ITERATIONS 1000
+#define ITERATIONS 1
 #define MEM_METHOD MEM_STATIC
 
 /************************/
@@ -34,7 +34,7 @@
 	and implementation of functions thereof.
 */
 #ifndef USE_CLOCK
-#define USE_CLOCK 0
+#define USE_CLOCK 1
 #endif
 /* Configuration : HAS_STDIO
 	Define to 1 if the platform has stdio.h.

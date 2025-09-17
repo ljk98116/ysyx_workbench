@@ -37,10 +37,3 @@ object CSRIndex {
     val MSTATUS = "h300"
     val MCAUSE = "h342"
 }
-
-val csrf_io = IO(new Bundle {
-    val csr_ren = Input(Bool())
-    val csr_wen = Input(Bool())
-    val csr_rdata = Output(UInt(base.DATA_WIDTH.W))
-    val csr_wdata = Input(UInt(base.DATA_WIDTH.W))
-})

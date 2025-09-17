@@ -9,15 +9,15 @@ class PRF extends Module
 {
     val io = IO(new Bundle {
         /* PRF 读使能 */
-        val prf_rs1_data_ren = Input(Vec(base.ALU_NUM + base.AGU_NUM, Bool()))
+        val prf_rs1_data_ren = Input(Vec(base.ALU_NUM + base.AGU_NUM + 1, Bool()))
         val prf_rs2_data_ren = Input(Vec(base.ALU_NUM + base.AGU_NUM, Bool()))
-        val prf_rs1_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
+        val prf_rs1_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM + 1, UInt((base.PREG_WIDTH + 1).W)))
         val prf_rs2_data_raddr = Input(Vec(base.ALU_NUM + base.AGU_NUM, UInt((base.PREG_WIDTH + 1).W)))
         /* cdb消息, 写入PRF */
         val cdb_i = Input(new CDB)
         val rat_flush_en = Input(Bool())
         /* 读数据结果 */
-        val prf_rs1_data_rdata = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
+        val prf_rs1_data_rdata = Output(Vec(base.ALU_NUM + base.AGU_NUM + 1, UInt(base.DATA_WIDTH.W)))
         val prf_rs2_data_rdata = Output(Vec(base.ALU_NUM + base.AGU_NUM, UInt(base.DATA_WIDTH.W)))
         /* PRF valid 接口 */
         val prf_valid_rd_wen = Input(Vec(base.FETCH_WIDTH, Bool()))
@@ -36,14 +36,17 @@ class PRF extends Module
     ))
 
     var prf_rs1_data_rdata = WireInit(VecInit(
-        Seq.fill(base.ALU_NUM + base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
+        Seq.fill(base.ALU_NUM + base.AGU_NUM + 1)((0.U)(base.DATA_WIDTH.W))
     ))
     var prf_rs2_data_rdata = WireInit(VecInit(
         Seq.fill(base.ALU_NUM + base.AGU_NUM)((0.U)(base.DATA_WIDTH.W))
     ))
 
-    for(i <- 0 until base.ALU_NUM + base.AGU_NUM){
+    for(i <- 0 until base.ALU_NUM + base.AGU_NUM + 1){
         prf_rs1_data_rdata(i) := Mux(io.prf_rs1_data_ren(i) & (~io.prf_rs1_data_raddr(i)(base.PREG_WIDTH)), prf_regs(io.prf_rs1_data_raddr(i)(base.PREG_WIDTH - 1, 0)), 0.U)
+    }
+
+    for(i <- 0 until base.ALU_NUM + base.AGU_NUM) {
         prf_rs2_data_rdata(i) := Mux(io.prf_rs2_data_ren(i) & (~io.prf_rs2_data_raddr(i)(base.PREG_WIDTH)), prf_regs(io.prf_rs2_data_raddr(i)(base.PREG_WIDTH - 1, 0)), 0.U)
     }
 
@@ -72,6 +75,18 @@ class PRF extends Module
                 prf_valid_regs(i) := true.B
             }
         }
+
+        when(
+            (io.cdb_i.sys_channel.phy_reg_id === i.U) & 
+            ~io.rat_flush_en & 
+            io.cdb_i.sys_channel.valid & 
+            (io.cdb_i.sys_channel.arch_reg_id =/= 0.U)
+        ){
+            prf_valid_regs(i) := true.B
+        }.elsewhen(io.rat_flush_en){
+            prf_valid_regs(i) := true.B
+        }        
+
         for(j <- 0 until base.FETCH_WIDTH){
             when((io.prf_valid_rd_waddr(j) === i.U) & io.prf_valid_rd_wen(j)){
                 prf_valid_regs(i) := io.prf_valid_rd_wdata(j)
@@ -90,6 +105,10 @@ class PRF extends Module
             prf_regs(io.cdb_i.agu_channel(i).phy_reg_id) := io.cdb_i.agu_channel(i).reg_wr_data
         }
     }    
+
+    when(io.cdb_i.sys_channel.valid & (io.cdb_i.sys_channel.arch_reg_id =/= 0.U)){
+        prf_regs(io.cdb_i.sys_channel.phy_reg_id) := io.cdb_i.sys_channel.reg_wr_data
+    }
 
     var valid_en = WireInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)(false.B)

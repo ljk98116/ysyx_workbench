@@ -101,6 +101,22 @@ if(!DEBUG){
         )
     }
 
+    var update_sig = WireInit(false.B)
+    update_sig := Cat(
+            io.cdb_i.sys_channel.valid,
+            ~ROBIDLocMem(io.cdb_i.sys_channel.rob_id)(bankwidth),
+            update_able
+        ).andR
+    when(
+        update_sig
+    ){
+        ROBBankRegs(io.cdb_i.sys_channel.rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.sys_channel.rob_id)(bankwidth - 1, 0)).rdy := true.B
+        ROBBankRegs(io.cdb_i.sys_channel.rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.sys_channel.rob_id)(bankwidth - 1, 0)).reg_wb_data := io.cdb_i.sys_channel.reg_wr_data
+        ROBBankRegs(io.cdb_i.sys_channel.rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.sys_channel.rob_id)(bankwidth - 1, 0)).targetBrAddr := io.cdb_i.sys_channel.branch_target_addr
+        ROBBankRegs(io.cdb_i.sys_channel.rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.sys_channel.rob_id)(bankwidth - 1, 0)).hasException := io.cdb_i.sys_channel.has_exception
+        ROBBankRegs(io.cdb_i.sys_channel.rob_id(bankwidth + 1, bankwidth))(ROBIDLocMem(io.cdb_i.sys_channel.rob_id)(bankwidth - 1, 0)).ExceptionType := io.cdb_i.sys_channel.exception_type
+    }
+
     for(i <- 0 until base.ALU_NUM){
         var update_sig = WireInit(false.B)
         update_sig := Cat(

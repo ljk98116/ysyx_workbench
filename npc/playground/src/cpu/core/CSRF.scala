@@ -35,7 +35,7 @@ class CSRF extends Module {
     io.csr_mtvec_rdata := Mux(io.csr_mtvec_ren, mtvec, 0.U)
     mtvec := Mux(io.csr_mtvec_wen, io.csr_mtvec_wdata, mtvec)
 
-    io.csr_mstaus_rdata := Mux(io.csr_mstatus_ren, mstatus, 0.U)
+    io.csr_mstatus_rdata := Mux(io.csr_mstatus_ren, mstatus, 0.U)
     mstatus := Mux(io.csr_mstatus_wen, io.csr_mstatus_wdata, mstatus)
 
     io.csr_mepc_rdata := Mux(io.csr_mepc_ren, mepc, 0.U)

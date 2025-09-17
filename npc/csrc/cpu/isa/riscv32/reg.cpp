@@ -33,6 +33,9 @@ void isa_reg_display(void *cpu_ptr, bool is_ref) {
       printf("%s: 0x%x \t", reg_name(4 * i + 1), gpr(dut_ptr, 4 * i + 1));
       printf("%s: 0x%x \t", reg_name(4 * i + 2), gpr(dut_ptr, 4 * i + 2));
       printf("%s: 0x%x \n", reg_name(4 * i + 3), gpr(dut_ptr, 4 * i + 3));
+    }
+    for (int i=0;i<4;++i) {
+      printf("npc pc: 0x%x \n ", dut_ptr->pc[i]);
     }    
   }
 }

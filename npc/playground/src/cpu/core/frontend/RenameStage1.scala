@@ -78,9 +78,9 @@ class RenameStage1 extends Module
 
     stall := (io.rob_state === 0.U) & 
         io.freereg_rd_able.asUInt.andR & 
-        io.store_buffer_wr_able & 
-        io.issue_wr_able &
-        io.rob_wr_able &
+        (io.store_buffer_wr_able | (~io.store_buffer_wr_able & io.rob_state =/= "b00".U)) & 
+        (io.issue_wr_able | (~io.issue_wr_able & io.rob_state =/= "b00".U)) &
+        (io.rob_wr_able | (~io.rob_wr_able & io.rob_state =/= "b00".U)) &
         io.rob_freeid_rd_able.asUInt.andR
 
     /* pipeline */
@@ -129,72 +129,72 @@ class RenameStage1 extends Module
     ))
 
     btb_idx_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~(io.rob_state === "b11".U), 
         Mux(stall, io.btb_idx_vec_i, btb_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))        
     )
 
     pc_vec_reg := Mux(
-        ~io.rat_flush_en, 
+        ~(io.rob_state === "b11".U), 
         Mux(stall, io.pc_vec_i,pc_vec_reg), 
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )
 
     inst_valid_mask_reg := Mux(
-        ~io.rat_flush_en, 
+        ~(io.rob_state === "b11".U), 
         Mux(stall, io.inst_valid_mask_i, inst_valid_mask_reg),
         0.U
     )
     DecodeRes_reg := Mux(
-        ~io.rat_flush_en, 
+        ~(io.rob_state === "b11".U), 
         Mux(stall, io.DecodeRes_i, DecodeRes_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(0.U.asTypeOf(new DecodeRes)))
     )
     inst_valid_cnt_reg := Mux(
-        ~io.rat_flush_en, 
+        ~(io.rob_state === "b11".U), 
         Mux(stall, io.inst_valid_cnt_i, inst_valid_cnt_reg),
         0.U
     )
     /* 分支预测结果 */
     gbranch_pre_res_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.gbranch_pre_res_i, gbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     lbranch_pre_res_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.lbranch_pre_res_i, lbranch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     branch_pre_res_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.branch_pre_res_i, branch_pre_res_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
     global_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.global_pht_idx_vec_i, global_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     local_pht_idx_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.local_pht_idx_vec_i, local_pht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.PHTID_WIDTH.W)))
     )
     bht_idx_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.bht_idx_vec_i, bht_idx_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.BHTID_WIDTH.W)))
     )
 
     btb_hit_vec_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.btb_hit_vec_i, btb_hit_vec_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)(false.B))
     )
 
     btb_pred_addr_reg := Mux(
-        ~io.rat_flush_en,
+        ~(io.rob_state === "b11".U),
         Mux(stall, io.btb_pred_addr_i, btb_pred_addr_reg),
         VecInit(Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W)))
     )    

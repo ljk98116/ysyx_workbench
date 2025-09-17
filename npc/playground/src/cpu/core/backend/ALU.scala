@@ -181,7 +181,7 @@ class ALU extends Module
                     }
                 }
                 is(Funct3.SLTIU){
-                    result := Mux(rs1_data_reg === 0.U, 1.U, 0.U)
+                    result := Mux(rs1_data_reg < rob_item_reg.Imm, 1.U, 0.U)
                 }
                 is(Funct3.XORI){
                     result := rs1_data_reg ^ rob_item_reg.Imm
@@ -196,7 +196,7 @@ class ALU extends Module
         }
         is(Opcode.JAL){
             result := rob_item_reg.pc + 4.U
-            branch_target_addr := rob_item_reg.pc + rob_item_reg.Imm
+            branch_target_addr := (rob_item_reg.pc + rob_item_reg.Imm)
             has_exception := ~rob_item_reg.branch_res | (
                 rob_item_reg.branch_pred_addr =/= (rob_item_reg.pc + rob_item_reg.Imm)
             )
@@ -212,13 +212,13 @@ class ALU extends Module
         }
         is(Opcode.JALR){
             result := rob_item_reg.pc + 4.U
-            branch_target_addr := rs1_data_reg + rob_item_reg.Imm
+            branch_target_addr := (rs1_data_reg + rob_item_reg.Imm) & ~(1.U)(base.DATA_WIDTH.W)
             has_exception := ~rob_item_reg.branch_res | (
-                rob_item_reg.branch_pred_addr =/= (rs1_data_reg + rob_item_reg.Imm)
+                rob_item_reg.branch_pred_addr =/= branch_target_addr
             )
             exception_type := Mux(
                 ~rob_item_reg.branch_res | (
-                    rob_item_reg.branch_pred_addr =/= (rs1_data_reg + rob_item_reg.Imm)
+                    rob_item_reg.branch_pred_addr =/= branch_target_addr
                 ),
                 ExceptionType.BRANCH_PREDICTION_ERROR.U,
                 ExceptionType.NORMAL.U

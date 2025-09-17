@@ -40,7 +40,11 @@ class Dispatch extends Module
     })
 
     var stall = WireInit(false.B)
-    stall := (io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able & (io.rob_state =/= "b11".U))
+    stall := 
+        (io.store_buffer_wr_able | (~io.store_buffer_wr_able & io.rob_state =/= "b00".U)) & 
+        (io.issue_wr_able | (~io.issue_wr_able & io.rob_state =/= "b00".U)) & 
+        (io.rob_wr_able | (~io.rob_wr_able & io.rob_state =/= "b00".U)) & 
+        (io.rob_state =/= "b11".U)
     /* pipeline */
     var rob_item_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U).asTypeOf(new ROBItem))
@@ -88,7 +92,7 @@ class Dispatch extends Module
     ))
 
     for(i <- 0 until base.FETCH_WIDTH){
-        is_alu_vec(i) := ~((rob_item_reg(i).Opcode === Opcode.SW) | (rob_item_reg(i).Opcode === Opcode.LW))
+        is_alu_vec(i) := ~((rob_item_reg(i).Opcode === Opcode.SW) | (rob_item_reg(i).Opcode === Opcode.LW) | (rob_item_reg(i).Opcode === Opcode.CSRRW))
         is_agu_vec(i) := (rob_item_reg(i).Opcode === Opcode.SW) | (rob_item_reg(i).Opcode === Opcode.LW)
         is_system_vec(i) := rob_item_reg(i).Opcode === Opcode.CSRRW
     }

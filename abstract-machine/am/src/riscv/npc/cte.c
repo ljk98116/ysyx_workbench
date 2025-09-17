@@ -8,6 +8,8 @@ Context* __am_irq_handle(Context *c) {
   if (user_handler) {
     Event ev = {0};
     switch (c->mcause) {
+      case 8:  ev.event = EVENT_SYSCALL; break;
+      case 11: ev.event = EVENT_YIELD; break;
       default: ev.event = EVENT_ERROR; break;
     }
 
@@ -31,14 +33,20 @@ bool cte_init(Context*(*handler)(Event, Context*)) {
 }
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
-  return NULL;
+  Context *cp = (Context*)((uintptr_t)kstack.end - sizeof(Context));
+  cp->mstatus = 0x1800;
+  //上下文切换后会返回mepc值+4,也就是entry
+  cp->mepc = (uintptr_t)entry - 4;
+  //保存参数，这个参数是void *类型的，比较特殊
+  cp->gpr[10] = (uintptr_t)arg;
+  return cp;
 }
 
 void yield() {
 #ifdef __riscv_e
-  asm volatile("li a5, -1; ecall");
+  asm volatile("li a5, 11; ecall");
 #else
-  asm volatile("li a7, -1; ecall");
+  asm volatile("li a7, 11; ecall");
 #endif
 }
 

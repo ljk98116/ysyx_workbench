@@ -4,6 +4,7 @@
 #include <isa.hpp>
 #include <locale.h>
 #include <utils.hpp>
+#include <sdb/sdb.hpp>
 
 #include <chrono>
 
@@ -57,14 +58,16 @@ static void trace_and_difftest() {
   memcpy(last_npc_pc, cpu.pc, sizeof(last_npc_pc));
   memcpy(last_npc_regs, cpu.gpr, sizeof(last_npc_regs));
 #endif
-  // IFDEF(CONFIG_WATCH_POINT, watchpoint_step());
+#if CONFIG_WATCH_POINT
+  watchpoint_step();
+#endif
 }
 
 static void statistic() {
   IFNDEF(CONFIG_TARGET_AM, setlocale(LC_NUMERIC, ""));
 #define NPC_NUMBERIC_FMT MUXDEF(CONFIG_TARGET_AM, "%", "%'") PRIu64
-  NPCLog("ipc %lf", (double)g_nr_guest_inst / (cycle * 2));
-  NPCLog("single cycle cost %lf us", (double)g_timer / cycle / 2.0);
+  NPCLog("ipc %lf", (double)g_nr_guest_inst / cycle);
+  NPCLog("single cycle cost %lf us", (double)g_timer / cycle);
   NPCLog("host time spent = " NPC_NUMBERIC_FMT " us", g_timer);
   NPCLog("total guest instructions = " NPC_NUMBERIC_FMT, g_nr_guest_inst);
   NPCLog("total branch predict success rate: %.2lf %", 100.0 - 100.0 * (double)branch_err_cnt / (double)(total_branch_cnt));

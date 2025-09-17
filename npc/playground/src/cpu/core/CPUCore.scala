@@ -102,6 +102,8 @@ class CPUCore(memfile: String) extends Module
     /* CSR Regfiles */
     var csrf = Module(new CSRF)
 
+    var sysExu = Module(new SysEXU)
+
     /* connection */
     /* pc -> fetch */
     fetch.io.pc_i                   := pc_reg.io.pc_o
@@ -276,7 +278,9 @@ class CPUCore(memfile: String) extends Module
     // dontTouch(dispatch.io.agu_items_vec_o)
     issue.io.alu_items_vec_i        := dispatch.io.alu_items_vec_o
     issue.io.agu_items_vec_i        := dispatch.io.agu_items_vec_o
-    issue.io.agu_items_cnt_i    := dispatch.io.agu_items_cnt_o
+    issue.io.agu_items_cnt_i        := dispatch.io.agu_items_cnt_o
+    issue.io.sys_items_vec_i        := dispatch.io.sys_exu_items_vec_o
+    issue.io.sys_items_cnt_i        := dispatch.io.sys_exu_items_cnt_o
 
     /* dispatch -> StoreBuffer */
     storebuffer.io.store_buffer_write_en := dispatch.io.store_buffer_write_en
@@ -295,6 +299,19 @@ class CPUCore(memfile: String) extends Module
     prf.io.prf_rs2_data_ren         := issue.io.prf_rs2_data_ren
     prf.io.prf_rs2_data_raddr       := issue.io.prf_rs2_data_raddr
 
+    /* IssueStage <-> CSRF */
+    issue.io.csr_mtvec_rdata        := csrf.io.csr_mtvec_rdata
+    csrf.io.csr_mtvec_ren           := issue.io.csr_mtvec_ren
+
+    issue.io.csr_mstatus_rdata      := csrf.io.csr_mstatus_rdata
+    csrf.io.csr_mstatus_ren         := issue.io.csr_mstatus_ren
+
+    issue.io.csr_mepc_rdata         := csrf.io.csr_mepc_rdata
+    csrf.io.csr_mepc_ren            := issue.io.csr_mepc_ren
+
+    issue.io.csr_mcause_rdata       := csrf.io.csr_mcause_rdata
+    csrf.io.csr_mcause_ren          := issue.io.csr_mcause_ren
+
     /* IssueStage -> 前面 */
     pc_reg.io.issue_wr_able         := issue.io.wr_able
     fetch.io.issue_wr_able         := issue.io.wr_able
@@ -308,7 +325,7 @@ class CPUCore(memfile: String) extends Module
     issue.io.prf_rs2_data_rdata   := prf.io.prf_rs2_data_rdata
     issue.io.prf_valid_vec := prf.io.prf_valid_vec
 
-    /* RegRead -> FU */
+    /* IssueStage -> FU */
     for(i <- 0 until base.ALU_NUM){
         alu_vec(i).io.rob_item_i    := issue.io.alu_fu_items_o(i)
         alu_vec(i).io.rs1_data_i    := issue.io.alu_channel_rs1_rdata(i)
@@ -320,6 +337,13 @@ class CPUCore(memfile: String) extends Module
         agu_vec(i).io.rs1_data_i    := issue.io.agu_channel_rs1_rdata(i)
         agu_vec(i).io.rs2_data_i    := issue.io.agu_channel_rs2_rdata(i)
     }
+
+    sysExu.io.rob_item_i := issue.io.sys_fu_item_o
+    sysExu.io.rs1_data_i := issue.io.sys_exu_channel_rs1_rdata
+    sysExu.io.csr_mcause_rdata_i := issue.io.sys_exu_channel_csr_mcause_rdata
+    sysExu.io.csr_mstatus_rdata_i := issue.io.sys_exu_channel_csr_mstatus_rdata
+    sysExu.io.csr_mepc_rdata_i := issue.io.sys_exu_channel_csr_mepc_rdata
+    sysExu.io.csr_mtvec_rdata_i := issue.io.sys_exu_channel_csr_mtvec_rdata
 
     /* FU -> CDB */
     for(i <- 0 until base.ALU_NUM){
@@ -340,6 +364,35 @@ class CPUCore(memfile: String) extends Module
         btb.io.ex_br_addr(i) := alu_vec(i).io.branch_target_addr
         btb.io.ex_btb_idx_i(i) := alu_vec(i).io.btb_idx_o
     }
+
+    /* SYSEXU -> CSRF */
+    csrf.io.csr_mcause_wen   := sysExu.io.csr_mcause_wen
+    csrf.io.csr_mcause_wdata := sysExu.io.csr_mcause_wdata
+
+    csrf.io.csr_mstatus_wen   := sysExu.io.csr_mstatus_wen
+    csrf.io.csr_mstatus_wdata := sysExu.io.csr_mstatus_wdata
+
+    csrf.io.csr_mepc_wen   := sysExu.io.csr_mepc_wen
+    csrf.io.csr_mepc_wdata := sysExu.io.csr_mepc_wdata
+
+    csrf.io.csr_mtvec_wen   := sysExu.io.csr_mtvec_wen
+    csrf.io.csr_mtvec_wdata := sysExu.io.csr_mtvec_wdata
+
+    /* SYSEXU -> CDB */
+    cdb.sys_channel.rob_id := sysExu.io.rob_id_o
+    cdb.sys_channel.valid := sysExu.io.valid_o
+    cdb.sys_channel.arch_reg_id := sysExu.io.areg_wr_addr
+    cdb.sys_channel.phy_reg_id := sysExu.io.preg_wr_addr
+    cdb.sys_channel.reg_wr_data := sysExu.io.result
+    cdb.sys_channel.branch_target_addr := sysExu.io.branch_target_addr
+    cdb.sys_channel.has_exception := sysExu.io.has_exception
+    cdb.sys_channel.exception_type := sysExu.io.exception_type
+
+    /* SYSEXU -> BTB */
+    btb.io.sys_ex_pc_i := sysExu.io.pc_o
+    btb.io.sys_ex_br_mask_i := sysExu.io.branch_en
+    btb.io.sys_ex_br_addr := sysExu.io.branch_target_addr
+    btb.io.sys_ex_btb_idx_i := sysExu.io.btb_idx_o
 
     /* CDB -> PRF */
     prf.io.cdb_i                        := cdb
@@ -531,6 +584,9 @@ class CPUCore(memfile: String) extends Module
         agu_vec(i).io.rat_flush_en := retire.io.rat_flush_en
         agu_vec(i).io.rob_state    := rob_buffer.io.rob_state
     }
+
+    sysExu.io.rat_flush_en := retire.io.rat_flush_en
+    sysExu.io.rob_state    := rob_buffer.io.rob_state
 
     /* rob_buffer -> storebuffer及前面 */
     storebuffer.io.rob_items_i                 := rob_buffer.io.rob_item_o

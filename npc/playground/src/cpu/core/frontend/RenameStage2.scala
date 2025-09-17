@@ -78,7 +78,12 @@ class RenameStage2 extends Module
     })
 
     var stall = WireInit(false.B)
-    stall := (io.rob_state =/= "b11".U) & io.store_buffer_wr_able & io.issue_wr_able & io.rob_wr_able & io.rob_freeid_rd_able.asUInt.andR
+    stall := 
+        (io.rob_state =/= "b11".U) & 
+        (io.store_buffer_wr_able | (~io.store_buffer_wr_able & io.rob_state =/= "b00".U)) & 
+        (io.issue_wr_able | (~io.issue_wr_able & io.rob_state =/= "b00".U)) & 
+        (io.rob_wr_able | (~io.rob_wr_able & io.rob_state =/= "b00".U))
+
     /* pipeline */
     var pc_vec_reg = RegInit(VecInit(
         Seq.fill(base.FETCH_WIDTH)((0.U)(base.ADDR_WIDTH.W))

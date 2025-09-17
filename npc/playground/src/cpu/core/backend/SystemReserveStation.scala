@@ -16,14 +16,28 @@ class SystemReserveStation(size: Int) extends Module {
 
         /* PRF 读使能 */
         val prf_rs1_data_ren = Output(Bool())
-        val csrf_data_ren = Output(Bool())
         val prf_rs1_data_raddr = Output(UInt((base.PREG_WIDTH + 1).W))
-        val csrf_data_raddr = Output(UInt((base.PREG_WIDTH + 1).W))
         val prf_rs1_data_rdata = Input(UInt(base.DATA_WIDTH.W))
-        val csrf_data_rdata = Input(UInt(base.DATA_WIDTH.W))
+
+        /* CSRF读使能 */
+        val csr_mtvec_ren = Output(Bool())
+        val csr_mstatus_ren = Output(Bool())
+        val csr_mepc_ren = Output(Bool())
+        val csr_mcause_ren = Output(Bool())
+
+        val csr_mtvec_rdata = Input(UInt(base.DATA_WIDTH.W))
+        val csr_mstatus_rdata = Input(UInt(base.DATA_WIDTH.W))
+        val csr_mepc_rdata = Input(UInt(base.DATA_WIDTH.W))
+        val csr_mcause_rdata = Input(UInt(base.DATA_WIDTH.W))
+
         /* 输出对应channel的操作数 */
         val sys_exu_channel_rs1_rdata = Output(UInt(base.DATA_WIDTH.W))
-        val sys_exu_channel_csr_rdata = Output(UInt(base.DATA_WIDTH.W))
+
+        val sys_exu_channel_mtvec_rdata = Output(UInt(base.DATA_WIDTH.W))
+        val sys_exu_channel_mstatus_rdata = Output(UInt(base.DATA_WIDTH.W))
+        val sys_exu_channel_mepc_rdata = Output(UInt(base.DATA_WIDTH.W))
+        val sys_exu_channel_mcause_rdata = Output(UInt(base.DATA_WIDTH.W))
+
         /* 总线状态 */
         // var cdb_i = Input(new CDB)
         val prf_valid_vec = Input(Vec(1 << base.PREG_WIDTH, Bool()))
@@ -114,11 +128,34 @@ class SystemReserveStation(size: Int) extends Module {
     io.prf_rs1_data_ren := Mux(issue_able, rob_item_o.HasRs1 & (rob_item_o.rs1 =/= 0.U), false.B)
     io.prf_rs1_data_raddr := Mux(issue_able, rob_item_o.ps1, 0.U)
 
-    io.csrf_data_ren := Mux(issue_able, rob_item_o.funct3 =/= 0.U, false.B)
-    io.csrf_data_raddr := Mux(issue_able, rob_item_o.Imm, 0.U)
+    var is_mret = WireInit(false.B)
+    var is_ecall = WireInit(false.B)
 
-    io.sys_exu_channel_rs1_rdata := Mux(issue_able, io.prf_rs1_data_rdata, 0.U)
-    io.sys_exu_channel_csr_rdata := Mux(issue_able & (rob_item_o.funct3 =/= 0.U), io.csrf_data_rdata, 0.U)
+    is_mret := (rob_item_reg(head).funct3 === 0.U) &
+        (rob_item_reg(head).Imm === "b001100000010".U)
+    is_ecall := (rob_item_reg(head).funct3 === 0.U) &
+        (rob_item_reg(head).Imm === 0.U)
+    
+    io.csr_mtvec_ren := Mux(
+        issue_able, 
+        ((rob_item_o.funct3 =/= 0.U) & (rob_item_o.Imm === CSRIndex.MTVEC.U)) | is_ecall, 
+        false.B
+    )
+    io.csr_mstatus_ren := Mux(
+        issue_able, 
+        (rob_item_o.funct3 =/= 0.U) & (rob_item_o.Imm === CSRIndex.MSTATUS.U) | is_mret | is_ecall, 
+        false.B
+    )
+    io.csr_mepc_ren := Mux(
+        issue_able, 
+        (rob_item_o.funct3 =/= 0.U) & (rob_item_o.Imm === CSRIndex.MEPC.U) | is_mret, 
+        false.B
+    )
+    io.csr_mcause_ren := Mux(
+        issue_able, 
+        (rob_item_o.funct3 =/= 0.U) & (rob_item_o.Imm === CSRIndex.MCAUSE.U), 
+        false.B
+    )
 
     head := Mux(
         io.rat_flush_en,
@@ -129,4 +166,9 @@ class SystemReserveStation(size: Int) extends Module {
 
     /* connect */
     io.rob_item_o := rob_item_o
+    io.sys_exu_channel_mtvec_rdata := io.csr_mtvec_rdata
+    io.sys_exu_channel_mstatus_rdata := io.csr_mstatus_rdata
+    io.sys_exu_channel_mepc_rdata := io.csr_mepc_rdata
+    io.sys_exu_channel_mcause_rdata := io.csr_mcause_rdata
+    io.sys_exu_channel_rs1_rdata := io.prf_rs1_data_rdata
 }

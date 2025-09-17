@@ -353,18 +353,28 @@ class Decode extends Module
                     // Opcode.MRET,
                     // Opcode.ECALL
                 ) {
+                    var is_ecall = WireInit(false.B)
+                    is_ecall := 
+                        (
+                            (Imm.ImmCsr(inst_vec_used(i)) === "b000000000000".U) &
+                            (inst_vec_used(i)(19, 7) === 0.U)
+                        )
                     decoderes(i).Imm    := Imm.ImmCsr(inst_vec_used(i))
                     decoderes(i).Opcode := inst_vec_used(i)(6, 0)
-                    decoderes(i).rs1    := inst_vec_used(i)(19, 15)
                     decoderes(i).rd     := inst_vec_used(i)(11, 7)
                     decoderes(i).Type   := InstType.TYPESYS
                     decoderes(i).funct3 := inst_vec_used(i)(14, 12)
-                    // mret
+                    // mret,ecall
                     decoderes(i).IsBranch := 
-                        (Imm.ImmCsr(inst_vec_used(i)) === "b001100000010".U) &
-                        (inst_vec_used(i)(19, 7) === 0.U)
-                    decoderes(i).HasRs1 := 
-                        inst_vec_used(i)(14, 12) =/= 0.U
+                        (
+                            (Imm.ImmCsr(inst_vec_used(i)) === "b001100000010".U) | 
+                            (Imm.ImmCsr(inst_vec_used(i)) === "b000000000000".U)
+                        ) &
+                        (inst_vec_used(i)(19, 12) === 0.U)
+                    // 不是mret
+                    decoderes(i).HasRs1 := Imm.ImmCsr(inst_vec_used(i)) =/= "b001100000010".U
+                        
+                    decoderes(i).rs1    := Mux(is_ecall, 15.U, inst_vec_used(i)(19, 15))
                     decoderes(i).HasRs2 := false.B
                     decoderes(i).HasRd  := inst_vec_used(i)(14, 12) =/= 0.U                    
                 }

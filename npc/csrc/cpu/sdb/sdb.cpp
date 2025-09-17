@@ -71,9 +71,21 @@ static int cmd_info(char *args){
     isa_reg_display(&cpu, false);
   }
   /* 打印监视点 */
-  // if(args[0] == 'w'){
-  //   print_watchpoints();
-  // }
+  if(args[0] == 'w'){
+    print_watchpoints();
+  }
+  return 0;
+}
+
+static int cmd_w(char *args){
+  WP *wp = new_WP();
+  if(!wp){
+    NPCLog("Hardware watchpoint allocate failed");
+    return -1;
+  }
+  wp->expr = strdup(args);
+  AddWP(wp);
+  NPCLog("Hardware watchpoint %d : %s", wp->NO, args);
   return 0;
 }
 
@@ -133,7 +145,7 @@ static struct {
   { "info", "get info for register[r] or watchpoints[w]", cmd_info},
   { "x", "output the expr value within N * 4 bytes in format hex", cmd_x},
   { "p", "get expr value", cmd_p},
-  // { "w", "set watchpoint", cmd_w},
+  { "w", "set watchpoint", cmd_w},
   // { "d", "del watchpoint id N", cmd_d}
 };
 
@@ -226,7 +238,7 @@ void init_sdb() {
   init_regex();
 
   /* Initialize the watchpoint pool. */
-  // init_wp_pool();
+  init_wp_pool();
 }
 
 }
