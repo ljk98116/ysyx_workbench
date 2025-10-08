@@ -17,6 +17,18 @@ int printf(const char *fmt, ...) {
         para_len = para_len * 10 + (*fmt - '0');
         ++fmt;
       }
+      bool is_long = false;
+      bool is_long_long = false;
+      if(*fmt == 'l' && *(fmt + 1) == 'l') {
+        is_long_long = true;
+        fmt += 2;
+      }
+      else if(*fmt == 'l') {
+        is_long = true;
+        ++fmt;
+      }
+      (void)is_long;
+      (void)is_long_long;
       switch (*fmt) {
         case 'd': {
           int arg = va_arg(ap, int);
